@@ -1,15 +1,22 @@
+# Requirements.
 cmake_minimum_required(VERSION 4.0)
+set(CMAKE_GENERATOR "Visual Studio 17 2022")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 
+# Solution-wide settings.
 set(TARGET_WINDOWS_SDK 10.0.18362.0)
-set(CMAKE_SYSTEM_VERSION ${TARGET_WINDOWS_SDK})
-set(CMAKE_GENERATOR_PLATFORM x64,version=${TARGET_WINDOWS_SDK})
-message("CMAKE_GENERATOR_PLATFORM = ${CMAKE_GENERATOR_PLATFORM}")
+set(CMAKE_SYSTEM_VERSION ${TARGET_WINDOWS_SDK}) # Where CMake runs.
+set(CMAKE_GENERATOR_PLATFORM x64,version=${TARGET_WINDOWS_SDK}) # Target machine.
+message("\nCMAKE_GENERATOR_PLATFORM = ${CMAKE_GENERATOR_PLATFORM}\n")
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Available configuration types" FORCE)
 add_compile_definitions(_UNICODE)
 
+# Projects.
 project(CrucibleSolution LANGUAGES CXX)
 add_subdirectory(Crucible)
+add_subdirectory(ThirdParty)
+target_link_libraries(Crucible PRIVATE DirectXMath)
+target_include_directories(Crucible PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty")
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Crucible)
