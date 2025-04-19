@@ -153,9 +153,7 @@
 #endif
 #endif // !_XM_NO_INTRINSICS_
 
-#if defined(_WIN64)
-#include "sal.h"
-#else
+#ifndef __ATTR_SAL
 // Crucible Modification: use an open source version of SAL(the Microsoft source-code annotation language) header.
 #include "OpenSourceSAL.h"
 #endif
