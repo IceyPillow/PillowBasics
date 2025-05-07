@@ -41,6 +41,11 @@
 #endif
 #endif
 
+#if defined(_WIN64)
+// Crucible Modification: use SSE4 explicitly when compiling on Windows.
+#define _XM_SSE4_INTRINSICS_
+#endif
+
 #if !defined(_XM_AVX2_INTRINSICS_) && defined(__AVX2__) && !defined(_XM_NO_INTRINSICS_)
 #define _XM_AVX2_INTRINSICS_
 #endif
