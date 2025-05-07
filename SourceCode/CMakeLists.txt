@@ -16,7 +16,7 @@ add_compile_definitions(_UNICODE)
 project(CrucibleSolution LANGUAGES CXX)
 add_subdirectory(Crucible)
 add_subdirectory(ThirdParty)
-target_link_libraries(Crucible PRIVATE DirectXMath)
+target_link_libraries(Crucible PRIVATE DirectXMath LodePNG)
 target_include_directories(Crucible PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty")
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Crucible)
