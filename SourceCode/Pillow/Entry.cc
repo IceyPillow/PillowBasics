@@ -1,7 +1,10 @@
 #include <Windows.h>
+#include "Core/Renderers/Renderer.h"
+
+using namespace Pillow;
 
 static HWND windowHandle;
-
+void TestZone();
 int GameMessageLoop();
 bool CreateGameWindow(HINSTANCE hInstance, int show);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -60,7 +63,9 @@ bool CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
 
 int GameMessageLoop()
 {
-   MSG msg {};
+   TestZone();
+
+   MSG msg{};
    while (msg.message != WM_QUIT)
    {
       if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
@@ -92,7 +97,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
       }
       else if (wParam == VK_F11)
       {
-
+         // Fullscreen
       }
    case WM_DESTROY:// End message loop
       PostQuitMessage(0);
@@ -101,3 +106,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
    // Default procedure
    return DefWindowProc(hWnd, msg, wParam, lParam);
 }
+
+//#include "DirectXMath-apr2025/DirectXMath.h"
+//#include "DirectXMath-apr2025/DirectXMathSSE4.h"
+//#include "Core/Auxiliaries.h"
+//#include "Core/Texture.h"
+//
+//void TestZone()
+//{
+//   D3D12Renderer renderer(windowHandle, 2);
+//   
+//   
+//   using namespace DirectX;
+//   XMVECTOR v = XMVectorSet(1, 1, 1, 1);
+//   XMVECTOR v2 = XMVector4Dot(v, v);
+//   float result;
+//   XMStoreFloat(&result, v2);
+//   bool SSE4Check = SSE4::XMVerifySSE4Support();
+//   LoadTexture(L"Textures\\SRGBInterpolationExample.png");
+//}
