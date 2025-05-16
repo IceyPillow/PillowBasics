@@ -13,10 +13,10 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Available configurat
 add_compile_definitions(_UNICODE)
 
 # Projects.
-project(CrucibleSolution LANGUAGES CXX)
-add_subdirectory(Crucible)
+project(PillowBasics LANGUAGES CXX)
+add_subdirectory(Pillow)
 add_subdirectory(ThirdParty)
-target_link_libraries(Crucible PRIVATE DirectXMath)
-target_include_directories(Crucible PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty")
+target_link_libraries(Pillow PRIVATE DirectXMath LodePNG)
+target_include_directories(Pillow PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty")
 
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Crucible)
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Pillow)

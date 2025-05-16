@@ -21,4 +21,4 @@ cmake -S ./SourceCode -B ./Cmake
 :: Open the solution.
 echo.
 set /p input=Open the solution? (y/n)
-if /i "%input%"=="y" start ./Cmake/CrucibleSolution.sln
+if /i "%input%"=="y" start ./Cmake/PillowBasics.sln
