@@ -1,4 +1,4 @@
-![Repoditory Icon](logo.png)
+<img src="logo.png" alt="Repository Icon" width="512" height="512">
 # Pillow Basics
 ## Description
 A cross-platform C++ game framework focusing on low-consumption abstract designs, and dedicated to eliminating software bloat in modern game dev.
