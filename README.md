@@ -1,4 +1,7 @@
 <img src="logo.png" alt="Repository Icon" width="256" height="256"></img>
+<br/>
+![Platform0](https://img.shields.io/badge/Win64(Win10%201903%2B)-In%20Progress-blue)
+![Static Badge](https://img.shields.io/badge/Android-Planned-red)
 
 # Pillow Basics
 ## Description
