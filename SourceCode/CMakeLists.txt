@@ -15,7 +15,7 @@ add_compile_definitions(_UNICODE)
 # Projects.
 project(PillowBasics LANGUAGES CXX)
 add_subdirectory(Pillow)
-add_subdirectory(ThirdParty)
+add_subdirectory(3rdParty)
 target_link_libraries(Pillow PRIVATE DirectXMath LodePNG)
 target_include_directories(Pillow PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty")
 
