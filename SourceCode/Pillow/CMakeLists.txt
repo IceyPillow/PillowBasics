@@ -7,9 +7,9 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 
 #message("SOURCES: ${SOURCES}")
 
-add_executable(Crucible WIN32 ${SOURCES})
+add_executable(Pillow WIN32 ${SOURCES})
 
 # link static libraries.
-target_link_libraries(Crucible PRIVATE dxgi.lib D3D12.lib d3dcompiler.lib)
+target_link_libraries(Pillow PRIVATE dxgi.lib D3D12.lib d3dcompiler.lib)
 # Build an IDE hierarchy.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES})
