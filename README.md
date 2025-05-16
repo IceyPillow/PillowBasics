@@ -1,7 +1,8 @@
+![Repoditory Icon](logo.png)
 # Pillow Basics
 ## Description
-A cross-platform C++ game engine.
+A cross-platform C++ game framework focusing on low-consumption abstract designs, and dedicated to eliminating software bloat in modern game dev.
 
 ## Name Convention
-It's aligned with the standard notation in C#.<br/>
-Folders and files MUST obey UpperCamelCase.
+Aligned with the standard notation in C#. Classes, methods, and properties must be UpperCamelCase, while auto variables and class fields must be lowerCamelCase.<br/>
+In addition, folders and files MUST obey UpperCamelCase.
