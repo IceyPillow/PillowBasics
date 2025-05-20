@@ -112,16 +112,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 //#include "Core/Auxiliaries.h"
 //#include "Core/Texture.h"
 //
-//void TestZone()
-//{
-//   D3D12Renderer renderer(windowHandle, 2);
-//   
-//   
-//   using namespace DirectX;
-//   XMVECTOR v = XMVectorSet(1, 1, 1, 1);
-//   XMVECTOR v2 = XMVector4Dot(v, v);
-//   float result;
-//   XMStoreFloat(&result, v2);
-//   bool SSE4Check = SSE4::XMVerifySSE4Support();
-//   LoadTexture(L"Textures\\SRGBInterpolationExample.png");
-//}
+void TestZone()
+{
+   //D3D12Renderer renderer(windowHandle, 2);
+   //
+   //
+   //using namespace DirectX;
+   //XMVECTOR v = XMVectorSet(1, 1, 1, 1);
+   //XMVECTOR v2 = XMVector4Dot(v, v);
+   //float result;
+   //XMStoreFloat(&result, v2);
+   //bool SSE4Check = SSE4::XMVerifySSE4Support();
+   //LoadTexture(L"Textures\\SRGBInterpolationExample.png");
+}
