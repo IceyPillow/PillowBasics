@@ -16,9 +16,9 @@ if "%CLEAN%"=="true" (
 echo.
 
 :: Generate.
-cmake -S ./SourceCode -B ./Cmake
+cmake -G "Visual Studio 17 2022" -A x64 -S ./SourceCode -B ./Cmake/Win64
 
 :: Open the solution.
 echo.
 set /p input=Open the solution? (y/n)
-if /i "%input%"=="y" start ./Cmake/PillowBasics.sln
+if /i "%input%"=="y" start ./Cmake/Win64/PillowBasics.sln
