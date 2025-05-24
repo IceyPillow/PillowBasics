@@ -276,11 +276,7 @@ C++ standard library defines
 Assert macro
 */
 #ifndef PX_ENABLE_ASSERTS
-#if PX_DEBUG && !defined(__CUDACC__)
-#define PX_ENABLE_ASSERTS 1
-#else
 #define PX_ENABLE_ASSERTS 0
-#endif
 #endif
 
 /**
@@ -368,11 +364,7 @@ Noinline macro
 /**
 Restrict macro
 */
-#if defined(__CUDACC__)
-#define PX_RESTRICT __restrict__
-#else
 #define PX_RESTRICT __restrict
-#endif
 
 /**
 Noalias macro
@@ -403,10 +395,6 @@ This declaration style is parsed correctly by Visual Assist.
 #define PX_ALIGN(alignment, decl) decl __attribute__((aligned(alignment)))
 #define PX_ALIGN_PREFIX(alignment)
 #define PX_ALIGN_SUFFIX(alignment) __attribute__((aligned(alignment)))
-#elif defined __CUDACC__
-#define PX_ALIGN(alignment, decl) __align__(alignment) decl
-#define PX_ALIGN_PREFIX(alignment)
-#define PX_ALIGN_SUFFIX(alignment) __align__(alignment))
 #else
 #define PX_ALIGN(alignment, decl)
 #define PX_ALIGN_PREFIX(alignment)
@@ -448,7 +436,7 @@ General defines
 	(reinterpret_cast<size_t>(&reinterpret_cast<Class*>(PX_OFFSETOF_BASE)->Member) - size_t(PX_OFFSETOF_BASE))
 
 // check that exactly one of NDEBUG and _DEBUG is defined
-// Pillow: Using a customized debug macro. _DEBUG affectsy the C++ STL headers but we wanna use /MT whenever
+// PillowBaics: Using a customized debug macro. _DEBUG affectsy the C++ STL headers but we wanna use /MT whenever
 #if !defined(NDEBUG) ^ (defined(_DEBUG) | defined(PILLOW_DEBUG))
 #error Exactly one of NDEBUG and _DEBUG needs to be defined!
 #endif
@@ -458,11 +446,7 @@ General defines
 #error PX_CHECKED must be defined when PX_DEBUG is defined
 #endif
 
-#ifdef __CUDACC__
-#define PX_CUDA_CALLABLE __host__ __device__
-#else
-#define PX_CUDA_CALLABLE
-#endif
+#define PX_CUDA_CALLABLE // PillowBaics: Disable CUDA on all patforms.
 
 // avoid unreferenced parameter warning
 // preferred solution: omit the parameter's name from the declaration

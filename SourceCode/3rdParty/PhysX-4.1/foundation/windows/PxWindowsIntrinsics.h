@@ -122,21 +122,13 @@ PX_CUDA_CALLABLE PX_FORCE_INLINE float selectMax(float a, float b)
 //! \brief platform-specific finiteness check (not INF or NAN)
 PX_CUDA_CALLABLE PX_FORCE_INLINE bool isFinite(float a)
 {
-#ifdef __CUDACC__
-	return !!isfinite(a);
-#else
 	return (0 == ((_FPCLASS_SNAN | _FPCLASS_QNAN | _FPCLASS_NINF | _FPCLASS_PINF) & _fpclass(a)));
-#endif
 }
 
 //! \brief platform-specific finiteness check (not INF or NAN)
 PX_CUDA_CALLABLE PX_FORCE_INLINE bool isFinite(double a)
 {
-#ifdef __CUDACC__
-	return !!isfinite(a);
-#else
 	return (0 == ((_FPCLASS_SNAN | _FPCLASS_QNAN | _FPCLASS_NINF | _FPCLASS_PINF) & _fpclass(a)));
-#endif
 }
 
 /*!

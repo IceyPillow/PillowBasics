@@ -37,7 +37,7 @@
 #error "This file should only be included by Unix builds!!"
 #endif
 
-#if (PX_LINUX || PX_ANDROID) && !defined(__CUDACC__) && !PX_EMSCRIPTEN
+#if (PX_LINUX || PX_ANDROID) && !PX_EMSCRIPTEN
     // Linux/android and CUDA compilation does not work with std::isfnite, as it is not marked as CUDA callable
     #include <cmath>
     #ifndef isfinite

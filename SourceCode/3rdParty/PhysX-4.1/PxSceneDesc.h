@@ -47,7 +47,8 @@ namespace physx
 {
 #endif
 
-	class PxCudaContextManager;
+	// PillowBasics: CUDA is disabled on all platforms. Don't need it! （*゜ー゜*）
+	typedef void PxCudaContextManager;
 
 /**
 \brief Pruning structure used to accelerate scene queries.
