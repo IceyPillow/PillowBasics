@@ -41,7 +41,7 @@
 #endif
 #endif
 
-#if defined(_WIN64)
+#if defined(_WIN64) && !defined(_XM_SSE4_INTRINSICS_)
 // Pillow Modification: use SSE4 explicitly when compiling on Windows.
 #define _XM_SSE4_INTRINSICS_
 #endif
