@@ -62,7 +62,7 @@ namespace
       return barrier;
    }
 
-   /// <summary>Fence synchronization wrapper.</summary>
+   // Fence synchronization wrapper
    class FenceSync
    {
       ReadonlyProperty(int32_t, FrameIdx)
@@ -83,11 +83,8 @@ namespace
          CloseHandle(syncEventHandle);
       }
 
-      /// <summary>
-      /// Advance the frame index, wait only if no available frame.<para/>
-      /// WARNING: Invoke this after ExecuteCommandList()
-      /// </summary>
-      /// <param name="flushQueue"> Frame index unchanged if set this TRUE.</param>
+      // Advance the frame index, wait only if no available frame. Invoke this AFTER ExecuteCommandList()
+      // flushQueue: Frame index unchanged if set this TRUE.
       void Synchronize(bool flushQueue)
       {
          commandQueue->Signal(fence.Get(), _TargetFence);
@@ -117,9 +114,7 @@ namespace
    public:
       DelayReleaseManager() {};
 
-      /// <summary>
-      /// Enqueue an element that will be released after current frame.
-      /// </summary>
+      // Enqueue an element that will be released after current frame.
       void Enqueue(std::unique_ptr<GeneralBuffer>&& buffer)
       {
          Item item{ std::move(buffer), fence->GetTargetFence() };
@@ -427,10 +422,8 @@ namespace
          }
       }
 
-      /// <summary>
-      /// D3D12 texture subresource indexing: SubRes[PlaneIdx][ArrayIdx][MipIdx]<para/>
-      /// Typically planar formats are not used to store RGBA data.
-      /// </summary>
+      // D3D12 texture subresource indexing: SubRes[PlaneIdx][ArrayIdx][MipIdx]
+      // Typically planar formats are not used to store RGBA data.
       void WriteTexture(const char* data, const GenericTextureInfo& texInfo, int32_t arrayIndex = 0)
       {
          if (DataType != BufferDataType::Texture) throw std::exception("Cannot use WriteTexture() with non-texture buffers.");

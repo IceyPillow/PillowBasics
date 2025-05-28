@@ -2,12 +2,12 @@
 
 namespace Pillow::AppConsts
 {
-   /// <summary>Best anisotropy level value considering both performance and quality.</summary>
+   // Best anisotropy level value considering both performance and quality.
    const int32_t AnisotropyLevel = 4;
 
    const int32_t SwapChainSize = 3;
 
-   /// <summary>11_0 feature level in DX12 can support GPU down to GeForce 400 series!</summary>
+   // 11_0 feature level in DX12 can support GPU down to GeForce 400 series!
    const D3D_FEATURE_LEVEL DX12FeatureLevel = D3D_FEATURE_LEVEL_11_0;
 
    const float CleanColor[4] = {0.2f, 0.21f, 0.2f, 0.0f};

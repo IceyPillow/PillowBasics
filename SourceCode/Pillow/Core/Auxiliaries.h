@@ -37,27 +37,6 @@ namespace Pillow
    std::string Wstring2String(const std::wstring& wstr);
    std::wstring String2Wstring(const std::string& str);
    std::wstring GetResourcePath(const std::wstring& name);
-   /// <summary>
-   /// Compare the types of a and b. If b is nullptr, compare a with T.<para/>
-   /// T must be a polymorphic class.
-   /// </summary>
-   //template<typename T>
-   //bool IsSameType(const void* a, const void* b = nullptr)
-   //{
-   //   static_assert(std::is_polymorphic<T>::value, "T must be a polymorphic class.");
-   //   if (!a) return false;
-   //   T* ptrA = dynamic_cast<T*>(a);
-   //   if (!ptrA) return false;
-   //   if (b)
-   //   {
-   //      T* ptrB = dynamic_cast<T*>(b);
-   //      return ptrB ? typeid(*ptrA) == typeid(*ptrB) : false;
-   //   }
-   //   else
-   //   {
-   //      return typeid(*ptrA) == typeid(T);
-   //   }
-   //}
 
    class GameClock
    {
