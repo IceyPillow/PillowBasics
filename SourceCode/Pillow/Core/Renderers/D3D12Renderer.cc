@@ -11,7 +11,7 @@
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;
 
-// __LINE__ in an inline function don't show the line number of the caller, thus choose a macro.
+// __LINE__ in an inline function doesn't show the line number of the caller, thus choose a macro.
 #define CheckHResult(hr)\
 {\
    if (FAILED(hr))\
@@ -23,7 +23,7 @@ using Microsoft::WRL::ComPtr;
    }\
 }
 
-// An anonymous namespace has internal linkage. Only use these contents in this .cc file.
+// An anonymous namespace has internal linkage (accessable in local translation unit)
 namespace
 {
    class FenceSync;
