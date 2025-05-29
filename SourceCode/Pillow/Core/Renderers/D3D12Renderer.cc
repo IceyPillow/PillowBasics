@@ -598,6 +598,10 @@ D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRe
 Pillow::D3D12Renderer::~D3D12Renderer()
 {
 }
+uint64_t Pillow::D3D12Renderer::GetFrameIndex()
+{
+   return fence->GetFrameIdx();
+}
 int32_t Pillow::D3D12Renderer::CreateMesh()
 {
    return 0;

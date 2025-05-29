@@ -31,6 +31,7 @@ namespace Pillow
    
    public:
       virtual ~GenericRenderer() = 0;
+      virtual uint64_t GetFrameIndex() = 0;
       virtual int32_t CreateMesh() = 0;
       virtual int32_t CreateTexture() = 0;
       virtual int32_t CreateConstantBuffer() = 0;
@@ -56,6 +57,7 @@ namespace Pillow
    public:
       D3D12Renderer(HWND windowHandle, int32_t threadCount);
       ~D3D12Renderer() override;
+      uint64_t GetFrameIndex() override;
       int32_t CreateMesh() override;
       int32_t CreateTexture() override;
       int32_t CreatePiplelineState() override;
