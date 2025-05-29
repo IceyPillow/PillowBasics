@@ -10,6 +10,9 @@
 
 namespace Pillow
 {
+   class GenericRenderer;
+   extern std::unique_ptr<GenericRenderer> RendererInstance;
+
    enum class GenericRendererResourceType : int32_t
    {
       Mesh = 1 << 28,

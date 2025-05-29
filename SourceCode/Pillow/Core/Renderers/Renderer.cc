@@ -1,5 +1,7 @@
 #include "Renderer.h"
 
+std::unique_ptr<Pillow::GenericRenderer> Pillow::RendererInstance{};
+
 namespace
 {
    std::vector<std::thread> workers;
