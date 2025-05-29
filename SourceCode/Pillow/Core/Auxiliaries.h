@@ -8,6 +8,10 @@
 #include <filesystem>
 #include <locale>
 
+#if defined(_WIN64)
+#elif defined(__ANDROID__)
+#endif
+
 #if defined(_MSC_VER)
 #define ForceInline __forceinline
 #elif defined(__GNUC__) | defined(__clang__)
