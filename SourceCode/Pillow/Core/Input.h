@@ -3,8 +3,12 @@
 
 namespace Pillow::Input
 {
-   enum class GenricButton : char
+   // Not all keys are valid on a specific platform.
+   // e.g. A mice is not intended to be supported on Android.
+   enum class GenricKey : char
    {
+      // Screen touch
+      TouchLeft, TouchRight,
       // Mice
       MiceMiddle, MiceLeft, MiceRight, MiceSide0, MiceSide1,
       // GamePad
@@ -13,23 +17,7 @@ namespace Pillow::Input
       PadLB, PadLT, PadRB, PadRT,
       PadReturn, PadMenu,
       StickLeft, StickRight,
-      Count
-   };
-
-   const char* GenricButtonName[(int32_t)GenricButton::Count] =
-   {
-      // Mice
-      "MiceMiddle", "MiceLeft", "MiceRight", "MiceSide0", "MiceSide1",
-      // GamePad
-      "PadX", "PadY", "PadA", "PadB",
-      "PadUp", "PadDown", "PadLeft", "PadRight",
-      "PadLB", "PadLT", "PadRB", "PadRT",
-      "PadReturn", "PadMenu",
-      "StickLeft", "StickRight"
-   };
-
-   enum class GenricKey : char
-   {
+      // Keyboard Keys
       // Letters
       A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
       // Numbers
@@ -37,48 +25,34 @@ namespace Pillow::Input
       // Function Keys
       F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
       // Symbols
-      Backtick, Minus, Euqals, BracketLeft, BracketRight, Backslash, Semicolon, Quote, Comma, Period, Slash,
+      Backtick, Minus, Equals, BracketLeft, BracketRight, Backslash,
+      Semicolon, Quote, Comma, Period, Slash,
       // Control Keys
       Esc, Tab, CapsLock, Shift, Ctrl, Alt, Space, Backspace, Enter,
       // Arrow Keys
       ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
       Count
    };
-   const char* GenricKeyName[(int32_t)GenricKey::Count] =
-   {
-      // Letters
-      "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-      "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-      // Numbers
-      "Num0", "Num1", "Num2", "Num3", "Num4", "Num5", "Num6", "Num7", "Num8", "Num9",
-      // Function Keys
-      "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
-      // Symbols
-      "Backtick", "Minus", "Equals", "BracketLeft", "BracketRight", "Backslash",
-      "Semicolon", "Quote", "Comma", "Period", "Slash",
-      // Control Keys
-      "Esc", "Tab", "CapsLock", "Shift", "Ctrl", "Alt", "Space", "Backspace", "Enter",
-      // Arrow Keys
-      "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"
-   };
+
+   extern const char* GenricKeyName[];
+
+   void InputInitialize(const void* params);
+   void InputClose();
+   void InputCallback(const void* messages);
 
    using DirectX::XMFLOAT2;
-//#if defined(_WIN64)
-//   XMFLOAT2 GetMousePos();
-//   XMFLOAT2 GetMouseOffset();
-//   float GetWheelOffset();
-//#elif defined(__ANDROID__)
-//#endif
 
-
-   void InputInitialize();
-
-   void InputCallback();
-
-   bool GetKey(int32_t keyCode);
-   bool GetKeyDown(int32_t keyCode);
-   bool GetKeyUp(int32_t keyCode);
-   bool GetButton(GenricButton button);
-   bool GetButtonDown(GenricButton button);
-   bool GetButtonUp(GenricButton button);
+#if defined(_WIN64)
+   XMFLOAT2 GetMicePos();
+   XMFLOAT2 GetMiceOffset();
+   float GetWheelOffset();
+#elif defined(__ANDROID__)
+   XMFLOAT2 GetLeftTouchPos();
+   XMFLOAT2 GetLeftTouchOffset();
+   XMFLOAT2 GetRightTouchPos();
+   XMFLOAT2 GetRightTouchOffset();
+#endif
+   bool GetKey(GenricKey key);
+   bool GetKeyDown(GenricKey key);
+   bool GetKeyUp(GenricKey key);
 }
