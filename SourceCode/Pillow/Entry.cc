@@ -1,23 +1,85 @@
+#if defined(_WIN64)
 #include <Windows.h>
+#include <WinUser.h>
+#elif defined(__ANDROID__)
+#endif
+#include "DirectXMath-apr2025/DirectXMath.h"
 #include "Core/Renderers/Renderer.h"
-
+#include "Core/Input.h"
 using namespace Pillow;
 
-static HWND windowHandle;
-void TestZone();
+void TempCode();
+int32_t RefreshRate{};
+int32_t ScreenSize[2]{};
+int32_t ScreenOrigin[2]{};
+#if defined(_WIN64)
+void CreateGameWindow(HINSTANCE hInstance, int show);
 int GameMessageLoop();
-bool CreateGameWindow(HINSTANCE hInstance, int show);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+static HWND windowHandle;
 
 // Program Entry Point
 static int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
-   return CreateGameWindow(hInstance, nShowCmd) ? GameMessageLoop() : 0;
+   CreateGameWindow(hInstance, nShowCmd);
+   GameMessageLoop();
 }
 
-bool CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
+void GetMonitorParams()
+{
+   HMONITOR monitor = MonitorFromWindow(windowHandle, MONITOR_DEFAULTTONEAREST);
+   MONITORINFOEX info = {sizeof(MONITORINFOEX)};
+   if (!GetMonitorInfo(monitor, &info))
+   {
+      MessageBoxA(0, "GetMonitorInfo FAILED", 0, MB_OK);
+      exit(EXIT_FAILURE);
+   }
+   ScreenOrigin[0] = info.rcMonitor.left;
+   ScreenOrigin[1] = info.rcMonitor.top;
+   DEVMODE devMode{0};
+   devMode.dmSize = sizeof(DEVMODE);
+   if (!EnumDisplaySettings(info.szDevice, ENUM_CURRENT_SETTINGS, &devMode))
+   {
+      MessageBoxA(0, "EnumDisplaySettings FAILED", 0, MB_OK);
+      exit(EXIT_FAILURE);
+   }
+   RefreshRate = devMode.dmDisplayFrequency;
+   ScreenSize[0] = devMode.dmPelsWidth;
+   ScreenSize[1] = devMode.dmPelsHeight;
+}
+
+void SetWindowMode(bool fullScreen, bool allowResizing = true)
+{
+   static bool isFullScreen = false;
+   static uint32_t posAndSize[4]{};
+   const uint32_t flags = SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW;
+   if (fullScreen && !isFullScreen)
+   {
+      isFullScreen = true;
+      GetMonitorParams();
+      RECT rect{};
+      GetWindowRect(windowHandle, &rect);
+      posAndSize[0] = rect.left;
+      posAndSize[1] = rect.top;
+      posAndSize[2] = rect.right - rect.left;
+      posAndSize[3] = rect.bottom - rect.top;
+      uint32_t style = WS_OVERLAPPED;
+      uint32_t a = SetWindowLongPtr(windowHandle, GWL_STYLE, style);
+      SetWindowPos(windowHandle, 0, ScreenOrigin[0], ScreenOrigin[1], ScreenSize[0], ScreenSize[1], flags);
+   }
+   else if(!fullScreen && isFullScreen)
+   {
+      uint32_t style = WS_OVERLAPPEDWINDOW & (allowResizing ? UINT32_MAX : !WS_THICKFRAME);
+      SetWindowLongPtr(windowHandle, GWL_STYLE, style);
+      SetWindowPos(windowHandle, 0, posAndSize[0], posAndSize[1], posAndSize[2], posAndSize[3], flags);
+   }
+}
+
+void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
 {
    // 1 Register Window
+   const wchar_t* className = L"PillowBasics";
    WNDCLASS windowSettings{};
    windowSettings.style = CS_HREDRAW | CS_VREDRAW;
    windowSettings.lpfnWndProc = WndProc;
@@ -28,17 +90,16 @@ bool CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
    windowSettings.hCursor = LoadCursor(0, IDC_ARROW);
    windowSettings.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
    windowSettings.lpszMenuName = 0;
-   windowSettings.lpszClassName = L"BasicWndClass";
+   windowSettings.lpszClassName = className;
    if (!RegisterClass(&windowSettings))
    {
-      MessageBox(0, L"RegisterClass FAILED", 0, 0);
-      return false;
+      MessageBoxA(0, "RegisterClass FAILED", 0, MB_OK);
+      exit(EXIT_FAILURE);
    }
-
    // 2 Create and show window
    windowHandle = CreateWindow(
-      L"BasicWndCLass",
-      L"Win32BasicTitle",
+      className,
+      L"DefaultTitle",
       WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT,
       CW_USEDEFAULT,
@@ -50,35 +111,42 @@ bool CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
       0);
    if (windowHandle == 0)
    {
-      MessageBox(0, L"CreateWindow FAILED", 0, 0);
-      return false;
+      MessageBoxA(0, "CreateWindow FAILED", 0, MB_OK);
+      exit(EXIT_FAILURE);
    }
-
    // 3 Display Window
    ShowWindow(windowHandle, nShowCmd);
    UpdateWindow(windowHandle); // Update the window before initializing the game engine.
-   return true;
 }
 
 
 int GameMessageLoop()
 {
-   TestZone();
-
-   MSG msg{};
-   while (msg.message != WM_QUIT)
+   try
    {
-      if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+      GetMonitorParams();
+#ifdef PILLOW_DEBUG
+      TempCode();
+#endif
+      MSG msg{};
+      while (msg.message != WM_QUIT)
       {
-         TranslateMessage(&msg);
-         DispatchMessage(&msg);
+         if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+         {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+         }
+         else
+         {
+            // Game update
+         }
       }
-      else
-      {
-         // Game update
-      }
+      return (int)msg.wParam;
    }
-   return (int)msg.wParam;
+   catch (std::exception& e)
+   {
+      MessageBoxA(windowHandle, e.what(), 0, MB_OK);
+   }
 }
 
 // Recieve message （callback from system）
@@ -86,19 +154,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
    switch (msg)
    {
-   case WM_LBUTTONDOWN:
-      MessageBox(0, L"Hello, World", L"Hello", MB_OK);
+   case WM_INPUT:
+      // Process raw input here if needed
+      Pillow::Input::InputCallback((const void*)lParam);
       return 0;
-   case WM_KEYDOWN:
-      if (wParam == VK_ESCAPE)
-      {
-         DestroyWindow(windowHandle);
-         return 0;
-      }
-      else if (wParam == VK_F11)
-      {
-         // Fullscreen
-      }
+      break;
+   case WM_ENTERSIZEMOVE:
+      /*
+      * When users resize or move the form, the program will be trapped in a modal loop,
+      * which will stop our message loop, causing the engine not to run.
+      * Therefore, create a timer to run the engine.
+      */
+      break;
+   case WM_EXITSIZEMOVE:
+      break;
    case WM_DESTROY:// End message loop
       PostQuitMessage(0);
       return 0;
@@ -126,8 +195,9 @@ public:
    }
 };
 
-void TestZone()
+void TempCode()
 {
+   SetWindowMode(true);
    //D3D12Renderer renderer(windowHandle, 2);
    //
    //
@@ -181,44 +251,46 @@ void TestZone()
    //alcDestroyContext(context);
    //alcCloseDevice(device);
 
-   static PxDefaultAllocator allocator;
-   static SimpleErrorCallback errorCallback;
-   PxFoundation* foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, errorCallback);
-   if (!foundation) {
-      std::cerr << "Failed to create PhysX Foundation!" << std::endl;
-      //return 1;
-   }
+   //static PxDefaultAllocator allocator;
+   //static SimpleErrorCallback errorCallback;
+   //PxFoundation* foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, errorCallback);
+   //if (!foundation) {
+   //   std::cerr << "Failed to create PhysX Foundation!" << std::endl;
+   //   //return 1;
+   //}
 
-   // Initialize PhysX SDK
-   PxPhysics* physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, PxTolerancesScale());
-   if (!physics) {
-      std::cerr << "Failed to create PhysX SDK!" << std::endl;
-      foundation->release();
-      //return 1;
-   }
+   //// Initialize PhysX SDK
+   //PxPhysics* physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, PxTolerancesScale());
+   //if (!physics) {
+   //   std::cerr << "Failed to create PhysX SDK!" << std::endl;
+   //   foundation->release();
+   //   //return 1;
+   //}
 
-   // Create a simple scene
-   PxSceneDesc sceneDesc(physics->getTolerancesScale());
-   sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-   PxDefaultCpuDispatcher* dispatcher = PxDefaultCpuDispatcherCreate(1);
-   sceneDesc.cpuDispatcher = dispatcher;
-   sceneDesc.filterShader = PxDefaultSimulationFilterShader;
+   //// Create a simple scene
+   //PxSceneDesc sceneDesc(physics->getTolerancesScale());
+   //sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+   //PxDefaultCpuDispatcher* dispatcher = PxDefaultCpuDispatcherCreate(1);
+   //sceneDesc.cpuDispatcher = dispatcher;
+   //sceneDesc.filterShader = PxDefaultSimulationFilterShader;
 
-   PxScene* scene = physics->createScene(sceneDesc);
-   if (!scene) {
-      std::cerr << "Failed to create PhysX Scene!" << std::endl;
-      dispatcher->release();
-      physics->release();
-      foundation->release();
-      //return 1;
-   }
+   //PxScene* scene = physics->createScene(sceneDesc);
+   //if (!scene) {
+   //   std::cerr << "Failed to create PhysX Scene!" << std::endl;
+   //   dispatcher->release();
+   //   physics->release();
+   //   foundation->release();
+   //   //return 1;
+   //}
 
-   // Output
-   std::cout << "PhysX initialized successfully! Scene created." << std::endl;
+   //// Output
+   //std::cout << "PhysX initialized successfully! Scene created." << std::endl;
 
-   // Release
-   scene->release();
-   dispatcher->release();
-   physics->release();
-   foundation->release();
+   //// Release
+   //scene->release();
+   //dispatcher->release();
+   //physics->release();
+   //foundation->release();
 }
+#elif defined(__ANDROID__)
+#endif
