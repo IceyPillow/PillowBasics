@@ -6,29 +6,38 @@
 #include "DirectXMath-apr2025/DirectXMath.h"
 #include "Core/Renderers/Renderer.h"
 #include "Core/Input.h"
+
 using namespace Pillow;
 
 void TempCode();
+
+bool isFullScreen = false;
 int32_t RefreshRate{};
 int32_t ScreenSize[2]{};
 int32_t ScreenOrigin[2]{};
+
 #if defined(_WIN64)
 void CreateGameWindow(HINSTANCE hInstance, int show);
-int GameMessageLoop();
+void GameMessageLoop();
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-static HWND windowHandle;
+namespace
+{
+   static HWND Hwnd;
+   const int32_t MinimumSize[2]{ 600, 400 };
+}
 
 // Program Entry Point
 static int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
    CreateGameWindow(hInstance, nShowCmd);
    GameMessageLoop();
+   return 0;
 }
 
 void GetMonitorParams()
 {
-   HMONITOR monitor = MonitorFromWindow(windowHandle, MONITOR_DEFAULTTONEAREST);
+   HMONITOR monitor = MonitorFromWindow(Hwnd, MONITOR_DEFAULTTONEAREST);
    MONITORINFOEX info = {sizeof(MONITORINFOEX)};
    if (!GetMonitorInfo(monitor, &info))
    {
@@ -51,29 +60,28 @@ void GetMonitorParams()
 
 void SetWindowMode(bool fullScreen, bool allowResizing = true)
 {
-   static bool isFullScreen = false;
    static uint32_t posAndSize[4]{};
    const uint32_t flags = SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW;
    if (fullScreen && !isFullScreen)
    {
-      isFullScreen = true;
       GetMonitorParams();
       RECT rect{};
-      GetWindowRect(windowHandle, &rect);
+      GetWindowRect(Hwnd, &rect);
       posAndSize[0] = rect.left;
       posAndSize[1] = rect.top;
       posAndSize[2] = rect.right - rect.left;
       posAndSize[3] = rect.bottom - rect.top;
       uint32_t style = WS_OVERLAPPED;
-      uint32_t a = SetWindowLongPtr(windowHandle, GWL_STYLE, style);
-      SetWindowPos(windowHandle, 0, ScreenOrigin[0], ScreenOrigin[1], ScreenSize[0], ScreenSize[1], flags);
+      uint32_t a = SetWindowLongPtr(Hwnd, GWL_STYLE, style);
+      SetWindowPos(Hwnd, 0, ScreenOrigin[0], ScreenOrigin[1], ScreenSize[0], ScreenSize[1], flags);
    }
    else if(!fullScreen && isFullScreen)
    {
       uint32_t style = WS_OVERLAPPEDWINDOW & (allowResizing ? UINT32_MAX : !WS_THICKFRAME);
-      SetWindowLongPtr(windowHandle, GWL_STYLE, style);
-      SetWindowPos(windowHandle, 0, posAndSize[0], posAndSize[1], posAndSize[2], posAndSize[3], flags);
+      SetWindowLongPtr(Hwnd, GWL_STYLE, style);
+      SetWindowPos(Hwnd, 0, posAndSize[0], posAndSize[1], posAndSize[2], posAndSize[3], flags);
    }
+   isFullScreen = fullScreen;
 }
 
 void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
@@ -97,30 +105,20 @@ void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
       exit(EXIT_FAILURE);
    }
    // 2 Create and show window
-   windowHandle = CreateWindow(
-      className,
-      L"DefaultTitle",
-      WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT,
-      CW_USEDEFAULT,
-      CW_USEDEFAULT,
-      CW_USEDEFAULT,
-      0,
-      0,
-      hInstance,
-      0);
-   if (windowHandle == 0)
+   Hwnd = CreateWindow(className, L"DefaultTitle", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+      CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
+   if (Hwnd == 0)
    {
       MessageBoxA(0, "CreateWindow FAILED", 0, MB_OK);
       exit(EXIT_FAILURE);
    }
    // 3 Display Window
-   ShowWindow(windowHandle, nShowCmd);
-   UpdateWindow(windowHandle); // Update the window before initializing the game engine.
+   ShowWindow(Hwnd, nShowCmd);
+   UpdateWindow(Hwnd); // Update the window before initializing the game engine.
 }
 
 
-int GameMessageLoop()
+void GameMessageLoop()
 {
    try
    {
@@ -128,24 +126,23 @@ int GameMessageLoop()
 #ifdef PILLOW_DEBUG
       TempCode();
 #endif
-      MSG msg{};
-      while (msg.message != WM_QUIT)
+      MSG message{};
+      while (message.message != WM_QUIT)
       {
-         if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+         if (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
          {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            TranslateMessage(&message);
+            DispatchMessage(&message);
          }
          else
          {
             // Game update
          }
       }
-      return (int)msg.wParam;
    }
    catch (std::exception& e)
    {
-      MessageBoxA(windowHandle, e.what(), 0, MB_OK);
+      MessageBoxA(Hwnd, e.what(), 0, MB_OK);
    }
 }
 
@@ -158,6 +155,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
       // Process raw input here if needed
       Pillow::Input::InputCallback((const void*)lParam);
       return 0;
+      break;
+   case WM_GETMINMAXINFO:
+   {
+      auto& info = *(MINMAXINFO*)lParam;
+      info.ptMinTrackSize.x = MinimumSize[0];
+      info.ptMinTrackSize.y = MinimumSize[1];
+      break;
+   }
+   case WM_KEYDOWN:
+      if (wParam == VK_F11)
+      {
+         SetWindowMode(!isFullScreen, true); // Toggle fullscreen mode
+      }
       break;
    case WM_ENTERSIZEMOVE:
       /*
@@ -197,7 +207,7 @@ public:
 
 void TempCode()
 {
-   SetWindowMode(true);
+   //SetWindowMode(true);
    //D3D12Renderer renderer(windowHandle, 2);
    //
    //
