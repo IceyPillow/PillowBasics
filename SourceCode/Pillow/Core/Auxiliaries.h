@@ -42,12 +42,10 @@ namespace Pillow
    std::wstring String2Wstring(const std::string& str);
    std::wstring GetResourcePath(const std::wstring& name);
 
-   class GameClock
+   namespace Clock
    {
-      DeleteDefautedMethods(GameClock)
-   public:
-      static void Start();
-      static void GetTimeDataPerFrame(double& deltaTimeInSeconds, double& lastingTimeInSeconds);
-      static double GetPrecisionInMilliseconds();
-   };
+      void Start();
+      void GetFrameTime(double& deltaTimeInSeconds, double& lastingTimeInSeconds);
+      double GetPrecisionMilliseconds();
+   }
 }

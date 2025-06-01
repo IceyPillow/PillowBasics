@@ -58,13 +58,13 @@ namespace Pillow
       return resourceRootPath / path(name);
    }
 
-   void GameClock::Start()
+   void Clock::Start()
    {
       startPoint = steady_clock::now();
       lastPoint = startPoint;
    }
 
-   void GameClock::GetTimeDataPerFrame(double& deltaTimeInSeconds, double& lastingTimeInSeconds)
+   void Clock::GetFrameTime(double& deltaTimeInSeconds, double& lastingTimeInSeconds)
    {
       auto currentPoint = steady_clock::now();
       deltaTimeInSeconds = duration_cast<duration<double, std::ratio<1>>>(currentPoint - lastPoint).count();
@@ -72,7 +72,7 @@ namespace Pillow
       lastPoint = currentPoint;
    }
 
-   double GameClock::GetPrecisionInMilliseconds()
+   double Clock::GetPrecisionMilliseconds()
    {
       const int32_t test_rounds = 5;
       auto last = steady_clock::now();
