@@ -3,7 +3,7 @@
 #include <cmath>
 #include "Auxiliaries.h"
 
-namespace Pillow
+namespace Pillow::Graphics
 {
    enum class GenericTextureFormat : int8_t
    {

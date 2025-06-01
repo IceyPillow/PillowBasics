@@ -6,6 +6,7 @@
 #include "Auxiliaries.h"
 
 using namespace Pillow;
+using namespace Pillow::Graphics;
 using namespace DirectX;
 
 namespace
@@ -118,7 +119,7 @@ GenericTextureInfo::GenericTextureInfo(int width, GenericTextureFormat format, b
    _TotalSize = _MipSliceSize * _ArraySliceCount;
 }
 
-void Pillow::LoadTexture(const std::wstring& relativePath)
+void LoadTexture(const std::wstring& relativePath)
 {
    // Read the binary file.
    std::wstring path = GetResourcePath(relativePath);
