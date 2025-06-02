@@ -9,6 +9,7 @@
 #include <dxgi1_6.h>
 
 using namespace Pillow;
+using namespace Pillow::Graphics;
 using Microsoft::WRL::ComPtr;
 
 // __LINE__ in an inline function doesn't show the line number of the caller, thus choose a macro.
@@ -39,9 +40,9 @@ namespace
    ComPtr<ID3D12Device6> d3d12Device;
    ComPtr<ID3D12CommandQueue> cmdQueue;
    ComPtr<ID3D12GraphicsCommandList5> cmdList;
-   ComPtr<ID3D12CommandAllocator> cmdAllocator[AppConsts::SwapChainSize];
+   ComPtr<ID3D12CommandAllocator> cmdAllocator[Constants::SwapChainSize];
    ComPtr<IDXGISwapChain1> swapChain;
-   HWND windowHandle;
+   HWND Hwnd;
 
    const DXGI_FORMAT Generic2DxgiFormat[(int32_t)GenericTextureFormat::Count]
    {
@@ -90,7 +91,7 @@ namespace
          commandQueue->Signal(fence.Get(), _TargetFence);
          frameEndTimestamps[_FrameIdx] = _TargetFence++;
          // Cycle through the circular frame resource array.
-         if (!flushQueue) _FrameIdx = (_FrameIdx + 1) % AppConsts::SwapChainSize;
+         if (!flushQueue) _FrameIdx = (_FrameIdx + 1) % Constants::SwapChainSize;
          int64_t endTimestamp = frameEndTimestamps[_FrameIdx];
          // Has the GPU finished processing the commands of the current frame resource?
          // If not, wait until the GPU has completed commands up to this fence point.
@@ -106,7 +107,7 @@ namespace
       ComPtr<ID3D12Fence1> fence;
       HANDLE syncEventHandle;
       ComPtr<ID3D12CommandQueue> commandQueue;
-      int64_t frameEndTimestamps[AppConsts::SwapChainSize]{};
+      int64_t frameEndTimestamps[Constants::SwapChainSize]{};
    };
 
    class DelayReleaseManager
@@ -509,13 +510,13 @@ namespace
       try
       {
          //// default adapter
-         CheckHResult(D3D12CreateDevice(nullptr, AppConsts::DX12FeatureLevel, IID_PPV_ARGS(&d3d12Device)));
+         CheckHResult(D3D12CreateDevice(nullptr, Constants::DX12FeatureLevel, IID_PPV_ARGS(&d3d12Device)));
       }
       catch (...)
       {
          ComPtr<IDXGIAdapter> Warp;
          CheckHResult(dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&Warp)));
-         CheckHResult(D3D12CreateDevice(Warp.Get(), AppConsts::DX12FeatureLevel, IID_PPV_ARGS(&d3d12Device)));
+         CheckHResult(D3D12CreateDevice(Warp.Get(), Constants::DX12FeatureLevel, IID_PPV_ARGS(&d3d12Device)));
       }
       // Queue
       D3D12_COMMAND_QUEUE_DESC queueDesc{ D3D12_COMMAND_LIST_TYPE_DIRECT, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0 };
@@ -524,13 +525,13 @@ namespace
       DXGI_SWAP_CHAIN_DESC1 swapChainDesc
       {
          0,0, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
-         DXGI_USAGE_RENDER_TARGET_OUTPUT, AppConsts::SwapChainSize, DXGI_SCALING_NONE,
+         DXGI_USAGE_RENDER_TARGET_OUTPUT, Constants::SwapChainSize, DXGI_SCALING_NONE,
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
          DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT
       };
-      CheckHResult(dxgiFactory->CreateSwapChainForHwnd(cmdQueue.Get(), windowHandle, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
+      CheckHResult(dxgiFactory->CreateSwapChainForHwnd(cmdQueue.Get(), Hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
       // Command Allocators & Lists
-      for (int i = 0; i < AppConsts::SwapChainSize; i++)
+      for (int i = 0; i < Constants::SwapChainSize; i++)
       {
          CheckHResult(d3d12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&cmdAllocator[i])));
       }
@@ -580,7 +581,7 @@ namespace
       ;
 
       // clock
-      double time = GameClock::GetPrecisionInMilliseconds();
+      //double time = Clock::GetPrecisionInMilliseconds();
       ;
    }
 }
@@ -588,40 +589,40 @@ namespace
 D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRenderer(threadCount, "D3D12Renderer")
 {
    SingletonCheck();
-   ::windowHandle = windowHandle;
+   ::Hwnd = windowHandle;
    CreateD3D12Infrastructure();
    CreateHeapsAndPSOs();
    CreateFrames();
    RendererTestZone();
 }
 
-Pillow::D3D12Renderer::~D3D12Renderer()
+D3D12Renderer::~D3D12Renderer()
 {
 }
-uint64_t Pillow::D3D12Renderer::GetFrameIndex()
+uint64_t D3D12Renderer::GetFrameIndex()
 {
    return fence->GetFrameIdx();
 }
-int32_t Pillow::D3D12Renderer::CreateMesh()
+int32_t D3D12Renderer::CreateMesh()
 {
    return 0;
 }
-int32_t Pillow::D3D12Renderer::CreateTexture()
+int32_t D3D12Renderer::CreateTexture()
 {
    return 0;
 }
-int32_t Pillow::D3D12Renderer::CreatePiplelineState()
+int32_t D3D12Renderer::CreatePiplelineState()
 {
    return 0;
 }
-int32_t Pillow::D3D12Renderer::CreateConstantBuffer()
+int32_t D3D12Renderer::CreateConstantBuffer()
 {
    return 0;
 }
-void Pillow::D3D12Renderer::ReleaseResource(int32_t handle)
+void D3D12Renderer::ReleaseResource(int32_t handle)
 {
 }
-void Pillow::D3D12Renderer::Worker(int32_t workerIndex)
+void D3D12Renderer::Worker(int32_t workerIndex)
 {
 }
 #endif

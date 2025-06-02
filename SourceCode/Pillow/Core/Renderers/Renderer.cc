@@ -1,10 +1,14 @@
 #include "Renderer.h"
 
-std::unique_ptr<Pillow::GenericRenderer> Pillow::RendererInstance{};
+using namespace Pillow;
+using namespace Pillow::Graphics;
+
+std::unique_ptr<GenericRenderer> Pillow::Graphics::Instance{};
 
 namespace
 {
    std::vector<std::thread> workers;
+   std::vector<GenericGraphicsCommand> genericCommands;
    void BarrierCompletionAction() noexcept;
    std::optional<std::barrier<void(*)() noexcept>> frameBarrier;
    std::atomic<bool> signalActive;
@@ -16,7 +20,7 @@ namespace
    }
 }
 
-Pillow::GenericRenderer::GenericRenderer(int32_t threadCount, std::string name) :
+GenericRenderer::GenericRenderer(int32_t threadCount, std::string name) :
    _RendererName(name),
    _ThreadCount(threadCount)
 {
@@ -26,13 +30,13 @@ Pillow::GenericRenderer::GenericRenderer(int32_t threadCount, std::string name) 
    signalSync.store(false);
 }
 
-Pillow::GenericRenderer::~GenericRenderer()
+GenericRenderer::~GenericRenderer()
 {
    workers.clear();
    frameBarrier.reset();
 }
 
-void Pillow::GenericRenderer::RendererLaunch()
+void GenericRenderer::Launch()
 {
    for (int32_t i = 0; i < _ThreadCount; i++)
    {
@@ -40,26 +44,27 @@ void Pillow::GenericRenderer::RendererLaunch()
    }
 }
 
-void Pillow::GenericRenderer::RendererTerminate()
+void GenericRenderer::Terminate()
 {
    signalActive.store(false);
+   //BuildCommandsBegin();
    for (auto& thread : workers)
    {
       if (thread.joinable()) thread.join();
    }
 }
 
-void Pillow::GenericRenderer::FrameBegin()
+void GenericRenderer::BuildCommands()
 {
    signalSync.store(true, std::memory_order::release);
 }
 
-bool Pillow::GenericRenderer::IsFrameEnd()
+bool GenericRenderer::IsFrameEnd()
 {
    return !signalSync.load(std::memory_order::acquire);
 }
 
-void Pillow::GenericRenderer::BaseWorker(int32_t workerIndex)
+void GenericRenderer::BaseWorker(int32_t workerIndex)
 {
    while (signalActive.load())
    {

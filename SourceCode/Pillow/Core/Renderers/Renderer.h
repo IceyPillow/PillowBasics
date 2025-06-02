@@ -5,14 +5,11 @@
 #include <vector>
 #include <functional>
 #include "../Auxiliaries.h"
-#include "../AppConstants.h"
+#include "../Constants.h"
 #include "../Texture.h"
 
-namespace Pillow
+namespace Pillow::Graphics
 {
-   class GenericRenderer;
-   extern std::unique_ptr<GenericRenderer> RendererInstance;
-
    enum class GenericRendererResourceType : int32_t
    {
       Mesh = 1 << 28,
@@ -40,9 +37,10 @@ namespace Pillow
       virtual int32_t CreateConstantBuffer() = 0;
       virtual int32_t CreatePiplelineState() = 0;
       virtual void ReleaseResource(int32_t handle) = 0;
-      void RendererLaunch();
-      void RendererTerminate();
-      void FrameBegin();
+      void Launch();
+      void Terminate();
+      // (Multithreading Rendering) Use a thread pool to build commands.
+      void BuildCommands();
       bool IsFrameEnd();
 
    protected:
@@ -69,7 +67,6 @@ namespace Pillow
    protected:
       void Worker(int32_t workerIndex) final;
    };
-
 #elif defined(__ANDROID__)
    //class GLES32Renderer : public GenericRenderer
    //{
@@ -87,4 +84,17 @@ namespace Pillow
    //};
 
 #endif
+
+   extern std::unique_ptr<GenericRenderer> Instance;
+
+   ForceInline void InitializeRenderer(int32_t threadCount, const void* parameter)
+   {
+      if (Instance) throw std::runtime_error("Renderer has already been initialized.");
+#if defined(_WIN64)
+      HWND hwnd = *(const HWND*)parameter;
+      Instance = std::make_unique<Graphics::D3D12Renderer>(hwnd, threadCount);
+#elif defined(__ANDROID__)
+      //RendererInstance = std::make_unique<Pillow::GLES32Renderer>(Hwnd, 2);
+#endif
+   }
 }
