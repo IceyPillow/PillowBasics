@@ -32,7 +32,6 @@ namespace
    class DelayReleaseManager;
    class GeneralBuffer;
 
-   int32_t frameIdx {0};
    std::unique_ptr<FenceSync> fence;
    std::unique_ptr<DescriptorHeapManager> heapMgr;
    std::unique_ptr<DelayReleaseManager> delayReleaseMgr;
@@ -521,6 +520,8 @@ namespace
       // Queue
       D3D12_COMMAND_QUEUE_DESC queueDesc{ D3D12_COMMAND_LIST_TYPE_DIRECT, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0 };
       CheckHResult(d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&cmdQueue)));
+      // Fence
+      fence = std::make_unique<FenceSync>(d3d12Device, cmdQueue);
       // Swapchain
       DXGI_SWAP_CHAIN_DESC1 swapChainDesc
       {
@@ -623,6 +624,9 @@ void D3D12Renderer::ReleaseResource(int32_t handle)
 {
 }
 void D3D12Renderer::Worker(int32_t workerIndex)
+{
+}
+void D3D12Renderer::Assembler()
 {
 }
 #endif
