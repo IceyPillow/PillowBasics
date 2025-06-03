@@ -65,17 +65,16 @@ namespace
    // Fence synchronization wrapper
    class FenceSync
    {
-      ReadonlyProperty(int32_t, FrameIdx)
+      ReadonlyProperty(uint64_t, FrameIndex)
          ReadonlyProperty(uint64_t, CompletedFence)
-         ReadonlyProperty(uint64_t, TargetFence)
 
    public:
       FenceSync(ComPtr<ID3D12Device6>& device, ComPtr<ID3D12CommandQueue>& commandQueue)
       {
          this->commandQueue = commandQueue;
-         syncEventHandle = CreateEventEx(nullptr, L"FencSync", 0, EVENT_ALL_ACCESS);
+         syncEventHandle = CreateEventEx(nullptr, L"D3D12Renderer Fence Event", 0, EVENT_ALL_ACCESS);
+         if (syncEventHandle == 0) throw std::exception("Failed to create fence sync event handle.");
          CheckHResult(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
-         _TargetFence = 1;
       }
 
       ~FenceSync()
@@ -83,30 +82,45 @@ namespace
          CloseHandle(syncEventHandle);
       }
 
-      // Advance the frame index, wait only if no available frame. Invoke this AFTER ExecuteCommandList()
-      // flushQueue: Frame index unchanged if set this TRUE.
-      void Synchronize(bool flushQueue)
+      uint64_t GetTargetFence() { return _FrameIndex + 1; }
+
+      // Get the next frame.
+      // ***WARNING***
+      // Invoke this AFTER ExecuteCommandList() in one frame.
+      void NextFrame()
       {
-         commandQueue->Signal(fence.Get(), _TargetFence);
-         frameEndTimestamps[_FrameIdx] = _TargetFence++;
-         // Cycle through the circular frame resource array.
-         if (!flushQueue) _FrameIdx = (_FrameIdx + 1) % Constants::SwapChainSize;
-         int64_t endTimestamp = frameEndTimestamps[_FrameIdx];
-         // Has the GPU finished processing the commands of the current frame resource?
-         // If not, wait until the GPU has completed commands up to this fence point.
-         if (endTimestamp > 0 && fence->GetCompletedValue() < endTimestamp)
-         {
-            fence->SetEventOnCompletion(endTimestamp, syncEventHandle);
-            WaitForSingleObjectEx(syncEventHandle, INFINITE, true);
-         }
-         _CompletedFence = endTimestamp;
+         _FrameIndex++;
+         commandQueue->Signal(fence.Get(), _FrameIndex);
+         uint64_t minFence = (_FrameIndex < Constants::SwapChainSize) ? 0 : (_FrameIndex - Constants::SwapChainSize + 1);
+         Synchronize(minFence);
+      }
+
+      // Get all GPU's work done.
+      // ***WARNING***
+      // Invoke this BEFORE ExecuteCommandList() or AFTER NextFrame() in one frame.
+      void FlushQueue()
+      {
+         uint64_t minFence = _FrameIndex;
+         Synchronize(minFence);
       }
 
    private:
-      ComPtr<ID3D12Fence1> fence;
+      void Synchronize(uint64_t targetFence)
+      {
+         // Make sure the GPU arrives at the targetFence.
+         _CompletedFence = fence->GetCompletedValue();
+         if (_CompletedFence < targetFence)
+         {
+            fence->SetEventOnCompletion(targetFence, syncEventHandle);
+            WaitForSingleObjectEx(syncEventHandle, INFINITE, true);
+            _CompletedFence = targetFence;
+         }
+      }
+
+   private:
       HANDLE syncEventHandle;
+      ComPtr<ID3D12Fence> fence;
       ComPtr<ID3D12CommandQueue> commandQueue;
-      int64_t frameEndTimestamps[Constants::SwapChainSize]{};
    };
 
    class DelayReleaseManager
@@ -600,10 +614,12 @@ D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRe
 D3D12Renderer::~D3D12Renderer()
 {
 }
+
 uint64_t D3D12Renderer::GetFrameIndex()
 {
-   return fence->GetFrameIdx();
+   return fence->GetFrameIndex();
 }
+
 int32_t D3D12Renderer::CreateMesh()
 {
    return 0;

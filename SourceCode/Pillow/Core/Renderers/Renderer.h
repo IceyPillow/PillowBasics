@@ -10,30 +10,37 @@
 
 namespace Pillow::Graphics
 {
-   enum class RendererResourceType : int32_t
+   typedef uint32_t ResourceHandle;
+
+   enum class ResourceType : uint32_t
    {
+      None = 0,
       Mesh = 1 << 28,
       Texture = 2 << 28,
       PiplelineState = 3 << 28,
       ConstantBuffer = 4 << 28,
    };
 
+   ForceInline ResourceType GetResourceType(ResourceHandle handle)
+   {
+      return ResourceType(handle & (7 << 28));
+   }
+
+   ForceInline bool IsValidHandle(ResourceHandle handle)
+   {
+      return (handle & !(7 << 28)) != 0;
+   }
+
    struct Drawcall
    {
       void* sth;
    };
-
-   ForceInline RendererResourceType GetResType(int32_t handle)
-   {
-      return RendererResourceType(handle & (7 << 28));
-   }
 
    class GenericRenderer
    {
       DeleteDefautedMethods(GenericRenderer)
          ReadonlyProperty(std::string, RendererName)
          ReadonlyProperty(int32_t, ThreadCount)
-         ReadonlyProperty(uint64_t, FrameIndex)
    public:
       virtual ~GenericRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
