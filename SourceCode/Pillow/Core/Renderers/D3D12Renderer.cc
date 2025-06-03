@@ -569,15 +569,12 @@ namespace
       //
    }
 
-
-   void func(int&& a)
+   void Resize()
    {
-      ;
-   }
-
-   void func(const int a)
-   {
-      ;
+      bool needResizing = false;
+      if (!needResizing) return;
+      fence->FlushQueue();
+      // Resize.
    }
 
    void RendererTestZone()
@@ -644,5 +641,9 @@ void D3D12Renderer::Worker(int32_t workerIndex)
 }
 void D3D12Renderer::Assembler()
 {
+   Resize();
+   //cmdQueue->ExecuteCommandLists();
+   //swapChain->Present();
+   fence->NextFrame();
 }
 #endif
