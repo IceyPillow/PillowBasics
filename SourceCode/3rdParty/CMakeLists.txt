@@ -6,7 +6,7 @@
 # This fact reflects one significant belief of Pillow Basics —— useless things ain't used.
 # We will never pursue "advanced techs" unless they are better or needed.
 
-set(LIBRARIES DirectXMath LodePNG OpenAL PhysX)
+set(LIBRARIES DirectXMath UTF8cc LodePNG OpenAL PhysX)
 
 function(get_prebuilt_path dependencyPath)
    set(PREBUILT_PATH "${dependencyPath}\\Prebuilt")
@@ -26,6 +26,13 @@ file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_library(DirectXMath STATIC ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025" FILES ${SOURCES})
+
+# UTF8-CPP
+file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+   "${CMAKE_CURRENT_SOURCE_DIR}/utfcpp-4.0.6/*.h"
+)
+add_library(UTF8cc INTERFACE ${SOURCES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/utfcpp-4.0.6" FILES ${SOURCES})
 
 # LodePNG
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
