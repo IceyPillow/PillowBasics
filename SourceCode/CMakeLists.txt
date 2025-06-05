@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD 17)
 # Solution-wide & platform-wide settings.
 if(WIN32)
    # Containing two platforms in single solution is not supported by CMake. e.g. x64+Win32
-   set(TARGET_WINDOWS_SDK 10.0.18362.0)
+   set(TARGET_WINDOWS_SDK 10.0.18362.0) #1903, 19H1
    set(CMAKE_SYSTEM_VERSION ${TARGET_WINDOWS_SDK}) # Target OS version.
    add_compile_definitions(_UNICODE)
    add_compile_options(/arch:SSE2)
