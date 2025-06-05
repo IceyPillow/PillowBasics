@@ -182,9 +182,12 @@ namespace
          csuFreePool.reserve(MaxCsuCount);
          rtvFreePool.reserve(MaxRtvCount);
          dsvFreePool.reserve(MaxDsvCount);
-         for (int32_t i = MaxCsuCount; i >= 0; i--) csuFreePool.push_back(i);
-         for (int32_t i = MaxRtvCount; i >= 0; i--) rtvFreePool.push_back(i);
-         for (int32_t i = MaxDsvCount; i >= 0; i--) dsvFreePool.push_back(i);
+         for (uint16_t i = MaxCsuCount; i > 0; i--)
+         {
+            csuFreePool.push_back(i);
+            if (i <= MaxRtvCount) rtvFreePool.push_back(i);
+            if (i <= MaxDsvCount) dsvFreePool.push_back(i);
+         }
 
          D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc
          {
@@ -211,14 +214,14 @@ namespace
          dsvCpuHandle0 = dsvDescHeap->GetCPUDescriptorHandleForHeapStart();
       }
 
-      void BindSrvHeap(ComPtr<ID3D12GraphicsCommandList5>& cmd)
+      void BindSrvHeap(ComPtr<ID3D12GraphicsCommandList4>& cmd)
       {
          cmd->SetDescriptorHeaps(1, csuDescHeap.GetAddressOf());
       }
 
-      D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(int32_t idx, ViewType type)
+      D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(uint16_t idx, ViewType type)
       {
-         auto CheckIdx = [&idx](int32_t max) {if (idx < 0 || idx >= max) throw std::exception("Out of Range"); };
+         auto CheckIdx = [&idx](uint16_t max) {if (idx == 0 || idx > max) throw std::exception("Out of Range"); };
          D3D12_CPU_DESCRIPTOR_HANDLE result{};
          switch (type)
          {
@@ -240,9 +243,9 @@ namespace
          return result;
       }
 
-      D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(int32_t idx, ViewType type)
+      D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint16_t idx, ViewType type)
       {
-         auto CheckIdx = [&idx](int32_t max) {if (idx < 0 || idx >= max) throw std::exception("Out of Range"); };
+         auto CheckIdx = [&idx](uint16_t max) {if (idx == 0 || idx > max) throw std::exception("Out of Range"); };
          D3D12_GPU_DESCRIPTOR_HANDLE result{};
          switch (type)
          {
@@ -258,10 +261,10 @@ namespace
          return result;
       }
 
-      int32_t CreateView(ComPtr<ID3D12Device6>& device, ComPtr<ID3D12Resource>& res, void* viewDesc, ViewType type)
+      uint16_t CreateView(ComPtr<ID3D12Device6>& device, ComPtr<ID3D12Resource>& res, void* viewDesc, ViewType type)
       {
-         int32_t idx{};
-         auto CheckAndPop = [&idx](std::vector<int32_t>& vector, const char* name) {
+         uint16_t idx{};
+         auto CheckAndPop = [&idx](std::vector<uint16_t>& vector, const char* name) {
             if (vector.empty())
                throw std::exception((std::string(name) + ": A descriptor heap is full.").c_str());
             idx = vector.back();
@@ -289,12 +292,13 @@ namespace
             CheckAndPop(dsvFreePool, "DSV");
             device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(idx, type));
          }
+         return idx;
       }
 
-      void ReleaseView(int32_t idx, ViewType type)
+      void ReleaseView(uint16_t idx, ViewType type)
       {
-         auto CheckAndPush = [&idx](std::vector<int32_t>& vector) {
-#ifdef _DEBUG
+         auto CheckAndPush = [&idx](std::vector<uint16_t>& vector) {
+#ifdef PILLOW_DEBUG
             bool found = std::find(vector.begin(), vector.end(), idx) != vector.end();
             if (found) throw std::exception("Invalid index.");
 #endif
@@ -317,16 +321,16 @@ namespace
       }
 
    private:
-      const int MaxCsuCount = 1024;
-      const int MaxRtvCount = 16;
-      const int MaxDsvCount = 1;
+      const int32_t MaxCsuCount = 4096;
+      const int32_t MaxRtvCount = 64;
+      const int32_t MaxDsvCount = 16;
       const int32_t csuSize, rtvSize, dsvSize;
       ComPtr<ID3D12DescriptorHeap> csuDescHeap;
       ComPtr<ID3D12DescriptorHeap> rtvDescHeap;
       ComPtr<ID3D12DescriptorHeap> dsvDescHeap;
-      std::vector<int32_t> csuFreePool;
-      std::vector<int32_t> rtvFreePool;
-      std::vector<int32_t> dsvFreePool;
+      std::vector<uint16_t> csuFreePool;
+      std::vector<uint16_t> rtvFreePool;
+      std::vector<uint16_t> dsvFreePool;
       D3D12_CPU_DESCRIPTOR_HANDLE csuCpuHandle0;
       D3D12_GPU_DESCRIPTOR_HANDLE csuGpuHandle0;
       // RTV and DSV don't have gpu handles.
