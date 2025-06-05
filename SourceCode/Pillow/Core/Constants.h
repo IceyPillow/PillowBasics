@@ -24,6 +24,8 @@ namespace Pillow::Constants
 
    const int32_t MaxUIRenderItems = 1 << 8;
 
+   const int32_t MaxThreadNumRenderer = 4, MaxThreadNumOther = 8;
+
    extern int32_t ThreadNumRenderer, ThreadNumPhysics, ThreadNumTick;
 
    void SetThreadNumbers();

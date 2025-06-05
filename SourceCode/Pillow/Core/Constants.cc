@@ -10,6 +10,6 @@ void Constants::SetThreadNumbers()
 {
    if (ThreadNumRenderer != 0) throw std::runtime_error("Thread numbers have already been set.");
    int32_t threadNum = std::thread::hardware_concurrency();
-   ThreadNumRenderer = std::clamp(threadNum / 4, 1, 4);
-   ThreadNumTick = ThreadNumPhysics = std::clamp(threadNum / 4, 1, 8);
+   ThreadNumRenderer = std::clamp(threadNum / 4, 1, MaxThreadNumRenderer);
+   ThreadNumTick = ThreadNumPhysics = std::clamp(threadNum / 4, 1, MaxThreadNumOther);
 }

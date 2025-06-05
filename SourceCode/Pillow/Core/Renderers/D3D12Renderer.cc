@@ -9,10 +9,6 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
-using namespace Pillow;
-using namespace Pillow::Graphics;
-using Microsoft::WRL::ComPtr;
-
 // __LINE__ in an inline function doesn't show the line number of the caller, thus choose a macro.
 #define CheckHResult(hr)\
 {\
@@ -25,6 +21,16 @@ using Microsoft::WRL::ComPtr;
    }\
 }
 
+
+using namespace Pillow;
+using namespace Pillow::Graphics;
+using Microsoft::WRL::ComPtr;
+
+typedef IDXGIFactory5 IFactory;                  // Has CheckFeatureSupport()
+typedef ID3D12Device4 IDevice;                   // Has CreateCommandList1()
+typedef ID3D12GraphicsCommandList2 ICommandList; // Has WriteBufferImmediate()
+typedef IDXGISwapChain1 ISwapChain;              // Has SetBackgroundColor() 
+
 // An anonymous namespace has internal linkage (accessable in local translation unit)
 namespace
 {
@@ -33,16 +39,19 @@ namespace
    class DelayReleaseManager;
    class GeneralBuffer;
 
-   std::unique_ptr<FenceSync> fence;
+   std::unique_ptr<FenceSync> fenceSync;
    std::unique_ptr<DescriptorHeapManager> heapMgr;
    std::unique_ptr<DelayReleaseManager> delayReleaseMgr;
-   ComPtr<IDXGIFactory6> dxgiFactory;
-   ComPtr<ID3D12Device6> d3d12Device;
+   ComPtr<IFactory> factory;
+   ComPtr<IDevice> device;
    ComPtr<ID3D12CommandQueue> cmdQueue;
-   ComPtr<ID3D12GraphicsCommandList5> cmdList;
-   ComPtr<ID3D12CommandAllocator> cmdAllocator[Constants::SwapChainSize];
-   ComPtr<IDXGISwapChain1> swapChain;
+   std::vector<ComPtr<ICommandList>> cmdLists;
+   std::vector<ComPtr<ID3D12CommandAllocator>> cmdAllocators;
+   ComPtr<ISwapChain> swapChain;
    HWND Hwnd;
+   bool allowTearing;
+   int32_t verticalBlacks = 1;
+   int32_t threadCount;
 
    const DXGI_FORMAT Generic2DxgiFormat[(int32_t)GenericTextureFormat::Count]
    {
@@ -70,7 +79,7 @@ namespace
          ReadonlyProperty(uint64_t, CompletedFence)
 
    public:
-      FenceSync(ComPtr<ID3D12Device6>& device, ComPtr<ID3D12CommandQueue>& commandQueue)
+      FenceSync(ComPtr<IDevice>& device, ComPtr<ID3D12CommandQueue>& commandQueue)
       {
          this->commandQueue = commandQueue;
          syncEventHandle = CreateEventEx(nullptr, L"D3D12Renderer Fence Event", 0, EVENT_ALL_ACCESS);
@@ -84,6 +93,8 @@ namespace
       }
 
       uint64_t GetTargetFence() { return _FrameIndex + 1; }
+
+      int32_t GetArrayFrameIndex() { return _FrameIndex % Constants::SwapChainSize; }
 
       // Get the next frame.
       // ***WARNING***
@@ -132,13 +143,13 @@ namespace
       // Enqueue an element that will be released after current frame.
       void Enqueue(std::unique_ptr<GeneralBuffer>&& buffer)
       {
-         Item item{ std::move(buffer), fence->GetTargetFence() };
+         Item item{ std::move(buffer), fenceSync->GetTargetFence() };
          releaseQueue.push(std::move(item));
       }
 
       void Update()
       {
-         uint64_t completedFence = fence->GetCompletedFence();
+         uint64_t completedFence = fenceSync->GetCompletedFence();
          if (completedFence == 0) return;
          while (!releaseQueue.empty())
          {
@@ -175,7 +186,7 @@ namespace
    class DescriptorHeapManager
    {
    public:
-      DescriptorHeapManager(ComPtr<ID3D12Device6>& device) :
+      DescriptorHeapManager(ComPtr<IDevice>& device) :
          csuSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)),
          rtvSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)),
          dsvSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV))
@@ -215,7 +226,7 @@ namespace
          dsvCpuHandle0 = dsvDescHeap->GetCPUDescriptorHandleForHeapStart();
       }
 
-      void BindSrvHeap(ComPtr<ID3D12GraphicsCommandList4>& cmd)
+      void BindSrvHeap(ComPtr<ICommandList>& cmd)
       {
          cmd->SetDescriptorHeaps(1, csuDescHeap.GetAddressOf());
       }
@@ -262,7 +273,7 @@ namespace
          return result;
       }
 
-      uint16_t CreateView(ComPtr<ID3D12Device6>& device, ComPtr<ID3D12Resource>& res, void* viewDesc, ViewType type)
+      uint16_t CreateView(ComPtr<IDevice>& device, ComPtr<ID3D12Resource>& res, void* viewDesc, ViewType type)
       {
          uint16_t idx{};
          auto CheckAndPop = [&idx](std::vector<uint16_t>& vector, const char* name) {
@@ -402,7 +413,7 @@ namespace
             resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
             heapProps.Type = isUpload ? D3D12_HEAP_TYPE_CUSTOM : heapProps.Type;
          }
-         CheckHResult(d3d12Device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE,
+         CheckHResult(device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE,
             &resourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&heap)));
          gpuPointer = heap->GetGPUVirtualAddress();
          D3D12_RANGE range {0, 0};
@@ -464,7 +475,7 @@ namespace
          }
       }
 
-      static void CmdList_CopyAllDefaultBuffers()
+      static void CmdList_CopyAllDefaultBuffers(ComPtr<ICommandList>& cmdList)
       {
          if (dirtyBuffer.empty()) return;
          while (!dirtyBuffer.empty())
@@ -518,52 +529,66 @@ namespace
 
    void CreateD3D12Infrastructure()
    {
-      // Device
-#ifdef _DEBUG
+      // Factory
+      uint32_t factoryFlags = 0;
+#ifdef PILLOW_DEBUG
+      factoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
       ComPtr<ID3D12Debug3> debugController;
       CheckHResult(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
       debugController->EnableDebugLayer();
 #endif
-      CheckHResult(CreateDXGIFactory2(0, IID_PPV_ARGS(&dxgiFactory)));
+      CheckHResult(CreateDXGIFactory2(factoryFlags, IID_PPV_ARGS(&factory)));
+      BOOL winBool = 0;
+      factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &winBool, sizeof(winBool));
+      allowTearing = (winBool == TRUE);
+      // Device
       try
       {
-         //// default adapter
-         CheckHResult(D3D12CreateDevice(nullptr, Constants::DX12FeatureLevel, IID_PPV_ARGS(&d3d12Device)));
+         CheckHResult(D3D12CreateDevice(nullptr, Constants::DX12FeatureLevel, IID_PPV_ARGS(&device))); // Default adapter
       }
       catch (...)
       {
          ComPtr<IDXGIAdapter> Warp;
-         CheckHResult(dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&Warp)));
-         CheckHResult(D3D12CreateDevice(Warp.Get(), Constants::DX12FeatureLevel, IID_PPV_ARGS(&d3d12Device)));
+         CheckHResult(factory->EnumWarpAdapter(IID_PPV_ARGS(&Warp)));
+         CheckHResult(D3D12CreateDevice(Warp.Get(), Constants::DX12FeatureLevel, IID_PPV_ARGS(&device)));
       }
       // Queue
       D3D12_COMMAND_QUEUE_DESC queueDesc{ D3D12_COMMAND_LIST_TYPE_DIRECT, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0 };
-      CheckHResult(d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&cmdQueue)));
+      CheckHResult(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&cmdQueue)));
       // Fence
-      fence = std::make_unique<FenceSync>(d3d12Device, cmdQueue);
+      fenceSync = std::make_unique<FenceSync>(device, cmdQueue);
       // Swapchain
       DXGI_SWAP_CHAIN_DESC1 swapChainDesc
       {
          0,0, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
          DXGI_USAGE_RENDER_TARGET_OUTPUT, Constants::SwapChainSize, DXGI_SCALING_NONE,
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
-         DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT
+         DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | (allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
       };
-      CheckHResult(dxgiFactory->CreateSwapChainForHwnd(cmdQueue.Get(), Hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
+      CheckHResult(factory->CreateSwapChainForHwnd(cmdQueue.Get(), Hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
       // Command Allocators & Lists
-      for (int i = 0; i < Constants::SwapChainSize; i++)
+      int32_t count = Constants::SwapChainSize * threadCount;
+      cmdAllocators.reserve(count);
+      for (int i = 0; i < count; i++)
       {
-         CheckHResult(d3d12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&cmdAllocator[i])));
+         ComPtr<ID3D12CommandAllocator> temp;
+         CheckHResult(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&temp)));
+         cmdAllocators.push_back(std::move(temp));
       }
-      // Command List: need to close it before resetting.
-      CheckHResult(d3d12Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, cmdAllocator[0].Get(), nullptr, IID_PPV_ARGS(&cmdList)));
-      cmdList->Close();
+      // CreateCommandList1 closes the cmd list automatically.
+      cmdLists.reserve(threadCount);
+      for (int i = 0; i < threadCount; i++)
+      {
+         ComPtr<ICommandList> temp;
+         CheckHResult(device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&temp)));
+         cmdLists.push_back(std::move(temp));
+      }
    }
 
    void CreateHeapsAndPSOs()
    {
       // Build all descriptor heaps.
-      heapMgr = std::make_unique<DescriptorHeapManager>(d3d12Device);
+      heapMgr = std::make_unique<DescriptorHeapManager>(device);
 
       // Create constant buffer and pass cbv.
 
@@ -578,7 +603,7 @@ namespace
    {
       bool needResizing = false;
       if (!needResizing) return;
-      fence->FlushQueue();
+      fenceSync->FlushQueue();
       // Resize.
    }
 
@@ -594,7 +619,7 @@ namespace
       uint32_t rows[10];
       uint64_t rowSize[10];
       uint64_t totalSize;
-      d3d12Device->GetCopyableFootprints(&resourceDesc, 0, 10, 0, footprint, rows, rowSize, &totalSize);
+      device->GetCopyableFootprints(&resourceDesc, 0, 10, 0, footprint, rows, rowSize, &totalSize);
       ;
 
       // clock
@@ -607,6 +632,7 @@ D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRe
 {
    SingletonCheck();
    ::Hwnd = windowHandle;
+   ::threadCount = threadCount;
    CreateD3D12Infrastructure();
    CreateHeapsAndPSOs();
    CreateFrames();
@@ -619,7 +645,7 @@ D3D12Renderer::~D3D12Renderer()
 
 uint64_t D3D12Renderer::GetFrameIndex()
 {
-   return fence->GetFrameIndex();
+   return fenceSync->GetFrameIndex();
 }
 
 int32_t D3D12Renderer::CreateMesh()
@@ -643,12 +669,20 @@ void D3D12Renderer::ReleaseResource(int32_t handle)
 }
 void D3D12Renderer::Worker(int32_t workerIndex)
 {
+   ICommandList* cmdList = cmdLists[fenceSync->GetArrayFrameIndex() * threadCount + workerIndex].Get();
+   // Do actual work.
 }
 void D3D12Renderer::Assembler()
 {
    Resize();
-   //cmdQueue->ExecuteCommandLists();
-   //swapChain->Present();
-   fence->NextFrame();
+   int32_t cmdListOffset = fenceSync->GetArrayFrameIndex() * threadCount;
+   static ID3D12CommandList* splitLists[Constants::MaxThreadNumRenderer]{};
+   for (int i = 0; i < threadCount; i++)
+   {
+      splitLists[i] = cmdLists[cmdListOffset + i].Get();
+   }
+   cmdQueue->ExecuteCommandLists(threadCount, splitLists);
+   swapChain->Present(verticalBlacks, (allowTearing && verticalBlacks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0);
+   fenceSync->NextFrame();
 }
 #endif

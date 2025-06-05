@@ -44,6 +44,7 @@ namespace Pillow::Graphics
    public:
       virtual ~GenericRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
+      //ForceInline int32_t GetFrameArrayIndex() { return GetFrameIndex() % Constants::SwapChainSize; }
       virtual int32_t CreateMesh() = 0;
       virtual int32_t CreateTexture() = 0;
       virtual int32_t CreateConstantBuffer() = 0;
