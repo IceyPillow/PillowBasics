@@ -27,15 +27,15 @@ namespace
    std::vector<Drawcall> cachedDrawcalls;
 
    std::vector<std::thread> workers;
-   void BarrierCompletionAction() noexcept;
    std::optional<std::barrier<void(*)() noexcept>> frameBarrier;
    std::atomic<bool> signal_IsActive;
    std::atomic<bool> signal_IsComputing;
+}
 
-   void BarrierCompletionAction() noexcept
-   {
-      signal_IsComputing.store(false, std::memory_order::release);
-   }
+static void Pillow::Graphics::BarrierCompletionAction() noexcept
+{
+   if(Instance) Instance->Assembler();
+   signal_IsComputing.store(false, std::memory_order::release);
 }
 
 GenericRenderer::GenericRenderer(int32_t threadCount, std::string name) :
@@ -91,6 +91,5 @@ void GenericRenderer::BaseWorker(int32_t workerIndex)
       //OutputDebugString(std::format(L"Frame={} Worker={}\n", this->GetFrameIndex(), workerIndex).c_str());
       this->Worker(workerIndex);
       frameBarrier->arrive_and_wait();
-      if (workerIndex == 0) this->Assembler();
    }
 }
