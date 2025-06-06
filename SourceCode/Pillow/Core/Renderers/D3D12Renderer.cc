@@ -30,6 +30,7 @@ typedef IDXGIFactory5 IFactory;                  // Has CheckFeatureSupport()
 typedef ID3D12Device4 IDevice;                   // Has CreateCommandList1()
 typedef ID3D12GraphicsCommandList2 ICommandList; // Has WriteBufferImmediate()
 typedef IDXGISwapChain1 ISwapChain;              // Has SetBackgroundColor() 
+typedef ID3D12Resource IResource;                // The original one is fine
 
 // An anonymous namespace has internal linkage (accessable in local translation unit)
 namespace
@@ -40,17 +41,22 @@ namespace
    class GeneralBuffer;
 
    std::unique_ptr<FenceSync> fenceSync;
-   std::unique_ptr<DescriptorHeapManager> heapMgr;
+   std::unique_ptr<DescriptorHeapManager> descriptorMgr;
    std::unique_ptr<DelayReleaseManager> delayReleaseMgr;
    ComPtr<IFactory> factory;
    ComPtr<IDevice> device;
    ComPtr<ID3D12CommandQueue> cmdQueue;
    std::vector<ComPtr<ICommandList>> cmdLists;
+   std::vector<ID3D12CommandList*> _cmdLists; // A copy of cmdLists, prepared for ExecuteCommandLists()
    std::vector<ComPtr<ID3D12CommandAllocator>> cmdAllocators;
    ComPtr<ISwapChain> swapChain;
-   HWND Hwnd;
+   
+   uint16_t tempRTVs[Constants::SwapChainSize] = { 0 }; // Temporary RTVs for swapchain buffers
+   ComPtr<IResource> backBuffers[3]{};
+   
+   HWND hwnd;
    bool allowTearing;
-   int32_t verticalBlacks = 1;
+   int32_t verticalBlacks{ 1 };
    int32_t threadCount;
 
    const DXGI_FORMAT Generic2DxgiFormat[(int32_t)GenericTextureFormat::Count]
@@ -61,7 +67,7 @@ namespace
       DXGI_FORMAT_R32_FLOAT
    };
 
-   D3D12_RESOURCE_BARRIER CreateBarrier(const ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+   ForceInline D3D12_RESOURCE_BARRIER CreateBarrier(ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
    {
       D3D12_RESOURCE_BARRIER barrier
       {
@@ -273,7 +279,7 @@ namespace
          return result;
       }
 
-      uint16_t CreateView(ComPtr<IDevice>& device, ComPtr<ID3D12Resource>& res, void* viewDesc, ViewType type)
+      uint16_t CreateView(ComPtr<IDevice>& device, ComPtr<IResource>& res, void* viewDesc, ViewType type)
       {
          uint16_t idx{};
          auto CheckAndPop = [&idx](std::vector<uint16_t>& vector, const char* name) {
@@ -515,7 +521,7 @@ namespace
       static std::vector<GeneralBuffer*> dirtyBuffer;
 
       std::unique_ptr<GeneralBuffer> middleBuffer{};
-      ComPtr<ID3D12Resource> heap{};
+      ComPtr<IResource> heap{};
       uint64_t gpuPointer{};
       char* cpuPointer{};
 
@@ -527,7 +533,7 @@ namespace
 
    std::vector<GeneralBuffer*> GeneralBuffer::dirtyBuffer;
 
-   void CreateD3D12Infrastructure()
+   void CreateBase()
    {
       // Factory
       uint32_t factoryFlags = 0;
@@ -563,9 +569,9 @@ namespace
          0,0, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
          DXGI_USAGE_RENDER_TARGET_OUTPUT, Constants::SwapChainSize, DXGI_SCALING_NONE,
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
-         DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | (allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
+         uint32_t(DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | (allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0))
       };
-      CheckHResult(factory->CreateSwapChainForHwnd(cmdQueue.Get(), Hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
+      CheckHResult(factory->CreateSwapChainForHwnd(cmdQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
       // Command Allocators & Lists
       int32_t count = Constants::SwapChainSize * threadCount;
       cmdAllocators.reserve(count);
@@ -577,10 +583,12 @@ namespace
       }
       // CreateCommandList1 closes the cmd list automatically.
       cmdLists.reserve(threadCount);
+      _cmdLists.reserve(threadCount);
       for (int i = 0; i < threadCount; i++)
       {
          ComPtr<ICommandList> temp;
          CheckHResult(device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&temp)));
+         _cmdLists.push_back(temp.Get());
          cmdLists.push_back(std::move(temp));
       }
    }
@@ -588,7 +596,7 @@ namespace
    void CreateHeapsAndPSOs()
    {
       // Build all descriptor heaps.
-      heapMgr = std::make_unique<DescriptorHeapManager>(device);
+      descriptorMgr = std::make_unique<DescriptorHeapManager>(device);
 
       // Create constant buffer and pass cbv.
 
@@ -596,7 +604,16 @@ namespace
 
    void CreateFrames()
    {
-      //
+      D3D12_RENDER_TARGET_VIEW_DESC rtvDesc
+      {
+         DXGI_FORMAT_B8G8R8A8_UNORM, D3D12_RTV_DIMENSION_TEXTURE2D
+      };
+      rtvDesc.Texture2D = { 0,0 };
+      for (int i = 0; i < Constants::SwapChainSize; i++)
+      {
+         CheckHResult(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
+         tempRTVs[i] = descriptorMgr->CreateView(device, backBuffers[i], &rtvDesc, ViewType::RTV);
+      }
    }
 
    void Resize()
@@ -631,9 +648,9 @@ namespace
 D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRenderer(threadCount, "D3D12Renderer")
 {
    SingletonCheck();
-   ::Hwnd = windowHandle;
+   ::hwnd = windowHandle;
    ::threadCount = threadCount;
-   CreateD3D12Infrastructure();
+   CreateBase();
    CreateHeapsAndPSOs();
    CreateFrames();
    RendererTestZone();
@@ -667,22 +684,36 @@ int32_t D3D12Renderer::CreateConstantBuffer()
 void D3D12Renderer::ReleaseResource(int32_t handle)
 {
 }
+
+extern double deltaTime, lastingTime;
+
 void D3D12Renderer::Worker(int32_t workerIndex)
 {
-   ICommandList* cmdList = cmdLists[fenceSync->GetArrayFrameIndex() * threadCount + workerIndex].Get();
+   int32_t frameIdx = fenceSync->GetArrayFrameIndex();
+   ICommandList* cmdList = cmdLists[workerIndex].Get();
+   ID3D12CommandAllocator* allocator = cmdAllocators[frameIdx * threadCount + workerIndex].Get();
+   CheckHResult(allocator->Reset());
+   CheckHResult(cmdList->Reset(allocator, nullptr));
    // Do actual work.
+   if (workerIndex == 0)
+   {
+      auto barrier = CreateBarrier(backBuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+      cmdList->ResourceBarrier(1, &barrier);
+      
+      using namespace DirectX;
+      XMFLOAT4 color{ 0.5f + 0.5f * XMScalarCos(2 * lastingTime), 0.5f + 0.5f * XMScalarCos(2 * lastingTime + 2),0.5f + 0.5f * XMScalarCos(2 * lastingTime + 4),0 };
+      cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(tempRTVs[frameIdx], ViewType::RTV), (float*)(&color), 0, nullptr);
+      
+      barrier = CreateBarrier(backBuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+      cmdList->ResourceBarrier(1, &barrier);
+   }
+   CheckHResult(cmdList->Close());
 }
 void D3D12Renderer::Assembler()
 {
    Resize();
-   int32_t cmdListOffset = fenceSync->GetArrayFrameIndex() * threadCount;
-   static ID3D12CommandList* splitLists[Constants::MaxThreadNumRenderer]{};
-   for (int i = 0; i < threadCount; i++)
-   {
-      splitLists[i] = cmdLists[cmdListOffset + i].Get();
-   }
-   cmdQueue->ExecuteCommandLists(threadCount, splitLists);
-   swapChain->Present(verticalBlacks, (allowTearing && verticalBlacks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0);
+   cmdQueue->ExecuteCommandLists(threadCount, _cmdLists.data());
+   CheckHResult(swapChain->Present(verticalBlacks, (allowTearing && verticalBlacks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
    fenceSync->NextFrame();
 }
 #endif
