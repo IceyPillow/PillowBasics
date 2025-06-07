@@ -1,91 +1,60 @@
 #if defined(_WIN64)
+#define NOMINMAX
+#endif
+#include <iostream>
+#include <thread>
+#include "DirectXMath-apr2025/DirectXMath.h"
+#include "Core/Constants.h"
+#include "Core/Renderers/Renderer.h"
+#include "Core/Input.h"
+#if defined(_WIN64)
 #include <Windows.h>
 #include <WinUser.h>
 #elif defined(__ANDROID__)
 #endif
-#include "DirectXMath-apr2025/DirectXMath.h"
-#include "Core/Renderers/Renderer.h"
-#include "Core/Input.h"
 
 using namespace Pillow;
 
-void TempCode();
+extern void TempCode();
+void EngineLaunch();
+void EngineTick();
+void EngineTerminate();
 
-bool isFullScreen = false;
+GameClock gameClock;
 int32_t RefreshRate{};
 int32_t ScreenSize[2]{};
-int32_t ScreenOrigin[2]{};
 
 #if defined(_WIN64)
+
 void CreateGameWindow(HINSTANCE hInstance, int show);
 void GameMessageLoop();
-LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+void CALLBACK TimerEvent(HWND hwnd, UINT arg1, UINT_PTR arg2, DWORD arg3);
+void GetMonitorParams();
+void GetWindowSize(int32_t& clientWidth, int32_t& clientHeight);
+void SetWindowMode(bool fullScreen, bool allowResizing = true);
 
-namespace
-{
-   static HWND Hwnd;
-   const int32_t MinimumSize[2]{ 600, 400 };
-}
+HWND hwnd{};
+uint64_t timerHandle{};
+bool isFullscreen = false;
+int32_t screenOrigin[2]{};
+const int32_t minClientSize[2]{ 400, 300 };
 
 // Program Entry Point
-static int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
    CreateGameWindow(hInstance, nShowCmd);
    GameMessageLoop();
    return 0;
 }
 
-void GetMonitorParams()
-{
-   HMONITOR monitor = MonitorFromWindow(Hwnd, MONITOR_DEFAULTTONEAREST);
-   MONITORINFOEX info = {sizeof(MONITORINFOEX)};
-   if (!GetMonitorInfo(monitor, &info))
-   {
-      MessageBoxA(0, "GetMonitorInfo FAILED", 0, MB_OK);
-      exit(EXIT_FAILURE);
-   }
-   ScreenOrigin[0] = info.rcMonitor.left;
-   ScreenOrigin[1] = info.rcMonitor.top;
-   DEVMODE devMode{0};
-   devMode.dmSize = sizeof(DEVMODE);
-   if (!EnumDisplaySettings(info.szDevice, ENUM_CURRENT_SETTINGS, &devMode))
-   {
-      MessageBoxA(0, "EnumDisplaySettings FAILED", 0, MB_OK);
-      exit(EXIT_FAILURE);
-   }
-   RefreshRate = devMode.dmDisplayFrequency;
-   ScreenSize[0] = devMode.dmPelsWidth;
-   ScreenSize[1] = devMode.dmPelsHeight;
-}
-
-void SetWindowMode(bool fullScreen, bool allowResizing = true)
-{
-   static uint32_t posAndSize[4]{};
-   const uint32_t flags = SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW;
-   if (fullScreen && !isFullScreen)
-   {
-      GetMonitorParams();
-      RECT rect{};
-      GetWindowRect(Hwnd, &rect);
-      posAndSize[0] = rect.left;
-      posAndSize[1] = rect.top;
-      posAndSize[2] = rect.right - rect.left;
-      posAndSize[3] = rect.bottom - rect.top;
-      uint32_t style = WS_OVERLAPPED;
-      uint32_t a = SetWindowLongPtr(Hwnd, GWL_STYLE, style);
-      SetWindowPos(Hwnd, 0, ScreenOrigin[0], ScreenOrigin[1], ScreenSize[0], ScreenSize[1], flags);
-   }
-   else if(!fullScreen && isFullScreen)
-   {
-      uint32_t style = WS_OVERLAPPEDWINDOW & (allowResizing ? UINT32_MAX : !WS_THICKFRAME);
-      SetWindowLongPtr(Hwnd, GWL_STYLE, style);
-      SetWindowPos(Hwnd, 0, posAndSize[0], posAndSize[1], posAndSize[2], posAndSize[3], flags);
-   }
-   isFullScreen = fullScreen;
-}
-
 void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
 {
+   GetMonitorParams();
+   int32_t width = minClientSize[0], height = minClientSize[1];
+   GetWindowSize(width, height);
+   int32_t posX = screenOrigin[0] + (ScreenSize[0] - width) / 2;
+   int32_t posY = screenOrigin[1] + (ScreenSize[1] - height) / 2;
    // 1 Register Window
    const wchar_t* className = L"PillowBasics";
    WNDCLASS windowSettings{};
@@ -105,24 +74,22 @@ void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
       exit(EXIT_FAILURE);
    }
    // 2 Create and show window
-   Hwnd = CreateWindow(className, L"DefaultTitle", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-      CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
-   if (Hwnd == 0)
+   hwnd = CreateWindow(className, L"DefaultTitle", WS_OVERLAPPEDWINDOW, posX, posY, width, height, 0, 0, hInstance, 0);
+   if (hwnd == 0)
    {
       MessageBoxA(0, "CreateWindow FAILED", 0, MB_OK);
       exit(EXIT_FAILURE);
    }
    // 3 Display Window
-   ShowWindow(Hwnd, nShowCmd);
-   UpdateWindow(Hwnd); // Update the window before initializing the game engine.
+   ShowWindow(hwnd, nShowCmd);
+   UpdateWindow(hwnd); // Update the window before initializing the game engine.
 }
-
 
 void GameMessageLoop()
 {
    try
    {
-      GetMonitorParams();
+      EngineLaunch();
 #ifdef PILLOW_DEBUG
       TempCode();
 #endif
@@ -136,18 +103,21 @@ void GameMessageLoop()
          }
          else
          {
-            // Game update
+            EngineTick();
          }
       }
+      EngineTerminate();
    }
    catch (std::exception& e)
    {
-      MessageBoxA(Hwnd, e.what(), 0, MB_OK);
+      EngineTerminate();
+      MessageBoxA(hwnd, e.what(), 0, MB_OK);
+      exit(EXIT_FAILURE);
    }
 }
 
 // Recieve message （callback from system）
-LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
    switch (msg)
    {
@@ -159,148 +129,119 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
    case WM_GETMINMAXINFO:
    {
       auto& info = *(MINMAXINFO*)lParam;
-      info.ptMinTrackSize.x = MinimumSize[0];
-      info.ptMinTrackSize.y = MinimumSize[1];
+      info.ptMinTrackSize.x = minClientSize[0];
+      info.ptMinTrackSize.y = minClientSize[1];
       break;
    }
    case WM_KEYDOWN:
       if (wParam == VK_F11)
       {
-         SetWindowMode(!isFullScreen, true); // Toggle fullscreen mode
+         SetWindowMode(!isFullscreen, true); // Toggle fullscreen mode
       }
       break;
    case WM_ENTERSIZEMOVE:
-      /*
-      * When users resize or move the form, the program will be trapped in a modal loop,
-      * which will stop our message loop, causing the engine not to run.
-      * Therefore, create a timer to run the engine.
-      */
+      // 1. When users resize or move the form, the program will be trapped in a modal loop,
+      // which will stop our message loop and causing the engine not to run.
+      // So create a timer to run the engine.
+      // 2. USER_TIMER_MINIMUM: Let the renderer determines the resizing-check interval,
+      // which provides a much higher framerate.
+      timerHandle = SetTimer(hwnd, 1, USER_TIMER_MINIMUM, TimerEvent);
       break;
    case WM_EXITSIZEMOVE:
+      if (timerHandle != 0)
+      {
+         KillTimer(hwnd, timerHandle); // Stop the timer
+         timerHandle = 0;
+      }
       break;
    case WM_DESTROY:// End message loop
       PostQuitMessage(0);
       return 0;
    }
    // Default procedure
-   return DefWindowProc(hWnd, msg, wParam, lParam);
+   return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-//#include "DirectXMath-apr2025/DirectXMath.h"
-//#include "DirectXMath-apr2025/DirectXMathSSE4.h"
-//#include "Core/Auxiliaries.h"
-//#include "Core/Texture.h"
-
-//#include "OpenAL-1.24.3/al.h"
-//#include "OpenAL-1.24.3/alc.h"
-#include "PhysX-4.1/PxPhysicsAPI.h"
-#include <iostream>
-using namespace physx;
-
-// 简单的错误回调类
-class SimpleErrorCallback : public PxErrorCallback {
-public:
-   void reportError(PxErrorCode::Enum code, const char* message, const char* file, int line) override {
-      std::cerr << "PhysX Error: " << message << " in " << file << " at line " << line << std::endl;
-   }
-};
-
-void TempCode()
+void TimerEvent(HWND hwnd, UINT arg1, UINT_PTR arg2, DWORD arg3)
 {
-   //SetWindowMode(true);
-   //D3D12Renderer renderer(windowHandle, 2);
-   //
-   //
-   //using namespace DirectX;
-   //XMVECTOR v = XMVectorSet(1, 1, 1, 1);
-   //XMVECTOR v2 = XMVector4Dot(v, v);
-   //float result;
-   //XMStoreFloat(&result, v2);
-   //bool SSE4Check = SSE4::XMVerifySSE4Support();
-   //LoadTexture(L"Textures\\SRGBInterpolationExample.png");
-  
-   //ALCdevice* device = alcOpenDevice(NULL);
-   //ALCcontext* context = alcCreateContext(device, NULL);
-   //alcMakeContextCurrent(context);
+   EngineTick();
+}
 
-   //// Genrate sin wave
-   //#define SAMPLE_RATE 44100
-   //#define FREQUENCY 440.0f
-   //#define DURATION 6.0f
-   //int samples = (int)(SAMPLE_RATE * DURATION);
-   //short* bufferData = (short*)malloc(samples * sizeof(short));
-   //for (int i = 0; i < samples; ++i) {
-   //   bufferData[i] = (short)(32760.0f * sinf(2.0f * 3.14 * FREQUENCY * i / SAMPLE_RATE));
-   //}
+void GetMonitorParams()
+{
+   HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+   MONITORINFOEX info = { sizeof(MONITORINFOEX) };
+   if (!GetMonitorInfo(monitor, &info))
+   {
+      MessageBoxA(0, "GetMonitorInfo FAILED", 0, MB_OK);
+      exit(EXIT_FAILURE);
+   }
+   screenOrigin[0] = info.rcMonitor.left;
+   screenOrigin[1] = info.rcMonitor.top;
+   DEVMODE devMode{ 0 };
+   devMode.dmSize = sizeof(DEVMODE);
+   if (!EnumDisplaySettings(info.szDevice, ENUM_CURRENT_SETTINGS, &devMode))
+   {
+      MessageBoxA(0, "EnumDisplaySettings FAILED", 0, MB_OK);
+      exit(EXIT_FAILURE);
+   }
+   RefreshRate = devMode.dmDisplayFrequency;
+   ScreenSize[0] = devMode.dmPelsWidth;
+   ScreenSize[1] = devMode.dmPelsHeight;
+}
 
-   //// Create buffer
-   //ALuint buffer;
-   //alGenBuffers(1, &buffer);
-   //alBufferData(buffer, AL_FORMAT_MONO16, bufferData, samples * sizeof(short), SAMPLE_RATE);
+void GetWindowSize(int32_t& clientWidth, int32_t& clientHeight)
+{
+   RECT rect{ 0,0,clientWidth,clientHeight };
+   AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+   clientWidth = rect.right - rect.left;
+   clientHeight = rect.bottom - rect.top;
+}
 
-   //// Create audio source
-   //ALuint source;
-   //alGenSources(1, &source);
-   //alSourcei(source, AL_BUFFER, buffer);
-
-   //// Play audio
-   //alSourcePlay(source);
-   //printf("播放 440 Hz 正弦波...\n");
-
-   //// wait to finish
-   //ALint state;
-   //do {
-   //   alGetSourcei(source, AL_SOURCE_STATE, &state);
-   //} while (state == AL_PLAYING);
-
-   //// Release
-   //alDeleteSources(1, &source);
-   //alDeleteBuffers(1, &buffer);
-   //free(bufferData);
-   //alcMakeContextCurrent(NULL);
-   //alcDestroyContext(context);
-   //alcCloseDevice(device);
-
-   //static PxDefaultAllocator allocator;
-   //static SimpleErrorCallback errorCallback;
-   //PxFoundation* foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, errorCallback);
-   //if (!foundation) {
-   //   std::cerr << "Failed to create PhysX Foundation!" << std::endl;
-   //   //return 1;
-   //}
-
-   //// Initialize PhysX SDK
-   //PxPhysics* physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, PxTolerancesScale());
-   //if (!physics) {
-   //   std::cerr << "Failed to create PhysX SDK!" << std::endl;
-   //   foundation->release();
-   //   //return 1;
-   //}
-
-   //// Create a simple scene
-   //PxSceneDesc sceneDesc(physics->getTolerancesScale());
-   //sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-   //PxDefaultCpuDispatcher* dispatcher = PxDefaultCpuDispatcherCreate(1);
-   //sceneDesc.cpuDispatcher = dispatcher;
-   //sceneDesc.filterShader = PxDefaultSimulationFilterShader;
-
-   //PxScene* scene = physics->createScene(sceneDesc);
-   //if (!scene) {
-   //   std::cerr << "Failed to create PhysX Scene!" << std::endl;
-   //   dispatcher->release();
-   //   physics->release();
-   //   foundation->release();
-   //   //return 1;
-   //}
-
-   //// Output
-   //std::cout << "PhysX initialized successfully! Scene created." << std::endl;
-
-   //// Release
-   //scene->release();
-   //dispatcher->release();
-   //physics->release();
-   //foundation->release();
+void SetWindowMode(bool fullScreen, bool allowResizing)
+{
+   static RECT lastRect{};
+   const uint32_t flags = SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW;
+   if (fullScreen && !isFullscreen) // To fullscreen
+   {
+      GetMonitorParams();
+      GetWindowRect(hwnd, &lastRect);
+      SetWindowLongPtr(hwnd, GWL_STYLE, WS_OVERLAPPED);
+      SetWindowPos(hwnd, 0, screenOrigin[0], screenOrigin[1], ScreenSize[0], ScreenSize[1], flags);
+   }
+   else if (!fullScreen && isFullscreen) // To a window
+   {
+      SetWindowLongPtr(hwnd, GWL_STYLE, WS_OVERLAPPEDWINDOW & (allowResizing ? UINT32_MAX : !WS_THICKFRAME));
+      SetWindowPos(hwnd, 0, lastRect.left, lastRect.top, lastRect.right - lastRect.left, lastRect.bottom - lastRect.top, flags);
+   }
+   isFullscreen = fullScreen;
 }
 #elif defined(__ANDROID__)
 #endif
+
+void EngineLaunch()
+{
+   gameClock.Start();
+   Constants::SetThreadNumbers();
+#if defined(_WIN64)
+   Graphics::InitializeRenderer(Constants::ThreadNumRenderer, (void*)&hwnd);
+#elif defined(__ANDROID__)
+#endif
+   Graphics::Instance->Launch();
+   return;
+}
+
+double deltaTime{}, lastingTime{};
+
+void EngineTick()
+{
+   gameClock.GetTime(deltaTime, lastingTime);
+   Graphics::Instance->Commit();
+   //Pillow::Input::Update();
+}
+
+void EngineTerminate()
+{
+   Graphics::Instance->Terminate();
+   Graphics::Instance.reset();
+}
