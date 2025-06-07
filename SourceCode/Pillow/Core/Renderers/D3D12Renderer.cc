@@ -33,6 +33,8 @@ typedef IDXGISwapChain1 ISwapChain;              // Has SetBackgroundColor()
 typedef ID3D12Resource IResource;                // The original one is fine
 
 // An anonymous namespace has internal linkage (accessable in local translation unit)
+
+// Static variables
 namespace
 {
    class FenceSync;
@@ -50,15 +52,20 @@ namespace
    std::vector<ID3D12CommandList*> _cmdLists; // A copy of cmdLists, prepared for ExecuteCommandLists()
    std::vector<ComPtr<ID3D12CommandAllocator>> cmdAllocators;
    ComPtr<ISwapChain> swapChain;
-   
+
    uint16_t tempRTVs[Constants::SwapChainSize] = { 0 }; // Temporary RTVs for swapchain buffers
-   ComPtr<IResource> backBuffers[3]{};
-   
+   ComPtr<IResource> backbuffers[Constants::SwapChainSize]{};
+
+   int32_t threads;
    HWND hwnd;
    bool allowTearing;
-   int32_t verticalBlacks{ 1 };
-   int32_t threadCount;
+   int32_t verticalBlanks{ 1 };
+   int32_t clientSize[2]{};
+}
 
+// Types
+namespace
+{
    const DXGI_FORMAT Generic2DxgiFormat[(int32_t)GenericTextureFormat::Count]
    {
       DXGI_FORMAT_R10G10B10A2_UNORM,
@@ -100,7 +107,7 @@ namespace
 
       uint64_t GetTargetFence() { return _FrameIndex + 1; }
 
-      int32_t GetArrayFrameIndex() { return _FrameIndex % Constants::SwapChainSize; }
+      int32_t GetFrameArrayIdx() { return _FrameIndex % Constants::SwapChainSize; }
 
       // Get the next frame.
       // ***WARNING***
@@ -115,7 +122,7 @@ namespace
 
       // Get all GPU's work done.
       // ***WARNING***
-      // Invoke this BEFORE ExecuteCommandList() or AFTER NextFrame() in one frame.
+      // Invoke this BEFORE entering worker threads or after NextFrame() in one frame.
       void FlushQueue()
       {
          uint64_t minFence = _FrameIndex;
@@ -388,7 +395,7 @@ namespace
          TexInfo(texInfo),
          ElementCount(count),
          RawElementSize(_rawElementSize),
-         TotalSize(GetAlignedElementSize(dataType, _rawElementSize) * count),
+         TotalSize(GetAlignedElementSize(dataType, _rawElementSize)* count),
          isConstantData(isConstantData)
       {
          if (heapType == BufferHeapType::Default)
@@ -422,7 +429,7 @@ namespace
          CheckHResult(device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE,
             &resourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&heap)));
          gpuPointer = heap->GetGPUVirtualAddress();
-         D3D12_RANGE range {0, 0};
+         D3D12_RANGE range{ 0, 0 };
          CheckHResult(heap->Map(0, &range, (void**)(&cpuPointer)))
       }
 
@@ -518,7 +525,7 @@ namespace
    private:
       // TODO: Middle Buffer Pool Optimization
       // static std::vector<std::unique_ptr<GeneralBuffer>> middleBufferPool;
-      static std::vector<GeneralBuffer*> dirtyBuffer;
+      inline static std::vector<GeneralBuffer*> dirtyBuffer{};
 
       std::unique_ptr<GeneralBuffer> middleBuffer{};
       ComPtr<IResource> heap{};
@@ -530,8 +537,23 @@ namespace
          return type == BufferDataType::ConstantBuffer ? (_rawSize + 255) & ~255 : _rawSize;
       }
    };
+}
 
-   std::vector<GeneralBuffer*> GeneralBuffer::dirtyBuffer;
+// Static functions
+namespace
+{
+   // Get the client size of the main window.
+   // return true if it's changed.
+   bool CheckClientSize()
+   {
+      bool isChanged{};
+      RECT rect{};
+      GetClientRect(hwnd, &rect);
+      isChanged = (clientSize[0] != rect.right) || (clientSize[1] != rect.bottom);
+      clientSize[0] = rect.right;
+      clientSize[1] = rect.bottom;
+      return isChanged;
+   }
 
    void CreateBase()
    {
@@ -569,11 +591,13 @@ namespace
          0,0, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
          DXGI_USAGE_RENDER_TARGET_OUTPUT, Constants::SwapChainSize, DXGI_SCALING_NONE,
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
-         uint32_t(DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | (allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0))
+         allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0
       };
       CheckHResult(factory->CreateSwapChainForHwnd(cmdQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
+      DXGI_RGBA color{ 0.f, 0.f, 0.f, 1.f };
+      swapChain->SetBackgroundColor(&color);
       // Command Allocators & Lists
-      int32_t count = Constants::SwapChainSize * threadCount;
+      int32_t count = Constants::SwapChainSize * threads;
       cmdAllocators.reserve(count);
       for (int i = 0; i < count; i++)
       {
@@ -582,9 +606,9 @@ namespace
          cmdAllocators.push_back(std::move(temp));
       }
       // CreateCommandList1 closes the cmd list automatically.
-      cmdLists.reserve(threadCount);
-      _cmdLists.reserve(threadCount);
-      for (int i = 0; i < threadCount; i++)
+      cmdLists.reserve(threads);
+      _cmdLists.reserve(threads);
+      for (int i = 0; i < threads; i++)
       {
          ComPtr<ICommandList> temp;
          CheckHResult(device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&temp)));
@@ -611,17 +635,13 @@ namespace
       rtvDesc.Texture2D = { 0,0 };
       for (int i = 0; i < Constants::SwapChainSize; i++)
       {
-         CheckHResult(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
-         tempRTVs[i] = descriptorMgr->CreateView(device, backBuffers[i], &rtvDesc, ViewType::RTV);
+         // After resizing the swapchain, the frame array index may not be euqal to the active backbuffer index.
+         // So, we should associate the first buffer of the resized swapchain to the current frame array index.
+         // e.g. frameIdx = 8, frameArrayIdx = 2, in this case, backbuffers[2] should refer to swapChain->GetBuffer(0).
+         int32_t offset = (fenceSync->GetFrameIndex() + i) % Constants::SwapChainSize;
+         CheckHResult(swapChain->GetBuffer(i, IID_PPV_ARGS(&backbuffers[offset])));
+         tempRTVs[offset] = descriptorMgr->CreateView(device, backbuffers[offset], &rtvDesc, ViewType::RTV);
       }
-   }
-
-   void Resize()
-   {
-      bool needResizing = false;
-      if (!needResizing) return;
-      fenceSync->FlushQueue();
-      // Resize.
    }
 
    void RendererTestZone()
@@ -648,8 +668,9 @@ namespace
 D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRenderer(threadCount, "D3D12Renderer")
 {
    SingletonCheck();
-   ::hwnd = windowHandle;
-   ::threadCount = threadCount;
+   hwnd = windowHandle;
+   threads = threadCount;
+   CheckClientSize();
    CreateBase();
    CreateHeapsAndPSOs();
    CreateFrames();
@@ -689,31 +710,51 @@ extern double deltaTime, lastingTime;
 
 void D3D12Renderer::Worker(int32_t workerIndex)
 {
-   int32_t frameIdx = fenceSync->GetArrayFrameIndex();
+   int32_t frameIdx = fenceSync->GetFrameArrayIdx();
    ICommandList* cmdList = cmdLists[workerIndex].Get();
-   ID3D12CommandAllocator* allocator = cmdAllocators[frameIdx * threadCount + workerIndex].Get();
+   ID3D12CommandAllocator* allocator = cmdAllocators[frameIdx * threads + workerIndex].Get();
    CheckHResult(allocator->Reset());
    CheckHResult(cmdList->Reset(allocator, nullptr));
    // Do actual work.
    if (workerIndex == 0)
    {
-      auto barrier = CreateBarrier(backBuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+      auto barrier = CreateBarrier(backbuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
       cmdList->ResourceBarrier(1, &barrier);
       
       using namespace DirectX;
       XMFLOAT4 color{ 0.5f + 0.5f * XMScalarCos(2 * lastingTime), 0.5f + 0.5f * XMScalarCos(2 * lastingTime + 2),0.5f + 0.5f * XMScalarCos(2 * lastingTime + 4),0 };
       cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(tempRTVs[frameIdx], ViewType::RTV), (float*)(&color), 0, nullptr);
       
-      barrier = CreateBarrier(backBuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+      barrier = CreateBarrier(backbuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
       cmdList->ResourceBarrier(1, &barrier);
    }
    CheckHResult(cmdList->Close());
 }
+
+void Pillow::Graphics::D3D12Renderer::Pioneer()
+{
+   // Check the resizing conditions 60 times per frame.
+   static double interval = 0;
+   if ((interval += deltaTime) < 0.017) return;
+   interval = 0;
+   if (!CheckClientSize()) return;
+   fenceSync->FlushQueue();
+   int32_t refCount;
+   for (int i = 0; i < Constants::SwapChainSize; i++)
+   {
+      refCount = backbuffers[i].Reset();
+      descriptorMgr->ReleaseView(tempRTVs[i], ViewType::RTV);
+   }
+   if (refCount != 0) throw std::exception("Swapchain buffers are not released properly.");
+   CheckHResult(swapChain->ResizeBuffers(Constants::SwapChainSize, 0, 0, DXGI_FORMAT_B8G8R8A8_UNORM,
+      allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
+   CreateFrames();
+}
+
 void D3D12Renderer::Assembler()
 {
-   Resize();
-   cmdQueue->ExecuteCommandLists(threadCount, _cmdLists.data());
-   CheckHResult(swapChain->Present(verticalBlacks, (allowTearing && verticalBlacks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
+   cmdQueue->ExecuteCommandLists(threads, _cmdLists.data());
+   CheckHResult(swapChain->Present(verticalBlanks, (allowTearing && verticalBlanks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
    fenceSync->NextFrame();
 }
 #endif
