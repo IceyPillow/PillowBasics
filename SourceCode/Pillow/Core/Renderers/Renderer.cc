@@ -11,20 +11,16 @@ namespace
    // 
    // If the CPU job comprises two parts: Tt(tick computation time) and Tg(graphics compuation time)
    // 
-   // An full async method with triple buffering could generate a higher frame rate but with a worse delay.
-   // The maximum delay of a CPU frame from the beginning to the end is 3Tg (Tt < Tg) or Tt + Tg (Tt > Tg)
+   // An async method with one buffer generates a higher frame rate but with a longer delay.
+   // The maximum span of a CPU frame is 2*Tg (Tt < Tg) or Tt + Tg (Tt >= Tg), if we don't take into account the GPU.
    // 
-   // On the other hand, a full sync method may generate a lower framerate, but provides a better delay.
-   // The maximum delay always is Tt + Tg.
+   // On the other hand, a sync method generates a lower framerate, but provides a better delay.
+   // The maximum span is Tt + Tg, , if we don't take into account the GPU.
    //
-   // A sync method seems to be better for normal games.
-   //
-   // But we can mix them up to go beyond.
-   // 
-   // Use a single buffer between the tick thread pool and the renderer thread pool.
-   // In this case, the maximum delay is Tg - Tt, which is acceptable.
+   // We choose the first method for a better performance.
 
    std::vector<Drawcall> cachedDrawcalls;
+   std::vector<Drawcall> submittedDrawcalls;
 
    std::vector<std::thread> workers;
    std::optional<std::barrier<void(*)() noexcept>> frameBarrier;
@@ -74,6 +70,7 @@ void GenericRenderer::Terminate()
 void GenericRenderer::Commit()
 {
    while (signal_IsComputing.load(std::memory_order::acquire)) std::this_thread::yield();
+   this->Pioneer();
    signal_IsComputing.store(true, std::memory_order::release);
 }
 

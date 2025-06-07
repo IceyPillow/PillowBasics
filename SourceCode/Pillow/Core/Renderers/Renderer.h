@@ -44,7 +44,7 @@ namespace Pillow::Graphics
    public:
       virtual ~GenericRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
-      ForceInline int32_t GetFrameArrayIndex() { return GetFrameIndex() % Constants::SwapChainSize; }
+      ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
       virtual int32_t CreateMesh() = 0;
       virtual int32_t CreateTexture() = 0;
       virtual int32_t CreateConstantBuffer() = 0;
@@ -57,6 +57,7 @@ namespace Pillow::Graphics
    protected:
       GenericRenderer(int32_t threadCount, std::string name);
       virtual void Worker(int32_t workerIndex) = 0;
+      virtual void Pioneer() = 0;
       virtual void Assembler() = 0;
 
    private:
@@ -81,6 +82,7 @@ namespace Pillow::Graphics
 
    private:
       void Worker(int32_t workerIndex);
+      void Pioneer();
       void Assembler();
    };
 #elif defined(__ANDROID__)
