@@ -39,6 +39,7 @@ uint64_t timerHandle{};
 bool isFullscreen = false;
 int32_t screenOrigin[2]{};
 const int32_t minClientSize[2]{ 400, 300 };
+int32_t minWinSize[2]{};
 
 // Program Entry Point
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -51,10 +52,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
 {
    GetMonitorParams();
-   int32_t width = minClientSize[0], height = minClientSize[1];
-   GetWindowSize(width, height);
-   int32_t posX = screenOrigin[0] + (ScreenSize[0] - width) / 2;
-   int32_t posY = screenOrigin[1] + (ScreenSize[1] - height) / 2;
+   minWinSize[0] = minClientSize[0];
+   minWinSize[1] = minClientSize[1];
+   GetWindowSize(minWinSize[0], minWinSize[1]);
+   int32_t posX = screenOrigin[0] + (ScreenSize[0] - minWinSize[0]) / 2;
+   int32_t posY = screenOrigin[1] + (ScreenSize[1] - minWinSize[1]) / 2;
    // 1 Register Window
    const wchar_t* className = L"PillowBasics";
    WNDCLASS windowSettings{};
@@ -74,7 +76,7 @@ void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
       exit(EXIT_FAILURE);
    }
    // 2 Create and show window
-   hwnd = CreateWindow(className, L"DefaultTitle", WS_OVERLAPPEDWINDOW, posX, posY, width, height, 0, 0, hInstance, 0);
+   hwnd = CreateWindow(className, L"DefaultTitle", WS_OVERLAPPEDWINDOW, posX, posY, minWinSize[0], minWinSize[1], 0, 0, hInstance, 0);
    if (hwnd == 0)
    {
       MessageBoxA(0, "CreateWindow FAILED", 0, MB_OK);
@@ -129,8 +131,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
    case WM_GETMINMAXINFO:
    {
       auto& info = *(MINMAXINFO*)lParam;
-      info.ptMinTrackSize.x = minClientSize[0];
-      info.ptMinTrackSize.y = minClientSize[1];
+      info.ptMinTrackSize.x = minWinSize[0];
+      info.ptMinTrackSize.y = minWinSize[1];
       break;
    }
    case WM_KEYDOWN:
