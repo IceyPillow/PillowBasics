@@ -7,19 +7,19 @@ namespace Pillow::Graphics
 {
    enum class GenericTextureFormat : int8_t
    {
-      RGB10A2_UNORM,
-      RGBA8_UNORM,
-      R8_UNORM,
-      R32_FLOAT,
+      UNORM_R8G8B8A8,
+      UNORM_R8G8B8,
+      UNORM_R8G8,
+      UNORM_R8,
       Count
    };
 
    const int32_t PixelSize[(int32_t)GenericTextureFormat::Count]
    {
-      4, // RGB10A2_UNORM
-      4, // RGBA8_UNORM
-      1, // R8_UNORM
-      4, // R32_FLOAT
+      4, // UNORM_R8G8B8A8
+      3, // UNORM_R8G8B8
+      2, // UNORM_R8G8
+      1, // UNORM_R8
    };
 
    class GenericTextureInfo
@@ -33,6 +33,7 @@ namespace Pillow::Graphics
          ReadonlyProperty(int32_t, TotalSize)
          ReadonlyProperty(GenericTextureFormat, Format)
          ReadonlyProperty(bool, IsCubemap)
+         ReadonlyProperty(bool, useCompression)
 
    public:
       GenericTextureInfo() = default;

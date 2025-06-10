@@ -142,15 +142,15 @@ void LoadTexture(const std::wstring& relativePath)
    GenericTextureInfo texInfo;
    if (state.info_raw.colortype == LCT_GREY)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::R8_UNORM);
+      texInfo = GenericTextureInfo(w, GenericTextureFormat::UNORM_R8);
    }
    else if (state.info_raw.colortype == LCT_RGB)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::RGBA8_UNORM);
+      texInfo = GenericTextureInfo(w, GenericTextureFormat::UNORM_R8G8B8A8);
    }
    else if (state.info_raw.colortype == LCT_RGBA)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::RGBA8_UNORM);
+      texInfo = GenericTextureInfo(w, GenericTextureFormat::UNORM_R8G8B8A8);
    }
 
 }
