@@ -66,12 +66,12 @@ namespace
 // Types
 namespace
 {
-   const DXGI_FORMAT Generic2DxgiFormat[(int32_t)GenericTextureFormat::Count]
+   const DXGI_FORMAT Generic2DxgiFormat[int32_t(GenericTextureFormat::Count)]
    {
-      DXGI_FORMAT_R10G10B10A2_UNORM,
-      DXGI_FORMAT_B8G8R8A8_UNORM,
-      DXGI_FORMAT_R8_UNORM,
-      DXGI_FORMAT_R32_FLOAT
+      DXGI_FORMAT_B8G8R8A8_UNORM, //BC3
+      DXGI_FORMAT_B8G8R8_UNORM, //BC1
+      DXGI_FORMAT_R8G8_UNORM, //BC5
+      DXGI_FORMAT_R8_UNORM, //BC4
    };
 
    ForceInline D3D12_RESOURCE_BARRIER CreateBarrier(ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
