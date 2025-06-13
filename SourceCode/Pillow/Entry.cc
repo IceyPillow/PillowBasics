@@ -1,6 +1,3 @@
-#if defined(_WIN64)
-#define NOMINMAX
-#endif
 #include <iostream>
 #include <thread>
 #include "DirectXMath-apr2025/DirectXMath.h"
@@ -8,6 +5,7 @@
 #include "Core/Renderers/Renderer.h"
 #include "Core/Input.h"
 #if defined(_WIN64)
+#define NOMINMAX
 #include <Windows.h>
 #include <WinUser.h>
 #elif defined(__ANDROID__)
