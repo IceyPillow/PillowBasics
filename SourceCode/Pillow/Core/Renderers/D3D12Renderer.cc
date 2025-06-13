@@ -478,8 +478,14 @@ namespace
          }
       }
 
-      // D3D12 texture subresource indexing: SubRes[PlaneIdx][ArrayIdx][MipIdx]
-      // Typically planar formats are not used to store RGBA data.
+      // 1.D3D12 texture subresource indexing: SubRes[PlaneIdx][ArrayIdx][MipIdx]
+      // Normally, planar formats are not used to store RGBA data.
+      // 
+      // 2.ABOUT THE FOOTPRINT: In Direct3D 12 terminology, footprint describes the memory layouts of D3D12 resources.
+      // In detail, the size of a texture row should be aligned(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT), which makes memory allocation more sophisticated.
+      // But there are ways to avoid touching the footprints.
+      // For instance, we can use ID3D12Resource::WriteToSubresource to copy unaligned data into a custom upload heap,
+      // then use ID3DCommandList::CopyTextureRegion to copy it into a default buffer while ignoring the footprints.
       void WriteTexture(const char* data, const GenericTextureInfo& texInfo, int32_t arrayIndex = 0)
       {
          if (DataType != BufferDataType::Texture) throw std::exception("Cannot use WriteTexture() with non-texture buffers.");
