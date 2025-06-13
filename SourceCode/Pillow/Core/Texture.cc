@@ -104,16 +104,17 @@ namespace
    }
 }
 
-GenericTextureInfo::GenericTextureInfo(int width, GenericTextureFormat format, bool hasMips, bool isCube, int arraySize) :
+GenericTextureInfo::GenericTextureInfo(int32_t width, GenericTextureFormat format, bool hasMips, bool isCube, bool useCompression, int32_t arraySize) :
    _Width(width),
    _PixelSize(PixelSize[(int32_t)format]),
    _ArraySliceCount(arraySize* (isCube ? 6 : 1)),
    _Mip0Size(width * width * PixelSize[(int32_t)format]),
    _Format(format),
-   _IsCubemap(isCube)
+   _IsCubemap(isCube),
+   _useCompression(useCompression)
 {
    if (width & (width - 1)) throw std::exception("Texture width must be 2^n");
-   int power = std::log2f(width);
+   int32_t power = std::log2f(width);
    _MipSliceCount = hasMips ? power + 1 : 1;
    _MipSliceSize = hasMips ? (((1 << 2 * _MipSliceCount) - 1) / 3) * _PixelSize : _Mip0Size;
    _TotalSize = _MipSliceSize * _ArraySliceCount;
@@ -142,15 +143,15 @@ void LoadTexture(const std::wstring& relativePath)
    GenericTextureInfo texInfo;
    if (state.info_raw.colortype == LCT_GREY)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::UNORM_R8);
+      texInfo = GenericTextureInfo(w, GenericTextureFormat::UnsignedNormalized_R8);
    }
    else if (state.info_raw.colortype == LCT_RGB)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::UNORM_R8G8B8A8);
+      texInfo = GenericTextureInfo(w, GenericTextureFormat::UnsignedNormalized_R8G8B8A8);
    }
    else if (state.info_raw.colortype == LCT_RGBA)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::UNORM_R8G8B8A8);
+      texInfo = GenericTextureInfo(w, GenericTextureFormat::UnsignedNormalized_R8G8B8A8);
    }
 
 }

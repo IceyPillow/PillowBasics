@@ -38,7 +38,7 @@ namespace Pillow::Graphics
    public:
       GenericTextureInfo() = default;
       GenericTextureInfo(const GenericTextureInfo&) = default;
-      GenericTextureInfo(int width, GenericTextureFormat format, bool hasMips = true, bool isCube = false, int arraySize = 1);
+      GenericTextureInfo(int32_t width, GenericTextureFormat format, bool hasMips = true, bool isCube = false, bool useCompression = true, int32_t arraySize = 1);
    };
 
    class GenericTexture
