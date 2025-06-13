@@ -670,11 +670,6 @@ namespace
       uint64_t rowSize[10];
       uint64_t totalSize;
       device->GetCopyableFootprints(&resourceDesc, 0, 10, 0, footprint, rows, rowSize, &totalSize);
-      ;
-
-      // clock
-      //double time = Clock::GetPrecisionInMilliseconds();
-      ;
    }
 }
 
