@@ -69,8 +69,7 @@ namespace
    // TODO: add a BC encoder
    const DXGI_FORMAT Generic2DxgiFormat[int32_t(GenericTextureFormat::Count)]
    {
-      DXGI_FORMAT_B8G8R8A8_UNORM, //BC3
-      DXGI_FORMAT_B8G8R8_UNORM, //BC1
+      DXGI_FORMAT_R8G8B8A8_UNORM, //BC3
       DXGI_FORMAT_R8G8_UNORM, //BC5
       DXGI_FORMAT_R8_UNORM, //BC4
    };
@@ -185,7 +184,7 @@ namespace
       std::queue<Item> releaseQueue;
    };
 
-   enum class ViewType
+   enum class ViewType : uint8_t
    {
       // Stored in srvUavDescHeap.
       CBV,
@@ -210,9 +209,9 @@ namespace
          dsvFreePool.reserve(MaxDsvCount);
          for (uint16_t i = MaxCsuCount; i > 0; i--)
          {
-            csuFreePool.push_back(i);
-            if (i <= MaxRtvCount) rtvFreePool.push_back(i);
-            if (i <= MaxDsvCount) dsvFreePool.push_back(i);
+            csuFreePool.push_back(i | uint16_t(InnerFlag::CSU) << 14);
+            if (i <= MaxRtvCount) rtvFreePool.push_back(i | uint16_t(InnerFlag::RTV) << 14);
+            if (i <= MaxDsvCount) dsvFreePool.push_back(i | uint16_t(InnerFlag::DSV) << 14);
          }
 
          D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc
@@ -240,46 +239,40 @@ namespace
          dsvCpuHandle0 = dsvDescHeap->GetCPUDescriptorHandleForHeapStart();
       }
 
-      void BindSrvHeap(ComPtr<ICommandList>& cmd)
+      ForceInline void BindSrvHeap(ComPtr<ICommandList>& cmd)
       {
          cmd->SetDescriptorHeaps(1, csuDescHeap.GetAddressOf());
       }
 
-      D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(uint16_t idx, ViewType type)
+      ForceInline D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(uint16_t handle)
       {
-         auto CheckIdx = [&idx](uint16_t max) {if (idx == 0 || idx > max) throw std::exception("Out of Range"); };
          D3D12_CPU_DESCRIPTOR_HANDLE result{};
-         switch (type)
+         auto flag = GetInnerFlag(handle);
+         handle &= 0x3FFF; // Clear the flag bits
+         switch (flag)
          {
-         case ViewType::CBV:
-         case ViewType::SRV:
-         case ViewType::UAV:
-            CheckIdx(MaxCsuCount);
-            result.ptr = csuCpuHandle0.ptr + csuSize * idx;
+         case InnerFlag::CSU:
+            result.ptr = csuCpuHandle0.ptr + csuSize * handle;
             break;
-         case ViewType::RTV:
-            CheckIdx(MaxRtvCount);
-            result.ptr = rtvCpuHandle0.ptr + rtvSize * idx;
+         case InnerFlag::RTV:
+            result.ptr = rtvCpuHandle0.ptr + rtvSize * handle;
             break;
-         case ViewType::DSV:
-            CheckIdx(MaxDsvCount);
-            result.ptr = dsvCpuHandle0.ptr + dsvSize * idx;
+         case InnerFlag::DSV:
+            result.ptr = dsvCpuHandle0.ptr + dsvSize * handle;
             break;
          }
          return result;
       }
 
-      D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint16_t idx, ViewType type)
+      ForceInline D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint16_t handle)
       {
-         auto CheckIdx = [&idx](uint16_t max) {if (idx == 0 || idx > max) throw std::exception("Out of Range"); };
          D3D12_GPU_DESCRIPTOR_HANDLE result{};
-         switch (type)
+         auto flag = GetInnerFlag(handle);
+         handle = RemoveFlag(handle);
+         switch (flag)
          {
-         case ViewType::CBV:
-         case ViewType::SRV:
-         case ViewType::UAV:
-            CheckIdx(MaxCsuCount);
-            result.ptr = csuGpuHandle0.ptr + csuSize * idx;
+         case InnerFlag::CSU:
+            result.ptr = csuGpuHandle0.ptr + csuSize * handle;
             break;
          default:
             throw std::exception("GPU handle is not supported for RTV and DSV.");
@@ -289,67 +282,76 @@ namespace
 
       uint16_t CreateView(ComPtr<IDevice>& device, ComPtr<IResource>& res, void* viewDesc, ViewType type)
       {
-         uint16_t idx{};
-         auto CheckAndPop = [&idx](std::vector<uint16_t>& vector, const char* name) {
-            if (vector.empty())
-               throw std::exception((std::string(name) + ": A descriptor heap is full.").c_str());
-            idx = vector.back();
-            vector.pop_back();
+         uint16_t handle{};
+         auto GetHandle = [&](std::vector<uint16_t>& freePool, const char* name)
+            {
+               if (freePool.empty())
+                  throw std::exception((std::string(name) + ": This descriptor heap is full.").c_str());
+               handle = freePool.back();
+               freePool.pop_back();
             };
          switch (type)
          {
          case ViewType::CBV:
-            CheckAndPop(csuFreePool, "CSV_SRV_UAV");
-            device->CreateConstantBufferView((D3D12_CONSTANT_BUFFER_VIEW_DESC*)viewDesc, GetCPUHandle(idx, type));
+            GetHandle(csuFreePool, "CSV_SRV_UAV");
+            device->CreateConstantBufferView((D3D12_CONSTANT_BUFFER_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case ViewType::SRV:
-            CheckAndPop(csuFreePool, "CSV_SRV_UAV");
-            device->CreateShaderResourceView(res.Get(), (D3D12_SHADER_RESOURCE_VIEW_DESC*)viewDesc, GetCPUHandle(idx, type));
+            GetHandle(csuFreePool, "CSV_SRV_UAV");
+            device->CreateShaderResourceView(res.Get(), (D3D12_SHADER_RESOURCE_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case ViewType::UAV:
-            CheckAndPop(csuFreePool, "CSV_SRV_UAV");
-            device->CreateUnorderedAccessView(res.Get(), nullptr, (D3D12_UNORDERED_ACCESS_VIEW_DESC*)viewDesc, GetCPUHandle(idx, type));
+            GetHandle(csuFreePool, "CSV_SRV_UAV");
+            device->CreateUnorderedAccessView(res.Get(), nullptr, (D3D12_UNORDERED_ACCESS_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case ViewType::RTV:
-            CheckAndPop(rtvFreePool, "RTV");
-            device->CreateRenderTargetView(res.Get(), (D3D12_RENDER_TARGET_VIEW_DESC*)viewDesc, GetCPUHandle(idx, type));
+            GetHandle(rtvFreePool, "RTV");
+            device->CreateRenderTargetView(res.Get(), (D3D12_RENDER_TARGET_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case ViewType::DSV:
-            CheckAndPop(dsvFreePool, "DSV");
-            device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(idx, type));
+            GetHandle(dsvFreePool, "DSV");
+            device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
          }
-         return idx;
+#ifdef PILLOW_DEBUG
+         LogSystem(L"ViewHandle=" + std::to_wstring(handle) + L" Index=" + std::to_wstring(RemoveFlag(handle)));
+#endif
+         return handle;
       }
 
-      void ReleaseView(uint16_t idx, ViewType type)
+      void ReleaseView(uint16_t handle)
       {
-         auto CheckAndPush = [&idx](std::vector<uint16_t>& vector) {
+         auto ReleaseHandle = [&handle](std::vector<uint16_t>& freePool)
+            {
 #ifdef PILLOW_DEBUG
-            bool found = std::find(vector.begin(), vector.end(), idx) != vector.end();
+            bool found = std::find(freePool.begin(), freePool.end(), handle) != freePool.end();
             if (found) throw std::exception("Invalid index.");
 #endif
-            vector.push_back(idx);
+            freePool.push_back(handle);
             };
-         switch (type)
+         auto flag = GetInnerFlag(handle);
+         switch (flag)
          {
-         case ViewType::CBV:
-         case ViewType::SRV:
-         case ViewType::UAV:
-            CheckAndPush(csuFreePool);
+         case InnerFlag::CSU:
+            ReleaseHandle(csuFreePool);
             break;
-         case ViewType::RTV:
-            CheckAndPush(rtvFreePool);
+         case InnerFlag::RTV:
+            ReleaseHandle(rtvFreePool);
             break;
-         case ViewType::DSV:
-            CheckAndPush(dsvFreePool);
+         case InnerFlag::DSV:
+            ReleaseHandle(dsvFreePool);
             break;
          }
       }
 
    private:
+      const uint32_t FlagBits = 2;
+      enum struct InnerFlag : uint32_t { CSU = 0, RTV = 1, DSV = 2 };
+      const uint32_t HandleMaxNum = (1 << (16 - FlagBits)); // value=16384
+
       const int32_t MaxCsuCount = 4096;
       const int32_t MaxRtvCount = 64;
       const int32_t MaxDsvCount = 16;
+
       const int32_t csuSize, rtvSize, dsvSize;
       ComPtr<ID3D12DescriptorHeap> csuDescHeap;
       ComPtr<ID3D12DescriptorHeap> rtvDescHeap;
@@ -362,6 +364,16 @@ namespace
       // RTV and DSV don't have gpu handles.
       D3D12_CPU_DESCRIPTOR_HANDLE rtvCpuHandle0;
       D3D12_CPU_DESCRIPTOR_HANDLE dsvCpuHandle0;
+
+      ForceInline InnerFlag GetInnerFlag(uint16_t handle)
+      {
+         return InnerFlag(handle >> 14);
+      }
+
+      ForceInline uint16_t RemoveFlag(uint16_t handle)
+      {
+         return handle & 0x3FFF; // Clear the flag bits
+      }
    };
 
    enum class BufferDataType
@@ -592,7 +604,7 @@ namespace
          0,0, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
          DXGI_USAGE_RENDER_TARGET_OUTPUT, Constants::SwapChainSize, DXGI_SCALING_NONE,
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
-         allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0
+         uint32_t(allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
       };
       CheckHResult(factory->CreateSwapChainForHwnd(cmdQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
       DXGI_RGBA color{ 0.f, 0.f, 0.f, 1.f };
@@ -687,23 +699,7 @@ uint64_t D3D12Renderer::GetFrameIndex()
    return fenceSync->GetFrameIndex();
 }
 
-int32_t D3D12Renderer::CreateMesh()
-{
-   return 0;
-}
-int32_t D3D12Renderer::CreateTexture()
-{
-   return 0;
-}
-int32_t D3D12Renderer::CreatePiplelineState()
-{
-   return 0;
-}
-int32_t D3D12Renderer::CreateConstantBuffer()
-{
-   return 0;
-}
-void D3D12Renderer::ReleaseResource(int32_t handle)
+void D3D12Renderer::ReleaseResource(uint32_t handle)
 {
 }
 
@@ -724,7 +720,7 @@ void D3D12Renderer::Worker(int32_t workerIndex)
       
       using namespace DirectX;
       XMFLOAT4 color{ 0.5f + 0.5f * XMScalarCos(2 * lastingTime), 0.5f + 0.5f * XMScalarCos(2 * lastingTime + 2),0.5f + 0.5f * XMScalarCos(2 * lastingTime + 4),0 };
-      cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(tempRTVs[frameIdx], ViewType::RTV), (float*)(&color), 0, nullptr);
+      cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(tempRTVs[frameIdx]), (float*)(&color), 0, nullptr);
       
       barrier = CreateBarrier(backbuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
       cmdList->ResourceBarrier(1, &barrier);
@@ -744,7 +740,7 @@ void Pillow::Graphics::D3D12Renderer::Pioneer()
    for (int i = 0; i < Constants::SwapChainSize; i++)
    {
       refCount = backbuffers[i].Reset();
-      descriptorMgr->ReleaseView(tempRTVs[i], ViewType::RTV);
+      descriptorMgr->ReleaseView(tempRTVs[i]);
    }
    if (refCount != 0) throw std::exception("Swapchain buffers are not released properly.");
    CheckHResult(swapChain->ResizeBuffers(Constants::SwapChainSize, 0, 0, DXGI_FORMAT_B8G8R8A8_UNORM,
