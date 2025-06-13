@@ -66,6 +66,7 @@ namespace
 // Types
 namespace
 {
+   // TODO: add a BC encoder
    const DXGI_FORMAT Generic2DxgiFormat[int32_t(GenericTextureFormat::Count)]
    {
       DXGI_FORMAT_B8G8R8A8_UNORM, //BC3
