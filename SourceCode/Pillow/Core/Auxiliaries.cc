@@ -39,6 +39,19 @@ std::wstring Pillow::GetResourcePath(const std::wstring& name)
    return resourceRootPath / path(name);
 }
 
+void Pillow::LogSystem(const std::wstring& text)
+{
+#if defined(_WIN64)
+   OutputDebugString(text.c_str());
+   OutputDebugString(L"\n");
+#elif defined(__ANDROID__)
+#endif
+}
+
+void Pillow::LogGame(const std::wstring& text)
+{
+}
+
 void GameClock::Start()
 {
    startPoint = steady_clock::now();

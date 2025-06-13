@@ -8,7 +8,13 @@
 #include <filesystem>
 #include <locale>
 #include <chrono>
+#if defined(_WIN64)
+#define NOMINMAX
+#include <Windows.h>
+#elif defined(__ANDROID__)
+#endif
 
+// Template
 #if defined(_WIN64)
 #elif defined(__ANDROID__)
 #endif
@@ -42,6 +48,8 @@ namespace Pillow
    std::string Wstring2String(const std::wstring& wstr);
    std::wstring String2Wstring(const std::string& str);
    std::wstring GetResourcePath(const std::wstring& name);
+   void LogSystem(const std::wstring& text);
+   void LogGame(const std::wstring& text);
 
    /*
    * std::chrono::steady_clock
