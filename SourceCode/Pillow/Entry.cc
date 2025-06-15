@@ -162,7 +162,7 @@ namespace
    {
       HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
       MONITORINFOEX info = { sizeof(MONITORINFOEX) };
-      if (!GetMonitorInfo(monitor, &info))
+      if (GetMonitorInfo(monitor, &info) == FALSE)
       {
          MessageBoxA(0, "GetMonitorInfo FAILED", 0, MB_OK);
          exit(EXIT_FAILURE);
@@ -170,7 +170,7 @@ namespace
       screenOrigin = XMINT2{ info.rcMonitor.left, info.rcMonitor.top };
       DEVMODE devMode{ 0 };
       devMode.dmSize = sizeof(DEVMODE);
-      if (!EnumDisplaySettings(info.szDevice, ENUM_CURRENT_SETTINGS, &devMode))
+      if (EnumDisplaySettings(info.szDevice, ENUM_CURRENT_SETTINGS, &devMode) == FALSE)
       {
          MessageBoxA(0, "EnumDisplaySettings FAILED", 0, MB_OK);
          exit(EXIT_FAILURE);
