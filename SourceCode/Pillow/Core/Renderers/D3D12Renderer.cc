@@ -503,7 +503,7 @@ namespace
          }
       }
 
-      static void CmdList_CopyAllDefaultBuffers(ComPtr<ICommandList>& cmdList)
+      static void Copy2DefaultHeaps(ComPtr<ICommandList>& cmdList)
       {
          if (dirtyBuffer.empty()) return;
          while (!dirtyBuffer.empty())
