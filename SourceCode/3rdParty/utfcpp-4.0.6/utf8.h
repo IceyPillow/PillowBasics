@@ -39,9 +39,7 @@ Some library features will be disabled.
 
 If you leave UTF_CPP_CPLUSPLUS undefined, it will be internally assigned to __cplusplus.
 */
-#ifndef UTF_CPP_CPLUSPLUS
-#define UTF_CPP_CPLUSPLUS 202002L
-#endif
+// Pillow: Now __cplusplus always returns an updated value.
 
 #include "utf8/checked.h"
 #include "utf8/unchecked.h"

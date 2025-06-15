@@ -10,8 +10,9 @@ if(WIN32)
    set(TARGET_WINDOWS_SDK 10.0.18362.0) #1903, 19H1
    set(CMAKE_SYSTEM_VERSION ${TARGET_WINDOWS_SDK}) # Target OS version.
    add_compile_definitions(_UNICODE)
-   add_compile_options(/arch:SSE2)
+   add_compile_options(/arch:SSE2 /Zc:__cplusplus) # Support SSE2, force the macro __cplusplus to return an updated value
    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded") # Equal to /MD, using static C/C++ runtime library
+   
 elseif(ANDROID)
    if(CMAKE_ANDROID_ARCH_ABI NOT STREQUAL "arm64-v8a")
       message(FATAL_ERROR "Only support arm64-v8a in Android, but CMAKE_ANDROID_ARCH_ABI=${CMAKE_ANDROID_ARCH_ABI}.")
