@@ -300,7 +300,7 @@ namespace
             device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
          }
 #ifdef PILLOW_DEBUG
-         LogSystem(L"ViewHandle=" + std::to_wstring(handle) + L" Index=" + std::to_wstring(RemoveFlag(handle)));
+         //LogSystem(L"ViewHandle=" + std::to_wstring(handle) + L" Index=" + std::to_wstring(RemoveFlag(handle)));
 #endif
          return handle;
       }
@@ -331,8 +331,25 @@ namespace
       }
 
    private:
+      enum struct InnerFlag : uint32_t
+      {
+         CSU = 0,
+         RTV = 1,
+         DSV = 2
+      };
+
+      ForceInline InnerFlag GetInnerFlag(uint16_t handle)
+      {
+         return InnerFlag(handle >> 14);
+      }
+
+      ForceInline uint16_t RemoveFlag(uint16_t handle)
+      {
+         return handle & 0x3FFF; // Clear the flag bits
+      }
+
+   private:
       const uint32_t FlagBits = 2;
-      enum struct InnerFlag : uint32_t { CSU = 0, RTV = 1, DSV = 2 };
       const uint32_t HandleMaxNum = (1 << (16 - FlagBits)); // value=16384
 
       const int32_t MaxCsuCount = 4096;
@@ -351,16 +368,6 @@ namespace
       // RTV and DSV don't have gpu handles.
       D3D12_CPU_DESCRIPTOR_HANDLE rtvCpuHandle0;
       D3D12_CPU_DESCRIPTOR_HANDLE dsvCpuHandle0;
-
-      ForceInline InnerFlag GetInnerFlag(uint16_t handle)
-      {
-         return InnerFlag(handle >> 14);
-      }
-
-      ForceInline uint16_t RemoveFlag(uint16_t handle)
-      {
-         return handle & 0x3FFF; // Clear the flag bits
-      }
    };
 
    enum class BufferDataType
