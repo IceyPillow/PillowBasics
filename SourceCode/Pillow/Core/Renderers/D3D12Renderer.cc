@@ -21,9 +21,7 @@
    }\
 }
 
-
 using namespace Pillow;
-using namespace Pillow::Graphics;
 using Microsoft::WRL::ComPtr;
 
 typedef IDXGIFactory5 IFactory;                  // Has CheckFeatureSupport()
@@ -56,11 +54,12 @@ namespace
    uint16_t tempRTVs[Constants::SwapChainSize] = { 0 }; // Temporary RTVs for swapchain buffers
    ComPtr<IResource> backbuffers[Constants::SwapChainSize]{};
 
-   int32_t threads;
    HWND hwnd;
+   int32_t threads;
    bool allowTearing;
+   XMINT2 backbufferSize;
    int32_t verticalBlanks{ 1 };
-   int32_t clientSize[2]{};
+
 }
 
 // Types
@@ -74,16 +73,7 @@ namespace
       DXGI_FORMAT_R8_UNORM, //BC4
    };
 
-   ForceInline D3D12_RESOURCE_BARRIER CreateBarrier(ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
-   {
-      D3D12_RESOURCE_BARRIER barrier
-      {
-         D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         D3D12_RESOURCE_TRANSITION_BARRIER { resource.Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, before, after }
-      };
-      return barrier;
-   }
+   ForceInline D3D12_RESOURCE_BARRIER CreateBarrier(ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 
    // Fence synchronization wrapper
    class FenceSync
@@ -563,17 +553,25 @@ namespace
 // Static functions
 namespace
 {
-   // Get the client size of the main window.
-   // return true if it's changed.
-   bool CheckClientSize()
+   ForceInline D3D12_RESOURCE_BARRIER CreateBarrier(ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
    {
-      bool isChanged{};
+      D3D12_RESOURCE_BARRIER barrier
+      {
+         D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+         D3D12_RESOURCE_BARRIER_FLAG_NONE,
+         D3D12_RESOURCE_TRANSITION_BARRIER { resource.Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, before, after }
+      };
+      return barrier;
+   }
+
+   // Return true if the client size doesn't change.
+   ForceInline bool GetClientSize()
+   {
       RECT rect{};
       GetClientRect(hwnd, &rect);
-      isChanged = (clientSize[0] != rect.right) || (clientSize[1] != rect.bottom);
-      clientSize[0] = rect.right;
-      clientSize[1] = rect.bottom;
-      return isChanged;
+      auto oldValue = backbufferSize;
+      backbufferSize = XMINT2{ rect.right, rect.bottom };
+      return oldValue == backbufferSize;
    }
 
    void CreateBase()
@@ -667,6 +665,32 @@ namespace
       }
    }
 
+   void TryResizingSwapchain()
+   {
+      // Interval check.
+      constexpr double MinInterval = 1.0 / 60.0;
+      static double interval = 0;
+      interval += GlobalDeltaTime;
+      if (interval < MinInterval) return;
+      interval = 0;
+      if (GetClientSize()) return;
+      // Resize the swapchain.
+      fenceSync->FlushQueue();
+      for (int i = 0; i < Constants::SwapChainSize; i++)
+      {
+         backbuffers[i].Reset();
+         descriptorMgr->ReleaseView(tempRTVs[i]);
+      }
+      CheckHResult(swapChain->ResizeBuffers(Constants::SwapChainSize, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM,
+         allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
+      CreateFrames();
+   }
+
+   void BlockCompressionEncode()
+   {
+
+   }
+
    void RendererTestZone()
    {
       // footprint
@@ -688,7 +712,7 @@ D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRe
    SingletonCheck();
    hwnd = windowHandle;
    threads = threadCount;
-   CheckClientSize();
+   GetClientSize();
    CreateBase();
    CreateHeapsAndPSOs();
    CreateFrames();
@@ -707,8 +731,6 @@ uint64_t D3D12Renderer::GetFrameIndex()
 void D3D12Renderer::ReleaseResource(uint32_t handle)
 {
 }
-
-extern double deltaTime, lastingTime;
 
 void D3D12Renderer::Worker(int32_t workerIndex)
 {
@@ -735,22 +757,7 @@ void D3D12Renderer::Worker(int32_t workerIndex)
 
 void Pillow::Graphics::D3D12Renderer::Pioneer()
 {
-   // Check the resizing conditions 60 times per frame.
-   static double interval = 0;
-   if ((interval += deltaTime) < 0.017) return;
-   interval = 0;
-   if (!CheckClientSize()) return;
-   fenceSync->FlushQueue();
-   int32_t refCount;
-   for (int i = 0; i < Constants::SwapChainSize; i++)
-   {
-      refCount = backbuffers[i].Reset();
-      descriptorMgr->ReleaseView(tempRTVs[i]);
-   }
-   if (refCount != 0) throw std::exception("Swapchain buffers are not released properly.");
-   CheckHResult(swapChain->ResizeBuffers(Constants::SwapChainSize, 0, 0, DXGI_FORMAT_B8G8R8A8_UNORM,
-      allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
-   CreateFrames();
+   TryResizingSwapchain();
 }
 
 void D3D12Renderer::Assembler()
