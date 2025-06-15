@@ -68,10 +68,14 @@ namespace Pillow
    public:
       void Start();
       void GetTime(double& deltaTimeInSeconds, double& lastingTimeInSeconds);
-      double GetPrecisionMilliseconds();
+      static double GetPrecisionMilliseconds();
 
    private:
       std::chrono::steady_clock::time_point startPoint{};
       std::chrono::steady_clock::time_point lastPoint{};
    };
+
+   extern double GlobalDeltaTime, GlobalLastingTime;
+   void GlobalClockStart();
+   void GlobalClockUpdate();
 }

@@ -4,6 +4,12 @@
 using namespace Pillow;
 using namespace std::chrono;
 
+double Pillow::GlobalDeltaTime{ 0 }, Pillow::GlobalLastingTime{ 0 };
+
+namespace
+{
+   GameClock globalGameClock;
+}
 
 std::string Pillow::Wstring2String(const std::wstring& wstr)
 {
@@ -81,3 +87,12 @@ double GameClock::GetPrecisionMilliseconds()
    return duration_cast<duration<double, std::milli>>(precision).count();
 }
 
+void Pillow::GlobalClockStart()
+{
+   globalGameClock.Start();
+}
+
+void Pillow::GlobalClockUpdate()
+{
+   globalGameClock.GetTime(GlobalDeltaTime, GlobalLastingTime);
+}
