@@ -8,8 +8,15 @@
 #include "../Constants.h"
 #include "../Texture.h"
 
+using namespace Pillow::Graphics;
+
 namespace Pillow::Graphics
 {
+   using namespace DirectX;
+
+   extern int32_t RefreshRate;
+   extern XMINT2 ScreenSize;
+
    typedef uint32_t ResourceHandle;
 
    enum class ResourceType : uint32_t

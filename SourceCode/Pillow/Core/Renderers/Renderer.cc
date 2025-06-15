@@ -2,8 +2,11 @@
 
 using namespace Pillow;
 using namespace Pillow::Graphics;
+using namespace DirectX;
 
-std::unique_ptr<GenericRenderer> Pillow::Graphics::Instance{};
+int32_t Pillow::Graphics::RefreshRate;
+XMINT2 Pillow::Graphics::ScreenSize;
+std::unique_ptr<GenericRenderer> Pillow::Graphics::Instance;
 
 namespace
 {
