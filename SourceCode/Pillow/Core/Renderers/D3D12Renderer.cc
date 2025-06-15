@@ -39,12 +39,12 @@ namespace
 {
    class FenceSync;
    class DescriptorHeapManager;
-   class DelayReleaseManager;
+   class lateReleaseManager;
    class GeneralBuffer;
 
    std::unique_ptr<FenceSync> fenceSync;
    std::unique_ptr<DescriptorHeapManager> descriptorMgr;
-   std::unique_ptr<DelayReleaseManager> delayReleaseMgr;
+   std::unique_ptr<lateReleaseManager> lateReleaseMgr;
    ComPtr<IFactory> factory;
    ComPtr<IDevice> device;
    ComPtr<ID3D12CommandQueue> cmdQueue;
@@ -148,10 +148,10 @@ namespace
       ComPtr<ID3D12CommandQueue> commandQueue;
    };
 
-   class DelayReleaseManager
+   class lateReleaseManager
    {
    public:
-      DelayReleaseManager() {};
+      lateReleaseManager(){};
 
       // Enqueue an element that will be released after current frame.
       void Enqueue(std::unique_ptr<GeneralBuffer>&& buffer)
@@ -160,14 +160,14 @@ namespace
          releaseQueue.push(std::move(item));
       }
 
-      void Update()
+      void ReleaseGarbage()
       {
          uint64_t completedFence = fenceSync->GetCompletedFence();
          if (completedFence == 0) return;
          while (!releaseQueue.empty())
          {
             Item& item = releaseQueue.front();
-            // FIFO means if one element dequeued is uncompleted, remains also.
+            // FIFO indicates that if one element dequeued is incomplete, so are the remnants.
             if (item.targetFence > completedFence) break;
             item.buffer.reset();
             releaseQueue.pop();
@@ -452,11 +452,11 @@ namespace
 
       void Write(const char* data, int indexOffset = 0, int _elementCount = 1)
       {
-         if (indexOffset + _elementCount > ElementCount) throw std::exception("Out of Range");
          if (DataType == BufferDataType::Texture) throw new std::exception("Cannot use Write() with texture buffers.");
+         if (indexOffset + _elementCount > ElementCount) throw std::exception("Out of Range");
          if (HeapType == BufferHeapType::Default)
          {
-            if (isConstantData) delayReleaseMgr->Enqueue(std::move(middleBuffer));
+            if (isConstantData) lateReleaseMgr->Enqueue(std::move(middleBuffer));
             middleBuffer->Write(data, indexOffset, _elementCount);
             //......
          }
@@ -491,6 +491,8 @@ namespace
          if (DataType != BufferDataType::Texture) throw std::exception("Cannot use WriteTexture() with non-texture buffers.");
          if (HeapType == BufferHeapType::Default)
          {
+            if (!middleBuffer) throw std::runtime_error("Constant default buffer cannot be written twice.");
+            if (isConstantData) lateReleaseMgr->Enqueue(std::move(middleBuffer));
             middleBuffer->WriteTexture(data, texInfo, arrayIndex);
             dirtyBuffer.push_back(this);
          }
@@ -751,6 +753,7 @@ void Pillow::Graphics::D3D12Renderer::Pioneer()
 
 void D3D12Renderer::Assembler()
 {
+   lateReleaseMgr->ReleaseGarbage(); // Place it here, so it works not in the main thread.
    cmdQueue->ExecuteCommandLists(threads, _cmdLists.data());
    CheckHResult(swapChain->Present(verticalBlanks, (allowTearing && verticalBlanks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
    fenceSync->NextFrame();
