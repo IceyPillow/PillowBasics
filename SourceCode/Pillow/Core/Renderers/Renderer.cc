@@ -15,7 +15,7 @@ namespace
    // The maximum span of a CPU frame is 2*Tg (Tt < Tg) or Tt + Tg (Tt >= Tg), if we don't take into account the GPU.
    // 
    // On the other hand, a sync method generates a lower framerate, but provides a better delay.
-   // The maximum span is Tt + Tg, , if we don't take into account the GPU.
+   // The maximum span is Tt + Tg, if we don't take into account the GPU.
    //
    // We choose the first method for a better performance.
 
