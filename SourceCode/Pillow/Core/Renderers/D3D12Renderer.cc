@@ -79,7 +79,6 @@ namespace
    class FenceSync
    {
       ReadonlyProperty(uint64_t, FrameIndex)
-         ReadonlyProperty(uint64_t, CompletedFence)
 
    public:
       FenceSync(ComPtr<IDevice>& device, ComPtr<ID3D12CommandQueue>& commandQueue)
@@ -96,7 +95,7 @@ namespace
       }
 
       uint64_t GetTargetFence() { return _FrameIndex + 1; }
-
+      uint64_t GetCompletedFence() { return fence->GetCompletedValue(); }
       int32_t GetFrameArrayIdx() { return _FrameIndex % Constants::SwapChainSize; }
 
       // Get the next frame.
@@ -112,7 +111,7 @@ namespace
 
       // Get all GPU's work done.
       // ***WARNING***
-      // Invoke this BEFORE entering worker threads or after NextFrame() in one frame.
+      // Invoke this BEFORE entering worker threads (to avoid resource references existing in uncommitted cmd lists), or AFTER NextFrame() in one frame.
       void FlushQueue()
       {
          uint64_t minFence = _FrameIndex;
@@ -123,12 +122,10 @@ namespace
       void Synchronize(uint64_t targetFence)
       {
          // Make sure the GPU arrives at the targetFence.
-         _CompletedFence = fence->GetCompletedValue();
-         if (_CompletedFence < targetFence)
+         if (fence->GetCompletedValue() < targetFence)
          {
             fence->SetEventOnCompletion(targetFence, syncEventHandle);
             WaitForSingleObjectEx(syncEventHandle, INFINITE, true);
-            _CompletedFence = targetFence;
          }
       }
 
