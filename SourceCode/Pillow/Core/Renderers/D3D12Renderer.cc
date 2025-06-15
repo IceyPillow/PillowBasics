@@ -607,7 +607,7 @@ namespace
       // Swapchain
       DXGI_SWAP_CHAIN_DESC1 swapChainDesc
       {
-         0,0, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
+         0,0, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
          DXGI_USAGE_RENDER_TARGET_OUTPUT, Constants::SwapChainSize, DXGI_SCALING_NONE,
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
          uint32_t(allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
@@ -649,7 +649,7 @@ namespace
    {
       D3D12_RENDER_TARGET_VIEW_DESC rtvDesc
       {
-         DXGI_FORMAT_B8G8R8A8_UNORM, D3D12_RTV_DIMENSION_TEXTURE2D
+         DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RTV_DIMENSION_TEXTURE2D
       };
       rtvDesc.Texture2D = { 0,0 };
       for (int i = 0; i < Constants::SwapChainSize; i++)
