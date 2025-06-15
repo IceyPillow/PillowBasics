@@ -636,6 +636,8 @@ namespace
          _cmdLists.push_back(temp.Get());
          cmdLists.push_back(std::move(temp));
       }
+      // Others
+      lateReleaseMgr = std::make_unique<lateReleaseManager>();
    }
 
    void CreateHeapsAndPSOs()
