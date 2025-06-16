@@ -35,6 +35,46 @@ typedef ID3D12Resource IResource;                // The original one is fine
 // Static variables
 namespace
 {
+   const DXGI_FORMAT NativeTexFmt[int32_t(GenericTexFmt::Count)]
+   {
+      DXGI_FORMAT_R8G8B8A8_UNORM,
+      DXGI_FORMAT_R8G8_SNORM,
+      DXGI_FORMAT_R8_UNORM,
+   };
+   const DXGI_FORMAT NativeBCTexFmt[int32_t(GenericTexFmt::Count)]
+   {
+      DXGI_FORMAT_BC3_UNORM,
+      DXGI_FORMAT_BC5_SNORM,
+      DXGI_FORMAT_BC4_UNORM,
+   };
+#define DEFAULT_LAYOUT \
+0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0
+   const D3D12_INPUT_ELEMENT_DESC _BasicVertex[3]
+   {
+      { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
+      { "TEXCOORD", 0, DXGI_FORMAT_R8G8_UINT, DEFAULT_LAYOUT },
+      { "TEXCOORD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_LAYOUT }
+   };
+   const D3D12_INPUT_ELEMENT_DESC _StaticVertex[5]
+   {
+      { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
+      { "TEXCOORD", 0, DXGI_FORMAT_R8G8_UINT, DEFAULT_LAYOUT },
+      { "TEXCOORD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_LAYOUT },
+      { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
+      { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT }
+   };
+   const D3D12_INPUT_ELEMENT_DESC _SkeletalVertex[5]
+   {
+      { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
+      { "TEXCOORD", 0, DXGI_FORMAT_R8G8B8A8_UINT, DEFAULT_LAYOUT },
+      { "TEXCOORD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_LAYOUT },
+      { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
+      { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT }
+   };
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutBasic{ _BasicVertex , 3};
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutStatic{ _StaticVertex, 5 };
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutSkeletal{ _SkeletalVertex, 5 };
+
    class FenceSync;
    class DescriptorHeapManager;
    class lateReleaseManager;
@@ -65,15 +105,7 @@ namespace
 // Types
 namespace
 {
-   // TODO: add a BC encoder
-   const DXGI_FORMAT Generic2DxgiFormat[int32_t(GenericTextureFormat::Count)]
-   {
-      DXGI_FORMAT_R8G8B8A8_UNORM, //BC3
-      DXGI_FORMAT_R8G8_UNORM, //BC5
-      DXGI_FORMAT_R8_UNORM, //BC4
-   };
-
-   ForceInline D3D12_RESOURCE_BARRIER CreateBarrier(ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+   ForceInline void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 
    // Fence synchronization wrapper
    class FenceSync
@@ -557,7 +589,7 @@ namespace
 // Static functions
 namespace
 {
-   ForceInline D3D12_RESOURCE_BARRIER CreateBarrier(ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+   ForceInline void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
    {
       D3D12_RESOURCE_BARRIER barrier
       {
