@@ -9,13 +9,14 @@
 #include "../Texture.h"
 
 using namespace Pillow::Graphics;
+using namespace DirectX;
 
 namespace Pillow::Graphics
 {
-   using namespace DirectX;
-
+   class GenericRenderer;
    extern int32_t RefreshRate;
    extern XMINT2 ScreenSize;
+   extern std::unique_ptr<GenericRenderer> Instance;
 
    typedef uint32_t ResourceHandle;
 
@@ -27,16 +28,6 @@ namespace Pillow::Graphics
       PiplelineState = 3 << 28,
       ConstantBuffer = 4 << 28,
    };
-
-   ForceInline ResourceType GetResourceType(ResourceHandle handle)
-   {
-      return ResourceType(handle & (7 << 28));
-   }
-
-   ForceInline bool IsValidHandle(ResourceHandle handle)
-   {
-      return (handle & !(7 << 28)) != 0;
-   }
 
    struct Drawcall
    {
@@ -102,7 +93,9 @@ namespace Pillow::Graphics
 
 #endif
 
-   extern std::unique_ptr<GenericRenderer> Instance;
+   ForceInline ResourceType GetResourceType(ResourceHandle handle) { return ResourceType(handle & (7 << 28)); }
+
+   ForceInline bool IsValidHandle(ResourceHandle handle) { return (handle & !(7 << 28)) != 0; }
 
    ForceInline void InitializeRenderer(int32_t threadCount, const void* parameter)
    {
