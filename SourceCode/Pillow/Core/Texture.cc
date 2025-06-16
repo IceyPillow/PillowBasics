@@ -104,23 +104,24 @@ namespace
    }
 }
 
-GenericTextureInfo::GenericTextureInfo(int32_t width, GenericTextureFormat format, bool hasMips, bool isCube, bool useCompression, int32_t arraySize) :
-   _Width(width),
-   _PixelSize(PixelSize[(int32_t)format]),
-   _ArraySliceCount(arraySize* (isCube ? 6 : 1)),
-   _Mip0Size(width * width * PixelSize[(int32_t)format]),
+GenericTexInfo::GenericTexInfo(GenericTexFmt format, int32_t width, bool bMips, bool bCompression, bool bCube, int32_t arraySize) :
    _Format(format),
-   _IsCubemap(isCube),
-   _useCompression(useCompression)
+   _PixelSize(uint8_t(PixelSize[int32_t(format)])),
+   _Width(uint16_t(width)),
+   _ArrayCount(uint8_t(arraySize* (bCube ? 6 : 1))),
+   _IsCubemap(bCube),
+   _UseCompression(bCompression)
 {
-   if (width & (width - 1)) throw std::exception("Texture width must be 2^n");
+   if (width < 4 || (width & (width - 1))) throw std::exception("Texture width restriction: w=2^n and w>=4");
    int32_t power = std::log2f(width);
-   _MipSliceCount = hasMips ? power + 1 : 1;
-   _MipSliceSize = hasMips ? (((1 << 2 * _MipSliceCount) - 1) / 3) * _PixelSize : _Mip0Size;
-   _TotalSize = _MipSliceSize * _ArraySliceCount;
+   // The lowest mipmap limit is 4x4, needed by block compression.
+   _MipCount = bMips ? power - 1 : 1;
+   _ArraySliceSize = bMips ? (((1 << (2 * _MipCount + 4)) - 16) / 3) * GetPixelSize() : GetMipZeroSize();
+   _MipZeroSize = _Width * _Width * _PixelSize;
+   _TotalSize = _ArrayCount * _ArraySliceSize;
 }
 
-void LoadTexture(const std::wstring& relativePath)
+void Pillow::Graphics::LoadTexture(const std::wstring& relativePath)
 {
    // Read the binary file.
    std::wstring path = GetResourcePath(relativePath);
@@ -140,18 +141,18 @@ void LoadTexture(const std::wstring& relativePath)
    lodepng::decode(imageData, w, h, state, fileData);
    if (state.info_raw.bitdepth != 8) throw std::exception("Bitdepth should be 8.");
    if (w!=h) throw std::exception("The image should be square.");
-   GenericTextureInfo texInfo;
+   GenericTexInfo texInfo;
    if (state.info_raw.colortype == LCT_GREY)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::UnsignedNormalized_R8);
+      texInfo = GenericTexInfo(GenericTexFmt::UnsignedNormalized_R8, w);
    }
    else if (state.info_raw.colortype == LCT_RGB)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::UnsignedNormalized_R8G8B8A8);
+      texInfo = GenericTexInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    }
    else if (state.info_raw.colortype == LCT_RGBA)
    {
-      texInfo = GenericTextureInfo(w, GenericTextureFormat::UnsignedNormalized_R8G8B8A8);
+      texInfo = GenericTexInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    }
 
 }

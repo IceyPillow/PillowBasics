@@ -5,7 +5,7 @@
 
 namespace Pillow::Graphics
 {
-   enum class GenericTextureFormat : int8_t
+   enum class GenericTexFmt : uint8_t
    {
       // 1.Supports .hdr files.
       // 2.R8G8B8 isn't supported in DXGI_FORMAT, use R8G8B8A8 to store it.
@@ -15,36 +15,47 @@ namespace Pillow::Graphics
       Count
    };
 
-   const int32_t PixelSize[(int32_t)GenericTextureFormat::Count]
+   const int32_t PixelSize[int32_t(GenericTexFmt::Count)]
    {
       4, // UnsignedNormalized_R8G8B8A8
       2, // UnsignedNormalized_R8G8
       1, // UnsignedNormalized_R8
    };
 
-   class GenericTextureInfo
+   //                     Subresource Indexing                       //
+   //                                         ______________________ //
+   // subres(0) subres(3) -> Row: Mip Slice 0 |subres(6) subres(9) | //
+   // subres(1) subres(4)                     |subres(7) subres(10)| //
+   // subres(2) subres(5)                     |subres(8) subres(11)| //
+   //     V                                   ---------------------- //
+   // Array Slice 0                           ^^^ Plane Slice 1 ^^^  //
+   //                                                                //
+   // Pseudo Code: Subres Res[PlaneSlice][ArraySlice][MipSlice];     //
+   class GenericTexInfo
    {
-      ReadonlyProperty(int32_t, Width)
-         ReadonlyProperty(int32_t, PixelSize)
-         ReadonlyProperty(int32_t, MipSliceCount)
-         ReadonlyProperty(int32_t, ArraySliceCount)
-         ReadonlyProperty(int32_t, Mip0Size)
-         ReadonlyProperty(int32_t, MipSliceSize)
-         ReadonlyProperty(int32_t, TotalSize)
-         ReadonlyProperty(GenericTextureFormat, Format)
+      // Format
+      ReadonlyProperty(GenericTexFmt, Format)
+         ReadonlyProperty(uint8_t, PixelSize)
+         ReadonlyProperty(uint16_t, Width)
+         ReadonlyProperty(uint8_t, MipCount)
+         ReadonlyProperty(uint8_t, ArrayCount)
          ReadonlyProperty(bool, IsCubemap)
-         ReadonlyProperty(bool, useCompression)
+         ReadonlyProperty(bool, UseCompression)
+         // Size
+         ReadonlyProperty(uint16_t, MipZeroSize)
+         ReadonlyProperty(uint16_t, ArraySliceSize)
+         ReadonlyProperty(uint16_t, TotalSize)
 
    public:
-      GenericTextureInfo() = default;
-      GenericTextureInfo(const GenericTextureInfo&) = default;
-      GenericTextureInfo(int32_t width, GenericTextureFormat format, bool hasMips = true, bool isCube = false, bool useCompression = true, int32_t arraySize = 1);
+      GenericTexInfo() = default;
+      GenericTexInfo(const GenericTexInfo&) = default;
+      GenericTexInfo(GenericTexFmt format, int32_t width,  bool bMips = true, bool bCompression = true, bool bCube = false, int32_t arraySize = 1);
    };
 
    class GenericTexture
    {
    public:
-      const GenericTextureInfo Info;
+      const GenericTexInfo Info;
    };
 
    void LoadTexture(const std::wstring& relativePath);
