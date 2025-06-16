@@ -45,6 +45,23 @@ type& operator=(type&&) = delete;
 
 namespace Pillow
 {
+   struct alignas(64) CacheLine
+   {
+      uint64_t padding[8]{}; // 64 bytes cache line padding
+   };
+
+   // The alignment must be a power of two.
+   ForceInline int32_t GetAlignedSize(int32_t size, int32_t alignment)
+   {
+      return (size + alignment - 1) & ~(alignment - 1);
+   }
+
+   // Create 64-bytes-aligned memory.
+   ForceInline std::unique_ptr<CacheLine[]> CreateAlignedMemory(int32_t unalignedSize)
+   {
+      return std::make_unique<CacheLine[]>((unalignedSize + sizeof(CacheLine) - 1) / sizeof(CacheLine));
+   }
+
    std::string Wstring2String(const std::wstring& wstr);
    std::wstring String2Wstring(const std::string& str);
    std::wstring GetResourcePath(const std::wstring& name);
