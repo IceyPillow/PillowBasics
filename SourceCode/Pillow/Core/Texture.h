@@ -5,6 +5,13 @@
 
 namespace Pillow::Graphics
 {
+   enum class CompressionMode : uint8_t
+   {
+      None,
+      Hardware,
+      HardwareWithDithering
+   };
+
    enum class GenericTexFmt : uint8_t
    {
       // 1.Supports .hdr files.
@@ -28,10 +35,10 @@ namespace Pillow::Graphics
    // subres(1) subres(4)                     |subres(7) subres(10)| //
    // subres(2) subres(5)                     |subres(8) subres(11)| //
    //     V                                   ---------------------- //
-   // Array Slice 0                           ^^^ Plane Slice 1 ^^^  //
+   // Col: Array Slice 0                      ^^^ Plane Slice 1 ^^^  //
    //                                                                //
    // Pseudo Code: Subres Res[PlaneSlice][ArraySlice][MipSlice];     //
-   class GenericTexInfo
+   class GenericTextureInfo
    {
       // Format
       ReadonlyProperty(GenericTexFmt, Format)
@@ -40,22 +47,22 @@ namespace Pillow::Graphics
          ReadonlyProperty(uint8_t, MipCount)
          ReadonlyProperty(uint8_t, ArrayCount)
          ReadonlyProperty(bool, IsCubemap)
-         ReadonlyProperty(bool, UseCompression)
+         ReadonlyProperty(CompressionMode, CompressionMode)
          // Size
          ReadonlyProperty(uint16_t, MipZeroSize)
          ReadonlyProperty(uint16_t, ArraySliceSize)
          ReadonlyProperty(uint16_t, TotalSize)
 
    public:
-      GenericTexInfo() = default;
-      GenericTexInfo(const GenericTexInfo&) = default;
-      GenericTexInfo(GenericTexFmt format, int32_t width,  bool bMips = true, bool bCompression = true, bool bCube = false, int32_t arraySize = 1);
+      GenericTextureInfo() = default;
+      GenericTextureInfo(const GenericTextureInfo&) = default;
+      GenericTextureInfo(GenericTexFmt format, int32_t width,  bool bMips = true, CompressionMode compMode = CompressionMode::HardwareWithDithering, bool bCube = false, int32_t arraySize = 1);
    };
 
    class GenericTexture
    {
    public:
-      const GenericTexInfo Info;
+      const GenericTextureInfo Info;
    };
 
    void LoadTexture(const std::wstring& relativePath);
