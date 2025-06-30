@@ -54,6 +54,9 @@ namespace Pillow::Graphics
          ReadonlyProperty(uint16_t, TotalSize)
 
    public:
+      static const int32_t MaxArraySize = UINT8_MAX;
+      static const int32_t MaxMipCount = UINT8_MAX;
+
       GenericTextureInfo() = default;
       GenericTextureInfo(const GenericTextureInfo&) = default;
       GenericTextureInfo(GenericTexFmt format, int32_t width,  bool bMips = true, CompressionMode compMode = CompressionMode::HardwareWithDithering, bool bCube = false, int32_t arraySize = 1);

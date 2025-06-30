@@ -104,13 +104,13 @@ namespace
    }
 }
 
-GenericTexInfo::GenericTexInfo(GenericTexFmt format, int32_t width, bool bMips, bool bCompression, bool bCube, int32_t arraySize) :
+GenericTextureInfo::GenericTextureInfo(GenericTexFmt format, int32_t width, bool bMips, CompressionMode compMode, bool bCube, int32_t arraySize) :
    _Format(format),
    _PixelSize(uint8_t(PixelSize[int32_t(format)])),
    _Width(uint16_t(width)),
    _ArrayCount(uint8_t(arraySize* (bCube ? 6 : 1))),
    _IsCubemap(bCube),
-   _UseCompression(bCompression)
+   _CompressionMode(compMode)
 {
    if (width < 4 || (width & (width - 1))) throw std::exception("Texture width restriction: w=2^n and w>=4");
    int32_t power = std::log2f(width);
@@ -141,18 +141,18 @@ void Pillow::Graphics::LoadTexture(const std::wstring& relativePath)
    lodepng::decode(imageData, w, h, state, fileData);
    if (state.info_raw.bitdepth != 8) throw std::exception("Bitdepth should be 8.");
    if (w!=h) throw std::exception("The image should be square.");
-   GenericTexInfo texInfo;
+   GenericTextureInfo texInfo;
    if (state.info_raw.colortype == LCT_GREY)
    {
-      texInfo = GenericTexInfo(GenericTexFmt::UnsignedNormalized_R8, w);
+      texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8, w);
    }
    else if (state.info_raw.colortype == LCT_RGB)
    {
-      texInfo = GenericTexInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
+      texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    }
    else if (state.info_raw.colortype == LCT_RGBA)
    {
-      texInfo = GenericTexInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
+      texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    }
 
 }
