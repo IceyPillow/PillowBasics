@@ -684,7 +684,7 @@ namespace
          D3D12_RESOURCE_BARRIER_FLAG_NONE,
          D3D12_RESOURCE_TRANSITION_BARRIER { resource.Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, before, after }
       };
-      return barrier;
+      cmdList->ResourceBarrier(1, &barrier);
    }
 
    // Return true if the client size doesn't change.
@@ -858,7 +858,7 @@ void D3D12Renderer::ReleaseResource(uint32_t handle)
 void D3D12Renderer::Worker(int32_t workerIndex)
 {
    int32_t frameIdx = fenceSync->GetFrameArrayIdx();
-   ICommandList* cmdList = cmdLists[workerIndex].Get();
+   ComPtr<ICommandList>& cmdList = cmdLists[workerIndex];
    ID3D12CommandAllocator* allocator = cmdAllocators[frameIdx * threads + workerIndex].Get();
    CheckHResult(allocator->Reset());
    CheckHResult(cmdList->Reset(allocator, nullptr));
@@ -866,15 +866,10 @@ void D3D12Renderer::Worker(int32_t workerIndex)
    // Do actual work.
    if (workerIndex == 0)
    {
-      auto barrier = CreateBarrier(backbuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-      cmdList->ResourceBarrier(1, &barrier);
-      
-      using namespace DirectX;
-      XMFLOAT4 color{ 0.5f + 0.5f * XMScalarCos(2 * lastingTime), 0.5f + 0.5f * XMScalarCos(2 * lastingTime + 2),0.5f + 0.5f * XMScalarCos(2 * lastingTime + 4),0 };
+      ApplyBarrier(cmdList, backbuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+      XMFLOAT4 color{ 0.5f + 0.5f * XMScalarCos(2 * GlobalLastingTime), 0.5f + 0.5f * XMScalarCos(2 * GlobalLastingTime + 2),0.5f + 0.5f * XMScalarCos(2 * GlobalLastingTime + 4),0 };
       cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(tempRTVs[frameIdx]), (float*)(&color), 0, nullptr);
-      
-      barrier = CreateBarrier(backbuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-      cmdList->ResourceBarrier(1, &barrier);
+      ApplyBarrier(cmdList, backbuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
    }
    CheckHResult(cmdList->Close());
 }
