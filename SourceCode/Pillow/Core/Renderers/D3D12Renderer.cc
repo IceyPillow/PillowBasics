@@ -812,7 +812,7 @@ namespace
       }
       // Step2: Compute indices, which follows the below mapping:
       // 0-C0, 1-C1, 2-Interpolation1, ..., 5-Interpolation4, 6-Interpolation5/0.0f, 7-Interpolation6/1.0f
-      for (size_t i = 1; i < BCPixelBlock; ++i)
+      for (size_t i = 0; i < BCPixelBlock; ++i)
       {
          uint32_t value;
          if (bUsing4BlockCodec)
@@ -820,7 +820,7 @@ namespace
             if (block[i] == 0) value = 6;
             else if (block[i] == 1) value = 7;
             if (fStart > 0 && fStart > block[i]) value = (fStart - block[i]) / fStart <= 0.5f ? 6 : 0;
-            if (fEnd < 1 && fEnd < block[i]) value = (block[i] - fEnd) / (1 - fEnd) <= 0.5f ? 7 : 1;
+            if (fEnd < 1 && fEnd < block[i]) value = (block[i] - fEnd) / (1 - fEnd) <= 0.5f ? 1 : 7;
             else
             {
                value = uint32_t(5.f * (block[i] - fStart) / (fEnd - fStart) + 0.5f);
