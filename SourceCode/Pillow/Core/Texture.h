@@ -69,4 +69,14 @@ namespace Pillow::Graphics
    };
 
    void LoadTexture(const std::wstring& relativePath);
+
+   ForceInline uint8_t ColorFloat2UInt8(float c)
+   {
+      return uint8_t(c * float(UINT8_MAX) + 0.5f);
+   }
+
+   ForceInline float ColorUInt82Float(uint8_t c)
+   {
+      return float(c) / float(UINT8_MAX);
+   }
 }
