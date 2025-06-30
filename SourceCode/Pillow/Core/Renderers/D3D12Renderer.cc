@@ -8,6 +8,10 @@
 #include <wrl.h> // import Component Object Model Pointer
 #include <d3d12.h>
 #include <dxgi1_6.h>
+#include <d3dcompiler.h>
+
+using namespace Pillow;
+using Microsoft::WRL::ComPtr;
 
 // __LINE__ in an inline function doesn't show the line number of the caller, thus choose a macro.
 #define CheckHResult(hr)\
@@ -21,9 +25,6 @@
    }\
 }
 
-using namespace Pillow;
-using Microsoft::WRL::ComPtr;
-
 typedef IDXGIFactory5 IFactory;                  // Has CheckFeatureSupport()
 typedef ID3D12Device4 IDevice;                   // Has CreateCommandList1()
 typedef ID3D12GraphicsCommandList2 ICommandList; // Has WriteBufferImmediate()
@@ -31,10 +32,12 @@ typedef IDXGISwapChain1 ISwapChain;              // Has SetBackgroundColor()
 typedef ID3D12Resource IResource;                // The original one is fine
 
 // An anonymous namespace has internal linkage (accessable in local translation unit)
-
 // Static variables
 namespace
 {
+   const int32_t CBAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+   const int32_t BCPixelBlock = 16;
+
    const DXGI_FORMAT NativeTexFmt[int32_t(GenericTexFmt::Count)]
    {
       DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -78,8 +81,7 @@ namespace
    class FenceSync;
    class DescriptorHeapManager;
    class lateReleaseManager;
-   class GeneralBuffer;
-
+   class UnitedBuffer;
    std::unique_ptr<FenceSync> fenceSync;
    std::unique_ptr<DescriptorHeapManager> descriptorMgr;
    std::unique_ptr<lateReleaseManager> lateReleaseMgr;
@@ -99,7 +101,6 @@ namespace
    bool allowTearing;
    XMINT2 backbufferSize;
    int32_t verticalBlanks{ 1 };
-
 }
 
 // Types
@@ -170,10 +171,10 @@ namespace
    class lateReleaseManager
    {
    public:
-      lateReleaseManager(){};
+      lateReleaseManager() {};
 
       // Enqueue an element that will be released after current frame.
-      void Enqueue(std::unique_ptr<GeneralBuffer>&& buffer)
+      void Enqueue(std::unique_ptr<UnitedBuffer>&& buffer)
       {
          Item item{ std::move(buffer), fenceSync->GetTargetFence() };
          releaseQueue.push(std::move(item));
@@ -196,7 +197,7 @@ namespace
    private:
       struct Item
       {
-         std::unique_ptr<GeneralBuffer> buffer;
+         std::unique_ptr<UnitedBuffer> buffer;
          uint64_t targetFence;
       };
 
@@ -342,10 +343,10 @@ namespace
          auto ReleaseHandle = [&handle](std::vector<uint16_t>& freePool)
             {
 #ifdef PILLOW_DEBUG
-            bool found = std::find(freePool.begin(), freePool.end(), handle) != freePool.end();
-            if (found) throw std::exception("Invalid index.");
+               bool found = std::find(freePool.begin(), freePool.end(), handle) != freePool.end();
+               if (found) throw std::exception("Invalid index.");
 #endif
-            freePool.push_back(handle);
+               freePool.push_back(handle);
             };
          auto flag = GetInnerFlag(handle);
          switch (flag)
@@ -402,104 +403,97 @@ namespace
       D3D12_CPU_DESCRIPTOR_HANDLE dsvCpuHandle0;
    };
 
-   enum class BufferDataType
+   // A superior wrapper for D3D12 resources of all types.
+   class UnitedBuffer
    {
-      Texture,
-      ConstantBuffer,
-      VertexOrIndexBuffer
-   };
+      DeleteDefautedMethods(UnitedBuffer)
 
-   enum class BufferHeapType
-   {
-      Upload = D3D12_HEAP_TYPE_UPLOAD,
-      Default = D3D12_HEAP_TYPE_DEFAULT
-   };
-
-   class GeneralBuffer
-   {
-      DeleteDefautedMethods(GeneralBuffer)
    public:
-      const BufferHeapType HeapType;
-      const BufferDataType DataType;
+      // Use none-scoped enumerations for convenience.
+      enum HeapType : uint8_t
+      {
+         Upload = D3D12_HEAP_TYPE_UPLOAD,
+         TextureUpload = D3D12_HEAP_TYPE_CUSTOM,
+         Readback = D3D12_HEAP_TYPE_READBACK,
+         Default = D3D12_HEAP_TYPE_DEFAULT
+      };
+
+      enum DataType : uint8_t
+      {
+         Texture,
+         ConstBuffer,
+         VertexOrIdxBuffer
+      };
+
+      // For texture arrays, create only a minimal number of mid buffers for uploading, which saves a lot of memory.
+      static const int32_t MaxMidPoolSize = 4;
+
+      const HeapType _HeapType;
+      const DataType _DataType;
       const GenericTextureInfo TexInfo;
       const int32_t ElementCount;
       const int32_t RawElementSize;
+      const int32_t AlignedElementSize;
       const int32_t TotalSize;
-      const bool isConstantData;
+      const bool KeepMidPool;
 
-      // The element size is 4 for an element of an R8G8B8A8 texture.
-      GeneralBuffer(BufferHeapType heapType, BufferDataType dataType, int32_t count, int32_t _rawElementSize, bool isConstantData = true, const GenericTextureInfo& texInfo = {}) :
-         HeapType(heapType),
-         DataType(dataType),
-         TexInfo(texInfo),
-         ElementCount(count),
-         RawElementSize(_rawElementSize),
-         TotalSize(GetAlignedElementSize(dataType, _rawElementSize)* count),
-         isConstantData(isConstantData)
+      UnitedBuffer(HeapType heapType, DataType dataType, int32_t _rawElementSize, int32_t count, bool keepMiddlePool = false):
+         UnitedBuffer(heapType, dataType, _rawElementSize, count, keepMiddlePool, GenericTextureInfo{})
       {
-         if (heapType == BufferHeapType::Default)
-         {
-            middleBuffer = std::make_unique<GeneralBuffer>(BufferHeapType::Upload, dataType, count, _rawElementSize, isConstantData, texInfo);
-         }
-
-         bool isUpload = heapType == BufferHeapType::Upload;
-         D3D12_RESOURCE_DESC resourceDesc
-         {
-            D3D12_RESOURCE_DIMENSION_BUFFER, 0, (uint64_t)TotalSize, 1, 1, 1, DXGI_FORMAT_UNKNOWN,
-            DXGI_SAMPLE_DESC{1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE
-         };
-         D3D12_HEAP_PROPERTIES heapProps
-         {
-            D3D12_HEAP_TYPE(heapType),
-            isUpload ? D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE : D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE,
-            isUpload ? D3D12_MEMORY_POOL_L0 : D3D12_MEMORY_POOL_L1,
-            0, 0
-         };
-         if (dataType == BufferDataType::Texture)
-         {
-            resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-            resourceDesc.Width = resourceDesc.Height = (uint32_t)texInfo.GetWidth();
-            resourceDesc.DepthOrArraySize = (uint16_t)texInfo.GetArraySliceCount();
-            resourceDesc.MipLevels = (uint16_t)texInfo.GetMipSliceCount();
-            resourceDesc.Format = Generic2DxgiFormat[(int32_t)texInfo.GetFormat()];
-            resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-            heapProps.Type = isUpload ? D3D12_HEAP_TYPE_CUSTOM : heapProps.Type;
-         }
-         CheckHResult(device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE,
-            &resourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&heap)));
-         gpuPointer = heap->GetGPUVirtualAddress();
-         D3D12_RANGE range{ 0, 0 };
-         CheckHResult(heap->Map(0, &range, (void**)(&cpuPointer)))
+         bool wrongUseCheck = dataType == Texture;
+         if (wrongUseCheck) throw std::runtime_error("Wrong constructor usage.");
       }
 
-      ~GeneralBuffer() = default;
-
-      uint64_t GetGPUAddress(int index = 0) { return gpuPointer + index * RawElementSize; };
-
-      void Write(const char* data, int indexOffset = 0, int _elementCount = 1)
+      UnitedBuffer(HeapType heapType, DataType dataType, const GenericTextureInfo& texInfo, bool keepMiddlePool = false):
+         UnitedBuffer(heapType, dataType, 0, 0, keepMiddlePool, texInfo)
       {
-         if (DataType == BufferDataType::Texture) throw new std::exception("Cannot use Write() with texture buffers.");
-         if (indexOffset + _elementCount > ElementCount) throw std::exception("Out of Range");
-         if (HeapType == BufferHeapType::Default)
+         bool wrongUseCheck = dataType != Texture;
+         wrongUseCheck |= dataType == Texture && (heapType == Upload || heapType == TextureUpload);
+         if (wrongUseCheck) throw std::runtime_error("Wrong constructor usage.");
+      }
+
+      ~UnitedBuffer() = default;
+
+      uint64_t GetGPUAddress(int index = 0) { return pointerGPU + index * RawElementSize; };
+
+      // The destination data should align with 64 bytes(the cache line size).
+      void ReadBack(std::unique_ptr<CacheLine[]>& destination, int32_t destinationSize = 0)
+      {
+         if (_HeapType != HeapType::Readback) throw std::exception("Cannot use ReadBack() with non-readback buffers.");
+         if (!destination) destination = CreateAlignedMemory(TotalSize);
+         else if (destinationSize < TotalSize) throw std::exception("Destination buffer is too small.");
+         if (_DataType == DataType::Texture)
          {
-            if (isConstantData) lateReleaseMgr->Enqueue(std::move(middleBuffer));
-            middleBuffer->Write(data, indexOffset, _elementCount);
-            //......
+            int32_t rowPitch = TexInfo.GetWidth() * TexInfo.GetPixelSize();
+            int32_t depthPitch = TexInfo.GetMipZeroSize();
+            heap->ReadFromSubresource(destination.get(), rowPitch, depthPitch, 0, nullptr);
          }
-         else
+         else memcpy(destination.get(), pointerCPU, TotalSize);
+      }
+
+      void WriteNumericData(const uint8_t* rawData, int indexOffset = 0, int _elementCount = 1)
+      {
+         if (_DataType == DataType::Texture) throw new std::runtime_error("Cannot use WriteNumericData() with textures.");
+         if (indexOffset + _elementCount > ElementCount) throw std::exception("Out of Range");
+         if (_HeapType == HeapType::Default)
          {
-            if (DataType == BufferDataType::VertexOrIndexBuffer)
+            RegisterGPUCopy();
+            middlePool[0]->WriteNumericData(rawData, indexOffset, _elementCount);
+            return;
+         }
+         // Write to the middle buffer
+         if (_DataType == DataType::VertexOrIdxBuffer)
+         {
+            memcpy(pointerCPU + indexOffset * RawElementSize, rawData, _elementCount * RawElementSize);
+         }
+         else if (_DataType == DataType::ConstBuffer)
+         {
+            int32_t alignedSize = GetAlignedSize(RawElementSize, CBAlignment);
+            for (int32_t i = 0; i < _elementCount; i++)
             {
-               memcpy((char*)cpuPointer + indexOffset * RawElementSize, data, _elementCount * RawElementSize);
-            }
-            else if (DataType == BufferDataType::ConstantBuffer)
-            {
-               for (int i = 0; i < _elementCount; i++)
-               {
-                  int32_t destOffset = (indexOffset + i) * GetAlignedElementSize(DataType, RawElementSize);
-                  int32_t srcOffset = (indexOffset + i) * RawElementSize;
-                  memcpy(cpuPointer + destOffset, data + srcOffset, RawElementSize);
-               }
+               int32_t destOffset = (indexOffset + i) * alignedSize;
+               int32_t srcOffset = (indexOffset + i) * RawElementSize;
+               memcpy(pointerCPU + destOffset, rawData + srcOffset, RawElementSize);
             }
          }
       }
@@ -512,77 +506,170 @@ namespace
       // But there are ways to avoid touching the footprints.
       // For instance, we can use ID3D12Resource::WriteToSubresource to copy unaligned data into a custom upload heap,
       // then use ID3DCommandList::CopyTextureRegion to copy it into a default buffer while ignoring the footprints.
-      void WriteTexture(const char* data, const GenericTextureInfo& texInfo, int32_t arrayIndex = 0)
+      void WriteTexture(const uint8_t* rawTexture, const GenericTextureInfo& texInfo, int32_t arrayIndex = 0)
       {
-         if (DataType != BufferDataType::Texture) throw std::exception("Cannot use WriteTexture() with non-texture buffers.");
-         if (HeapType == BufferHeapType::Default)
+         if (_DataType != DataType::Texture) throw std::runtime_error("Cannot use WriteTexture() with numeric data.");
+         if(middleTargets.size() == MaxMidPoolSize)  throw std::runtime_error("The middle pool is exhausted.");
+         if (_HeapType == HeapType::Default)
          {
-            if (!middleBuffer) throw std::runtime_error("Constant default buffer cannot be written twice.");
-            if (isConstantData) lateReleaseMgr->Enqueue(std::move(middleBuffer));
-            middleBuffer->WriteTexture(data, texInfo, arrayIndex);
-            dirtyBuffer.push_back(this);
+            RegisterGPUCopy();
+            if (std::find(middleTargets.begin(), middleTargets.end(), arrayIndex) != middleTargets.end())
+               throw std::runtime_error("Write to a same texture twice in one frame.");
+            middlePool[middleTargets.size()]->WriteTexture(rawTexture, texInfo, arrayIndex);
+            middleTargets.push_back(arrayIndex);
+            return;
          }
-         else
+         // Write to the middle buffer
+         for (int32_t mip = 0; mip < texInfo.GetMipCount(); mip++)
          {
-            for (int mip = 0; mip < texInfo.GetMipSliceCount(); mip++)
-            {
-               int32_t rowPixels = texInfo.GetWidth() >> mip;
-               int32_t rowPitch = rowPixels * texInfo.GetPixelSize();
-               int32_t depthPitch = rowPixels * rowPitch;
-               heap->WriteToSubresource(arrayIndex * texInfo.GetMipSliceCount(), nullptr, data, rowPitch, depthPitch);
-               data += depthPitch;
-            }
+            int32_t width = texInfo.GetWidth() >> mip;
+            int32_t rowPitch = width * texInfo.GetPixelSize();
+            int32_t depthPitch = width * rowPitch;
+            heap->WriteToSubresource(arrayIndex * texInfo.GetMipCount() + mip, nullptr, rawTexture, rowPitch, depthPitch);
+            rawTexture += depthPitch;
          }
       }
 
-      static void Copy2DefaultHeaps(ComPtr<ICommandList>& cmdList)
+      static void GPUCopy(ComPtr<ICommandList>& cmdList)
       {
-         if (dirtyBuffer.empty()) return;
-         while (!dirtyBuffer.empty())
+         if (DirtyPool.empty()) return;
+         while (!DirtyPool.empty())
          {
-            GeneralBuffer& buffer = *dirtyBuffer.back();
-            dirtyBuffer.pop_back();
-            //if (buffer.HeapType != BufferHeapType::Default) throw std::exception("Invalid buffer type.");
-            // Before barrier
-            auto barrier = CreateBarrier(buffer.middleBuffer->heap, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
-            cmdList->ResourceBarrier(1, &barrier);
-            barrier = CreateBarrier(buffer.heap, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-            cmdList->ResourceBarrier(1, &barrier);
-            // GPU Copy
-            if (buffer.DataType == BufferDataType::Texture)
+            UnitedBuffer& buffer = *DirtyPool.back();
+            DirtyPool.pop_back();
+            if (buffer.middlePool.size() == 1)
             {
-               for (uint32_t i = 0; i < buffer.TexInfo.GetMipSliceCount(); i++)
+               ApplyBarrier(cmdList, buffer.middlePool[0]->heap, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
+               ApplyBarrier(cmdList, buffer.heap, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+               cmdList->CopyResource(buffer.heap.Get(), buffer.middlePool[0]->heap.Get()); // GPU Copy
+               ApplyBarrier(cmdList, buffer.middlePool[0]->heap, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
+               ApplyBarrier(cmdList, buffer.heap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+            }
+            else // Texture array
+            {
+               while (buffer.middleTargets.size())
                {
-                  D3D12_TEXTURE_COPY_LOCATION sourceLoc{ buffer.middleBuffer->heap.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, i };
-                  D3D12_TEXTURE_COPY_LOCATION destinationLoc{ buffer.heap.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, i };
-                  cmdList->CopyTextureRegion(&destinationLoc, 0, 0, 0, &sourceLoc, nullptr);
+                  // Preparation
+                  int32_t target = buffer.middleTargets.back();
+                  buffer.middleTargets.pop_back();
+                  int32_t midIdx = buffer.middleTargets.size();
+                  D3D12_TEXTURE_COPY_LOCATION src{ buffer.middlePool[midIdx]->heap.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0 };
+                  D3D12_TEXTURE_COPY_LOCATION dst{ buffer.heap.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0 };
+                  // GPU copy
+                  ApplyBarrier(cmdList, buffer.middlePool[midIdx]->heap, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
+                  ApplyBarrier(cmdList, buffer.heap, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+                  for (int mip = 0; mip < buffer.TexInfo.GetMipCount(); mip++)
+                  {
+                     src.SubresourceIndex = mip;
+                     dst.SubresourceIndex = target * buffer.TexInfo.GetMipCount() + mip;
+                     cmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, NULL);
+                  }
+                  ApplyBarrier(cmdList, buffer.middlePool[midIdx]->heap, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
+                  ApplyBarrier(cmdList, buffer.heap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
                }
             }
-            else
-            {
-               //cmdList->CopyBufferRegion(buffer.heap.Get(), 0, buffer.middleBuffer->heap.Get(), buffer.middleBuffer->TotalSize);
-               cmdList->CopyResource(buffer.heap.Get(), buffer.middleBuffer->heap.Get());
-            }
-            // After barrier
-            barrier = CreateBarrier(buffer.heap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-            cmdList->ResourceBarrier(1, &barrier);
+
          }
       }
 
    private:
-      // TODO: Middle Buffer Pool Optimization
-      // static std::vector<std::unique_ptr<GeneralBuffer>> middleBufferPool;
-      inline static std::vector<GeneralBuffer*> dirtyBuffer{};
-
-      std::unique_ptr<GeneralBuffer> middleBuffer{};
-      ComPtr<IResource> heap{};
-      uint64_t gpuPointer{};
-      char* cpuPointer{};
-
-      static int32_t GetAlignedElementSize(BufferDataType type, int32_t _rawSize)
+      const D3D12_RESOURCE_DESC DefaultResDesc
       {
-         return type == BufferDataType::ConstantBuffer ? (_rawSize + 255) & ~255 : _rawSize;
+         D3D12_RESOURCE_DIMENSION_BUFFER, 0, uint64_t(TotalSize), 1, 1, 1, DXGI_FORMAT_UNKNOWN,
+         DXGI_SAMPLE_DESC{1, 0}, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE
+      };
+
+      inline static std::vector<UnitedBuffer*> DirtyPool{};
+      std::vector<std::unique_ptr<UnitedBuffer>> middlePool;
+      std::vector<int8_t> middleTargets;
+      ComPtr<IResource> heap{};
+      uint64_t pointerGPU{};
+      uint8_t* pointerCPU{};
+
+      UnitedBuffer(HeapType heapType, DataType dataType, int32_t _rawElementSize, int32_t count, bool keepMiddlePool, const GenericTextureInfo& texInfo) :
+         _HeapType(heapType),
+         _DataType(dataType),
+         TexInfo(texInfo),
+         ElementCount(count),
+         RawElementSize(_rawElementSize),
+         AlignedElementSize(GetAlignedSize(_rawElementSize, dataType == ConstBuffer ? CBAlignment : 1)),
+         TotalSize(GetAlignedSize(_rawElementSize, dataType == ConstBuffer ? CBAlignment : 1)* count),
+         KeepMidPool(keepMiddlePool)
+      {
+         bool isUpload = heapType == Upload || heapType == TextureUpload;
+         bool isRdBack = heapType == Readback;
+         if (isRdBack && dataType == Texture && texInfo.GetMipCount() != 1)
+            throw std::runtime_error("Texture readback buffers don't support mipmaps. It's a restriction of the Pillow Basics design.");
+
+         // Write-combining disables the CPU cache and enables the write-combining buffer. It's suitable for CPU-write-only actions.
+         auto pageType = isUpload ? D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE : (isRdBack ? D3D12_CPU_PAGE_PROPERTY_WRITE_BACK : D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE);
+         // Level 0 memory pool = CPU main memory
+         auto memPool = (isRdBack || isUpload) ? D3D12_MEMORY_POOL_L0 : D3D12_MEMORY_POOL_L1;
+         D3D12_HEAP_PROPERTIES heapProperties{ D3D12_HEAP_TYPE(heapType), pageType, memPool };
+         D3D12_RESOURCE_DESC resourceDesc = DefaultResDesc;
+         if (dataType == Texture)
+         {
+            int32_t fmt = int32_t(texInfo.GetFormat());
+            resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+            resourceDesc.Width = texInfo.GetWidth();
+            resourceDesc.Height = texInfo.GetWidth();
+            resourceDesc.DepthOrArraySize = uint16_t(texInfo.GetArrayCount());
+            resourceDesc.MipLevels = uint16_t(texInfo.GetMipCount());
+            resourceDesc.Format = texInfo.GetCompressionMode() == CompressionMode::None ? NativeTexFmt[fmt] : NativeBCTexFmt[fmt];
+            resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+         }
+         auto flags = D3D12_HEAP_FLAG_NONE;
+         auto state = heapType == Readback ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_GENERIC_READ;
+         CheckHResult(device->CreateCommittedResource(&heapProperties, flags, &resourceDesc, state, nullptr, IID_PPV_ARGS(&heap)));
+         GetCPUGPUPointers();
+         CreateMiddleBuffers();
       }
+
+      void CreateMiddleBuffers()
+      {
+         if (_HeapType != Default) return;
+         if (!middlePool.empty()) throw std::runtime_error("The middle buffer has been created.");
+         HeapType heapType = _DataType == Texture ? TextureUpload : Upload;
+         int32_t count = _DataType == Texture ? MaxMidPoolSize : 1;
+         middlePool.reserve(count);
+         middleTargets.reserve(count);
+         for (int i = 0; i < count; i++)
+         {
+            middlePool.push_back(std::move(std::make_unique<UnitedBuffer>(heapType, _DataType, ElementCount, RawElementSize, KeepMidPool, TexInfo)));
+         }
+      }
+
+      void GetCPUGPUPointers()
+      {
+         if (_HeapType != Default)
+         {
+            D3D12_RANGE range{ 0, 0 };
+            // CPU read is only needed by readback buffers.
+            CheckHResult(heap->Map(0, _HeapType == Readback ? nullptr : &range, (void**)(&pointerCPU)));
+         }
+         if (_DataType != Texture)
+         {
+            pointerGPU = heap->GetGPUVirtualAddress();
+         }
+      }
+
+      void RegisterGPUCopy()
+      {
+         if (middlePool.empty()) throw std::runtime_error("The middle buffer of current default buffer died.");
+         DirtyPool.push_back(this);
+         // Release the mid pool.
+         if (KeepMidPool) return;
+         while (middlePool.size())
+         {
+            lateReleaseMgr->Enqueue(std::move(middlePool.back()));
+            middlePool.pop_back();
+         }
+      }
+   };
+
+   class PipelineStateManager
+   {
+
    };
 }
 
@@ -775,6 +862,7 @@ void D3D12Renderer::Worker(int32_t workerIndex)
    ID3D12CommandAllocator* allocator = cmdAllocators[frameIdx * threads + workerIndex].Get();
    CheckHResult(allocator->Reset());
    CheckHResult(cmdList->Reset(allocator, nullptr));
+   if (workerIndex == 0) UnitedBuffer::GPUCopy(cmdList); // Copy all dirty buffers to default heaps.
    // Do actual work.
    if (workerIndex == 0)
    {
