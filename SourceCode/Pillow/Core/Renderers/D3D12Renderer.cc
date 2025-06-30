@@ -676,6 +676,172 @@ namespace
 // Static functions
 namespace
 {
+   ForceInline void PlaceBCIndex(uint8_t* destination, uint32_t value, uint32_t index)
+   {
+      uint32_t bitCount = index * 3;
+      uint32_t byteOffset = bitCount / 8;
+      uint32_t bitOffset = bitCount % 8;
+      destination[byteOffset] = (destination[byteOffset] & ~(0x7 << bitOffset)) | value << bitOffset;
+   }
+
+   void OptimizeAlpha(float* pX, float* pY, const float* block, uint32_t cSteps)
+   {
+      static constexpr float pC6[] = { 1, 4.f / 5.f, 3.f / 5.f, 2.f / 5.f, 1.f / 5.f, 0 };
+      static constexpr float pD6[] = { pC6[5], pC6[4], pC6[3], pC6[2], pC6[1], pC6[0] };
+      static constexpr float pC8[] = { 1, 6.f / 7.f, 5.f / 7.f, 4.f / 7.f, 3.f / 7.f, 2.f / 7.f, 1.f / 7.f, 0 };
+      static constexpr float pD8[] = { pC8[7], pC8[6], pC8[5], pC8[4], pC8[3], pC8[2], pC8[1], pC8[0] };
+      const float* pC = (6 == cSteps) ? pC6 : pC8;
+      const float* pD = (6 == cSteps) ? pD6 : pD8;
+      constexpr float MAX_VALUE = 1.0f;
+      constexpr float MIN_VALUE = 0.0f;
+      // Find Min and Max points, as starting point
+      float fX = MAX_VALUE;
+      float fY = MIN_VALUE;
+      if (8 == cSteps)
+      {
+         for (size_t iPoint = 0; iPoint < BCPixelBlock; iPoint++)
+         {
+            if (block[iPoint] < fX) fX = block[iPoint];
+            if (block[iPoint] > fY) fY = block[iPoint];
+         }
+      }
+      else
+      {
+         for (size_t iPoint = 0; iPoint < BCPixelBlock; iPoint++)
+         {
+            if (block[iPoint] < fX && block[iPoint] > MIN_VALUE) fX = block[iPoint];
+            if (block[iPoint] > fY && block[iPoint] < MAX_VALUE) fY = block[iPoint];
+         }
+         if (fX == fY) fY = MAX_VALUE;
+      }
+      // Use Newton's Method to find local minima of sum-of-squares error.
+      const auto fSteps = static_cast<float>(cSteps - 1);
+      for (size_t iIteration = 0; iIteration < 8; iIteration++)
+      {
+         if ((fY - fX) < (1.0f / 256.0f)) break;
+         float const fScale = fSteps / (fY - fX);
+         // Calculate new steps
+         float pSteps[8];
+         for (size_t iStep = 0; iStep < cSteps; iStep++)
+            pSteps[iStep] = pC[iStep] * fX + pD[iStep] * fY;
+         if (6 == cSteps)
+         {
+            pSteps[6] = MIN_VALUE;
+            pSteps[7] = MAX_VALUE;
+         }
+         // Evaluate function, and derivatives
+         float dX = 0.0f;
+         float dY = 0.0f;
+         float d2X = 0.0f;
+         float d2Y = 0.0f;
+         for (size_t iPoint = 0; iPoint < BCPixelBlock; iPoint++)
+         {
+            const float fDot = (block[iPoint] - fX) * fScale;
+            uint32_t iStep;
+            if (fDot <= 0.0f)
+            {
+               // D3DX10 / D3DX11 didn't take into account the proper minimum value for the bRange (BC4S/BC5S) case
+               iStep = ((6 == cSteps) && (block[iPoint] <= (fX + MIN_VALUE) * 0.5f)) ? 6u : 0u;
+            }
+            else if (fDot >= fSteps)
+            {
+               iStep = ((6 == cSteps) && (block[iPoint] >= (fY + MAX_VALUE) * 0.5f)) ? 7u : (cSteps - 1);
+            }
+            else
+            {
+               iStep = uint32_t(fDot + 0.5f);
+            }
+            if (iStep < cSteps)
+            {
+               // D3DX had this computation backwards (pPoints[iPoint] - pSteps[iStep])
+               // this fix improves RMS of the alpha component
+               const float fDiff = pSteps[iStep] - block[iPoint];
+
+               dX += pC[iStep] * fDiff;
+               d2X += pC[iStep] * pC[iStep];
+
+               dY += pD[iStep] * fDiff;
+               d2Y += pD[iStep] * pD[iStep];
+            }
+         }
+         // Move endpoints
+         if (d2X > 0.0f) fX -= dX / d2X;
+         if (d2Y > 0.0f) fY -= dY / d2Y;
+         if (fX > fY) std::swap(fX, fY);
+         if ((dX * dX < (1.0f / 64.0f)) && (dY * dY < (1.0f / 64.0f))) break;
+      }
+      *pX = (fX < MIN_VALUE) ? MIN_VALUE : (fX > MAX_VALUE) ? MAX_VALUE : fX;
+      *pY = (fY < MIN_VALUE) ? MIN_VALUE : (fY > MAX_VALUE) ? MAX_VALUE : fY;
+   }
+
+   void EncodeBC3RGBA(bool RGBDithering)
+   {
+
+   }
+
+   // The block should be located in 4 rows.
+   void EncodeBC4Alpha(const float* block, uint8_t* destination)
+   {
+      // Step 1: Find end points.
+      bool bUsing4BlockCodec = false;
+      for (size_t i = 1; i < BCPixelBlock; ++i)
+      {
+         //  If there are boundary values in input texels, should use 4 interpolated color values to guarantee
+         //  the exact code of the boundary values.
+         if (block[i] == 0 || block[i] == 1)
+         {
+            bUsing4BlockCodec = true;
+            break;
+         }
+      }
+      // Using Optimize
+      float fStart, fEnd;
+      if (bUsing4BlockCodec)
+      {
+         // 4 interpolated color values
+         OptimizeAlpha(&fStart, &fEnd, block, 6);
+         destination[0] = ColorFloat2UInt8(fStart);
+         destination[1] = ColorFloat2UInt8(fEnd);
+      }
+      else
+      {
+         // 6 interpolated color values
+         OptimizeAlpha(&fStart, &fEnd, block, 8);
+         destination[0] = ColorFloat2UInt8(fEnd);
+         destination[1] = ColorFloat2UInt8(fStart);
+      }
+      // Step2: Compute indices, which follows the below mapping:
+      // 0-C0, 1-C1, 2-Interpolation1, ..., 5-Interpolation4, 6-Interpolation5/0.0f, 7-Interpolation6/1.0f
+      for (size_t i = 1; i < BCPixelBlock; ++i)
+      {
+         uint32_t value;
+         if (bUsing4BlockCodec)
+         {
+            if (block[i] == 0) value = 6;
+            else if (block[i] == 1) value = 7;
+            if (fStart > 0 && fStart > block[i]) value = (fStart - block[i]) / fStart <= 0.5f ? 6 : 0;
+            if (fEnd < 1 && fEnd < block[i]) value = (block[i] - fEnd) / (1 - fEnd) <= 0.5f ? 7 : 1;
+            else
+            {
+               value = uint32_t(5.f * (block[i] - fStart) / (fEnd - fStart) + 0.5f);
+            }
+         }
+         else
+         {
+            value = uint32_t(7.f * (block[i] - fEnd) / (fStart - fEnd) + 0.5f);
+            if (value == fEnd) value = 0;
+            else if (value == fStart) value = 1;
+            else value += 1;
+         }
+         PlaceBCIndex(destination, value, i);
+      }
+   }
+
+   void EncodeBC5Normal()
+   {
+
+   }
+
    ForceInline void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
    {
       D3D12_RESOURCE_BARRIER barrier
