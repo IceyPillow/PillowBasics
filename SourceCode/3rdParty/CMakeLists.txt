@@ -22,7 +22,7 @@ endfunction()
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
    "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025/*.h"
    "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025/*.cc"
-#   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025/*.inl"
+   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025/*.inl"
 )
 add_library(DirectXMath STATIC ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025" FILES ${SOURCES})
