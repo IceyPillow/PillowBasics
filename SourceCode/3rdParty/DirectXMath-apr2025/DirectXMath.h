@@ -612,6 +612,9 @@ namespace DirectX
         constexpr XMFLOAT2(float _x, float _y) noexcept : x(_x), y(_y) {}
         explicit XMFLOAT2(_In_reads_(2) const float* pArray)  noexcept : x(pArray[0]), y(pArray[1]) {}
 
+        // Pillow: Add index operators.
+        float& operator [] (_In_range_(0, 1) int32_t index) { return reinterpret_cast<float*>(this)[index]; }
+        const float operator [] (_In_range_(0, 1) int32_t index) const { return reinterpret_cast<const float*>(this)[index]; }
 #if (__cplusplus >= 202002L)
         bool operator == (const XMFLOAT2&) const = default;
         auto operator <=> (const XMFLOAT2&) const = default;
@@ -689,6 +692,10 @@ namespace DirectX
 
         constexpr XMFLOAT3(float _x, float _y, float _z) noexcept : x(_x), y(_y), z(_z) {}
         explicit XMFLOAT3(_In_reads_(3) const float* pArray) noexcept : x(pArray[0]), y(pArray[1]), z(pArray[2]) {}
+
+        // Pillow: Add index operators.
+        float& operator [] (_In_range_(0, 2) int32_t index) { return reinterpret_cast<float*>(this)[index]; }
+        const float operator [] (_In_range_(0, 2) int32_t index) const { return reinterpret_cast<const float*>(this)[index]; }
     };
 
     // 3D Vector; 32 bit floating point components aligned on a 16 byte boundary
@@ -766,6 +773,9 @@ namespace DirectX
         constexpr XMFLOAT4(float _x, float _y, float _z, float _w) noexcept : x(_x), y(_y), z(_z), w(_w) {}
         explicit XMFLOAT4(_In_reads_(4) const float* pArray) noexcept : x(pArray[0]), y(pArray[1]), z(pArray[2]), w(pArray[3]) {}
 
+        // Pillow: Add index operators.
+        float& operator [] (_In_range_(0, 3) int32_t index) { return reinterpret_cast<float*>(this)[index]; }
+        const float operator [] (_In_range_(0, 3) int32_t index) const { return reinterpret_cast<const float*>(this)[index]; }
 #if (__cplusplus >= 202002L)
         bool operator == (const XMFLOAT4&) const = default;
         auto operator <=> (const XMFLOAT4&) const = default;
