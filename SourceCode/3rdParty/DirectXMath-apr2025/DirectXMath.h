@@ -2290,6 +2290,11 @@ namespace DirectX
 #endif
     }
 
+} // namespace DirectX
+
+// Pillow: Move those includes out of the DirectX namespace, and declare
+// the namespace in each .inl file, to avoid ambiguity errors popped by
+// Intellisence.
 #include "DirectXMathConvert.inl"
 #include "DirectXMathVector.inl"
 #include "DirectXMathMatrix.inl"
@@ -2304,6 +2309,3 @@ namespace DirectX
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-
-} // namespace DirectX
-
