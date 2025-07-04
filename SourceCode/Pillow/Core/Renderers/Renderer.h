@@ -13,9 +13,13 @@ using namespace DirectX;
 
 namespace Pillow::Graphics
 {
-   class GenericRenderer;
+   // Perceptual weightings for the importance of each channel.
+   const XMVECTOR RGBLuminance = XMVectorSet(0.2125f / 0.7154f, 1, 0.0721f / 0.7154f, 1);
+   const XMVECTOR RGBLuminanceInv = XMVectorSet(0.7154f / 0.2125f, 1, 0.7154f / 0.0721f, 1);
+
    extern int32_t RefreshRate;
    extern XMINT2 ScreenSize;
+   class GenericRenderer;
    extern std::unique_ptr<GenericRenderer> Instance;
 
    typedef uint32_t ResourceHandle;
