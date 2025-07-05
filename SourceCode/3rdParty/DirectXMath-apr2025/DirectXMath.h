@@ -41,10 +41,16 @@
 #endif
 #endif
 
-#if defined(_WIN64) && !defined(_XM_SSE4_INTRINSICS_)
-// Pillow Modification: use SSE4 explicitly when compiling on Windows.
+#if defined(_WIN64)
+#if !defined(_XM_SSE4_INTRINSICS_)
+// Pillow: Use SSE4 explicitly on Windows.
 #define _XM_SSE4_INTRINSICS_
 #endif
+#if !defined(_XM_FMA3_INTRINSICS_)
+// Pillow: Use FMA3 explicitly on Windows.
+#define _XM_FMA3_INTRINSICS_
+#endif
+#endif //_WIN64
 
 #if !defined(_XM_AVX2_INTRINSICS_) && defined(__AVX2__) && !defined(_XM_NO_INTRINSICS_)
 #define _XM_AVX2_INTRINSICS_
