@@ -1,9 +1,7 @@
 #include "Texture.h"
 #include "fstream"
 #include "filesystem"
-#include "DirectXMath-apr2025/DirectXMath.h"
 #include "lodepng-apr2025/lodepng.h"
-#include "Auxiliaries.h"
 
 using namespace Pillow;
 using namespace Pillow::Graphics;
