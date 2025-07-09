@@ -681,115 +681,335 @@ namespace
 // Static functions
 namespace
 {
-   ForceInline void PlaceBCIndex(uint8_t* destination, uint32_t value, uint32_t index)
+   ForceInline void PlaceBCIndex(uint8_t* destination, uint32_t value, uint32_t pixelIndex)
    {
-      uint32_t bitCount = index * 3;
+      uint32_t bitCount = pixelIndex * 3;
       uint32_t byteOffset = bitCount / 8;
       uint32_t bitOffset = bitCount % 8;
       destination[byteOffset] = (destination[byteOffset] & ~(0x7 << bitOffset)) | value << bitOffset;
    }
 
-   void OptimizeAlpha(float* pX, float* pY, const float* block, uint32_t cSteps)
+   void XM_CALLCONV OptimizeRGB(XMVECTOR& color0, XMVECTOR& color1, const XMVECTOR* block)
+   {
+      const uint32_t steps = 4;
+      constexpr float fEpsilon = (0.25f / 64.f) * (0.25f / 64.f);
+      static constexpr float pC[] = { 1, 2.f / 3.f, 1.f / 3.f, 0 };
+      static constexpr float pD[] = { pC[3], pC[2], pC[1], pC[0] };
+      // Find Min and Max points, as starting point
+      XMVECTOR c0 = RGBLuminance;
+      XMVECTOR c1 = XMVectorZero();
+      for (int32_t i = 0; i < BCBlockLength; i++)
+      {
+         XMVECTOR select = XMVectorLess(block[i], c0);
+         c0 = XMVectorSelect(c0, block[i], select);
+         select = XMVectorGreater(block[i], c1);
+         c1 = XMVectorSelect(c1, block[i], select);
+      }
+      // Diagonal axis
+      const XMVECTOR AB = XMVectorSubtract(c1, c0);
+      const float fAB = XMVectorGetX(XMVector3Dot(AB, AB));
+      // Single color block.. no need to root-find
+      if (fAB < FLT_MIN)
+      {
+         color0 = c0;
+         color1 = c1;
+         return;
+      }
+      // Try all four axis directions, to determine which diagonal best fits data
+      XMVECTOR dir = XMVectorScale(AB, 1.f / fAB);
+      const XMVECTOR Mid = XMVectorLerp(c0, c1, 0.5f);
+      XMVECTOR fDir = XMVectorZero();
+      for (int32_t i = 0; i < BCBlockLength; i++)
+      {
+         XMVECTOR pt = XMVectorMultiply(XMVectorSubtract(block[i], Mid), dir);
+         //XMVectorSetW(pt, 0);
+         XMFLOAT3A _pt;
+         XMStoreFloat3A(&_pt, pt);
+         XMVECTOR f = XMVectorReplicate(_pt.x);
+         f = XMVectorAdd(f, XMVectorSet(_pt.y, _pt.y, -_pt.y, -_pt.y));
+         f = XMVectorAdd(f, XMVectorSet(_pt.z, -_pt.z, _pt.z, -_pt.z));
+         fDir = XMVectorMultiply(f, f);
+      }     
+      XMFLOAT4A _fDir {};
+      XMStoreFloat4A(&_fDir, fDir);
+      float fDirMax = _fDir[0];
+      int32_t  iDirMax = 0;
+      for (size_t i = 1; i < 4; i++)
+      {
+         if (_fDir[i] <= fDirMax) continue;
+         fDirMax = _fDir[i];
+         iDirMax = i;
+      }
+      if (iDirMax & 2)
+      {
+         const XMVECTOR select = XMVectorSelectControl(0, 1, 0, 0);
+         XMVECTOR temp = c0;
+         c0 = XMVectorSelect(c0, c1, select);
+         c1 = XMVectorSelect(c1, temp, select);
+      }
+      if (iDirMax & 1)
+      {
+         const XMVECTOR select = XMVectorSelectControl(0, 0, 1, 0);
+         XMVECTOR temp = c0;
+         c0 = XMVectorSelect(c0, c1, select);
+         c1 = XMVectorSelect(c1, temp, select);
+      }
+      // Two color block.. no need to root-find
+      if (fAB < 1.f / 4096.f)
+      {
+         color0 = c0;
+         color1 = c1;
+         return;
+      }
+      // Use Newton's Method to find local minima of sum-of-squares error.
+      const float fSteps = steps - 1;
+      for (int32_t i = 0; i < 8; i++)
+      {
+         // Calculate new steps
+         XMVECTOR pSteps[4];
+         for (size_t iStep = 0; iStep < steps; iStep++)
+         {
+            pSteps[iStep] = XMVectorAdd(XMVectorScale(c0, pC[iStep]), XMVectorScale(c1, pD[iStep]));
+         }
+         // Calculate color direction
+         dir = XMVectorSubtract(c1, c0);
+         const float fLen = XMVectorGetX(XMVector3Dot(dir, dir));
+         if (fLen < (1.0f / 4096.0f)) break;
+         dir = XMVectorScale(dir, fSteps / fLen);
+         // Evaluate function, and derivatives
+         float d2X = 0;
+         float d2Y = 0;
+         XMVECTOR dX = XMVectorZero();
+         XMVECTOR dY = XMVectorZero();
+         for (int32_t i = 0; i < BCBlockLength; i++)
+         {
+            const float fDot = XMVectorGetX(XMVector3Dot(XMVectorSubtract(block[i], c0), dir));
+            uint32_t iStep;
+            if (fDot <= 0) iStep = 0;
+            else if (fDot >= fSteps) iStep = steps - 1;
+            else iStep = fDot + 0.5f;
+            XMVECTOR diff = XMVectorSubtract(pSteps[iStep], block[i]);
+            const float fC = pC[iStep] * (1.f / 8.f);
+            const float fD = pD[iStep] * (1.f / 8.f);
+            d2X += fC * pC[iStep];
+            dX = XMVectorAdd(dX, XMVectorScale(diff, fC));
+            d2Y += fD * pD[iStep];
+            dY = XMVectorAdd(dY, XMVectorScale(diff, fD));
+         }
+         // Move endpoints
+         if (d2X > 0) c0 = XMVectorAdd(c0, XMVectorScale(dX, -1 / d2X));
+         if (d2Y > 0) c1 = XMVectorAdd(c1, XMVectorScale(dY, -1 / d2Y));
+         XMVECTOR cmp1 = XMVectorLess(XMVectorMultiply(dX, dX), XMVectorReplicate(fEpsilon));
+         XMVECTOR cmp2 = XMVectorLess(XMVectorMultiply(dY, dY), XMVectorReplicate(fEpsilon));
+         XMVECTOR cmp = XMVectorAndInt(cmp1, cmp2);
+         cmp = XMVectorAndInt(XMVectorAndInt(cmp, XMVectorSplatY(cmp)), XMVectorSplatZ(cmp));
+         if (XMVectorGetIntX(cmp)) break;
+      }
+      color0 = c0;
+      color1 = c1;
+   }
+
+   void OptimizeAlpha(float& colorMin, float& colorMax, const float* block, uint32_t steps)
    {
       static constexpr float pC6[] = { 1, 4.f / 5.f, 3.f / 5.f, 2.f / 5.f, 1.f / 5.f, 0 };
       static constexpr float pD6[] = { pC6[5], pC6[4], pC6[3], pC6[2], pC6[1], pC6[0] };
       static constexpr float pC8[] = { 1, 6.f / 7.f, 5.f / 7.f, 4.f / 7.f, 3.f / 7.f, 2.f / 7.f, 1.f / 7.f, 0 };
       static constexpr float pD8[] = { pC8[7], pC8[6], pC8[5], pC8[4], pC8[3], pC8[2], pC8[1], pC8[0] };
-      const float* pC = (6 == cSteps) ? pC6 : pC8;
-      const float* pD = (6 == cSteps) ? pD6 : pD8;
-      constexpr float MAX_VALUE = 1.0f;
-      constexpr float MIN_VALUE = 0.0f;
+      const float* pC = (6 == steps) ? pC6 : pC8;
+      const float* pD = (6 == steps) ? pD6 : pD8;
       // Find Min and Max points, as starting point
-      float fX = MAX_VALUE;
-      float fY = MIN_VALUE;
-      if (8 == cSteps)
+      float _min = 1;
+      float _max = 0;
+      for (size_t i = 0; i < BCBlockLength; i++)
       {
-         for (size_t iPoint = 0; iPoint < BCPixelBlock; iPoint++)
-         {
-            if (block[iPoint] < fX) fX = block[iPoint];
-            if (block[iPoint] > fY) fY = block[iPoint];
-         }
+         if (block[i] < _min) _min = block[i];
+         if (block[i] > _max) _max = block[i];
       }
-      else
-      {
-         for (size_t iPoint = 0; iPoint < BCPixelBlock; iPoint++)
-         {
-            if (block[iPoint] < fX && block[iPoint] > MIN_VALUE) fX = block[iPoint];
-            if (block[iPoint] > fY && block[iPoint] < MAX_VALUE) fY = block[iPoint];
-         }
-         if (fX == fY) fY = MAX_VALUE;
-      }
+      if (steps == 6 && _min == _max) _max = 1;
       // Use Newton's Method to find local minima of sum-of-squares error.
-      const auto fSteps = static_cast<float>(cSteps - 1);
-      for (size_t iIteration = 0; iIteration < 8; iIteration++)
+      const float fSteps = steps - 1;
+      for (size_t i = 0; i < 8; i++)
       {
-         if ((fY - fX) < (1.0f / 256.0f)) break;
-         float const fScale = fSteps / (fY - fX);
+         if ((_max - _min) < (1.0f / 256.0f)) break;
+         float const fScale = fSteps / (_max - _min);
          // Calculate new steps
          float pSteps[8];
-         for (size_t iStep = 0; iStep < cSteps; iStep++)
-            pSteps[iStep] = pC[iStep] * fX + pD[iStep] * fY;
-         if (6 == cSteps)
+         for (size_t iStep = 0; iStep < steps; iStep++)
+            pSteps[iStep] = pC[iStep] * _min + pD[iStep] * _max;
+         if (steps == 6)
          {
-            pSteps[6] = MIN_VALUE;
-            pSteps[7] = MAX_VALUE;
+            pSteps[6] = 0;
+            pSteps[7] = 1;
          }
          // Evaluate function, and derivatives
          float dX = 0.0f;
          float dY = 0.0f;
          float d2X = 0.0f;
          float d2Y = 0.0f;
-         for (size_t iPoint = 0; iPoint < BCPixelBlock; iPoint++)
+         for (int32_t iPoint = 0; iPoint < BCBlockLength; iPoint++)
          {
-            const float fDot = (block[iPoint] - fX) * fScale;
+            const float fDot = (block[iPoint] - _min) * fScale;
             uint32_t iStep;
-            if (fDot <= 0.0f)
+            if (fDot == 0.0f)
             {
-               // D3DX10 / D3DX11 didn't take into account the proper minimum value for the bRange (BC4S/BC5S) case
-               iStep = ((6 == cSteps) && (block[iPoint] <= (fX + MIN_VALUE) * 0.5f)) ? 6u : 0u;
+               iStep = (steps == 6 && block[iPoint] <= _min * 0.5f) ? 6u : 0u;
             }
             else if (fDot >= fSteps)
             {
-               iStep = ((6 == cSteps) && (block[iPoint] >= (fY + MAX_VALUE) * 0.5f)) ? 7u : (cSteps - 1);
+               iStep = (steps == 6 && block[iPoint] >= (_max + 1) * 0.5f) ? 7u : (steps - 1);
             }
             else
             {
-               iStep = uint32_t(fDot + 0.5f);
+               iStep = fDot + 0.5f;
             }
-            if (iStep < cSteps)
+            if (iStep < steps)
             {
                // D3DX had this computation backwards (pPoints[iPoint] - pSteps[iStep])
                // this fix improves RMS of the alpha component
                const float fDiff = pSteps[iStep] - block[iPoint];
-
                dX += pC[iStep] * fDiff;
                d2X += pC[iStep] * pC[iStep];
-
                dY += pD[iStep] * fDiff;
                d2Y += pD[iStep] * pD[iStep];
             }
          }
          // Move endpoints
-         if (d2X > 0.0f) fX -= dX / d2X;
-         if (d2Y > 0.0f) fY -= dY / d2Y;
-         if (fX > fY) std::swap(fX, fY);
-         if ((dX * dX < (1.0f / 64.0f)) && (dY * dY < (1.0f / 64.0f))) break;
+         if (d2X > 0.0f) _min -= dX / d2X;
+         if (d2Y > 0.0f) _max -= dY / d2Y;
+         if (_min > _max) std::swap(_min, _max);
+         if (dX * dX < 1.f / 64.f && dY * dY < 1.f / 64.f) break;
       }
-      *pX = (fX < MIN_VALUE) ? MIN_VALUE : (fX > MAX_VALUE) ? MAX_VALUE : fX;
-      *pY = (fY < MIN_VALUE) ? MIN_VALUE : (fY > MAX_VALUE) ? MAX_VALUE : fY;
+      colorMin = std::clamp(_min, 0.f, 1.f);
+      colorMax = std::clamp(_max, 0.f, 1.f);
    }
 
-   void EncodeBC3RGBA(bool RGBDithering)
+   void EncodeBC1RGB(const XMFLOAT4A* blockRGB, uint8_t* destination, bool RGBDithering)
    {
-
+      const uint32_t uSteps = 4;
+      // Quantize block to R56B5, using Floyd Stienberg error diffusion. This
+      // increases the chance that colors will map directly to the quantized
+      // axis endpoints.
+      XMVECTOR colors[BCBlockLength];
+      XMVECTOR errors[BCBlockLength];
+      if (RGBDithering) for (int32_t i = 0; i < BCBlockLength; i++) errors[i] = XMVectorZero();
+      for (int32_t i = 0; i < BCBlockLength; i++)
+      {
+         XMVECTOR c = XMLoadFloat4A(&blockRGB[i]);
+         if (RGBDithering) c = XMVectorAdd(c, errors[i]);
+         const XMVECTOR v2 = XMVectorSet(31.f, 63.f, 31.f, 0);
+         const XMVECTOR v3 = XMVectorReplicate(0.5f);
+         const XMVECTOR factor = XMVectorSet(1 / 31.f, 1 / 63.f, 1 / 31.f, 0);
+         colors[i] = XMVectorMultiply(XMVectorFloor(XMVectorMultiplyAdd(c, v2, v3)), factor);
+         colors[i] = XMVectorMultiply(colors[i], RGBLuminance);
+         if (!RGBDithering) continue;
+         XMVECTOR diff = XMVectorSubtract(c, colors[i]);
+         if (3 != (i & 3))
+         {
+            const XMVECTOR factor = XMVectorReplicate(7.f / 16.f);
+            errors[i + 1] = XMVectorMultiplyAdd(diff, factor, errors[i + 1]);
+         }
+         if (i < 12)
+         {
+            const XMVECTOR factor = XMVectorReplicate(5.f / 16.f);
+            errors[i + 4] = XMVectorMultiplyAdd(diff, factor, errors[i + 4]);
+            if (i & 3)
+            {
+               const XMVECTOR factor = XMVectorReplicate(3.f / 16.f);
+               errors[i + 3] = XMVectorMultiplyAdd(diff, factor, errors[i + 3]);
+            }
+            if (3 != (i & 3))
+            {
+               const XMVECTOR factor = XMVectorReplicate(1 / 16.f);
+               errors[i + 5] = XMVectorMultiplyAdd(diff, factor, errors[i + 5]);
+            }
+         }
+      }
+      // Perform 6D root finding function to find two endpoints of color axis.
+      // Then quantize and sort the endpoints depending on mode.
+      XMVECTOR ColorA, ColorB, ColorC, ColorD;
+      OptimizeRGB(ColorA, ColorB, colors);
+      ColorC = XMVectorMultiply(ColorA, RGBLuminanceInv);
+      ColorD = XMVectorMultiply(ColorB, RGBLuminanceInv);
+      const uint16_t wColorA = EncodeRGB565(ColorC);
+      const uint16_t wColorB = EncodeRGB565(ColorD);
+      if (wColorA == wColorB)
+      {
+         reinterpret_cast<uint16_t*>(destination)[0] = wColorA;
+         reinterpret_cast<uint16_t*>(destination)[1] = wColorA;
+         reinterpret_cast<uint32_t*>(destination)[1] = 0x0;
+         return;
+      }
+      ColorC = DecodeRGB565(wColorA);
+      ColorD = DecodeRGB565(wColorB);
+      ColorA = XMVectorMultiply(ColorC, RGBLuminance);
+      ColorB = XMVectorMultiply(ColorD, RGBLuminance);
+      // Calculate color steps
+      XMVECTOR Step[4];
+      reinterpret_cast<uint16_t*>(destination)[0] = wColorB;
+      reinterpret_cast<uint16_t*>(destination)[1] = wColorA;
+      Step[0] = ColorB;
+      Step[1] = ColorA;
+      static const int32_t pSteps[] = { 0, 2, 3, 1 };
+      Step[2] = XMVectorLerp(Step[0], Step[1], 1 / 3.f);
+      Step[3] = XMVectorLerp(Step[0], Step[1], 2 / 3.f);
+      // Calculate color direction
+      XMVECTOR Dir;
+      Dir = Step[1] - Step[0];
+      const float fSteps = uSteps - 1;
+      const float fScale = (wColorA != wColorB) ? (fSteps / XMVectorGetX(XMVector3Dot(Dir, Dir))) : 0;
+      Dir = XMVectorScale(Dir, fScale);
+      // Encode colors, 2 bits per pixel
+      uint32_t encodedIndices = 0;
+      if (RGBDithering) for (int32_t i = 0; i < BCBlockLength; i++) errors[i] = XMVectorZero();
+      for (int32_t i = 0; i < BCBlockLength; i++)
+      {
+         XMVECTOR c = XMLoadFloat4A(&blockRGB[i]);
+         c = XMVectorMultiply(c, RGBLuminance);
+         if (RGBDithering) c = XMVectorAdd(c, errors[i]);
+         const float fDot = XMVectorGetX(XMVector3Dot(XMVectorSubtract(c, Step[0]), Dir));
+         uint32_t iStep;
+         if (fDot <= 0.0f) iStep = 0;
+         else if (fDot >= fSteps) iStep = 1;
+         else iStep = pSteps[uint32_t(fDot + 0.5f)];
+         encodedIndices = (iStep << 30) | (encodedIndices >> 2);
+         if (!RGBDithering) continue;
+         XMVECTOR diff = XMVectorSubtract(c, Step[iStep]);
+         if (3 != (i & 3))
+         {
+            const XMVECTOR factor = XMVectorReplicate(7.f / 16.f);
+            errors[i + 1] = XMVectorMultiplyAdd(diff, factor, errors[i + 1]);
+         }
+         if (i < 12)
+         {
+            const XMVECTOR factor = XMVectorReplicate(5.f / 16.f);
+            errors[i + 4] = XMVectorMultiplyAdd(diff, factor, errors[i + 4]);
+            if (i & 3)
+            {
+               const XMVECTOR factor = XMVectorReplicate(3.f / 16.f);
+               errors[i + 3] = XMVectorMultiplyAdd(diff, factor, errors[i + 3]);
+            }
+            if (3 != (i & 3))
+            {
+               const XMVECTOR factor = XMVectorReplicate(1.f / 16.f);
+               errors[i + 5] = XMVectorMultiplyAdd(diff, factor, errors[i + 5]);
+            }
+         }
+      }
+      reinterpret_cast<uint32_t*>(destination)[1] = encodedIndices;
    }
 
-   // The block should be located in 4 rows.
+   void EncodeBC3RGBA(const XMFLOAT4A* blockRGB, const float* blockA, uint8_t* destination, bool RGBDithering)
+   {
+      void EncodeBC4Alpha(const float*, uint8_t*);
+      EncodeBC4Alpha(blockA, destination);
+      EncodeBC1RGB(blockRGB, destination + BC4BlockSize, RGBDithering);
+   }
+
    void EncodeBC4Alpha(const float* block, uint8_t* destination)
    {
       // Step 1: Find end points.
       bool bUsing4BlockCodec = false;
-      for (size_t i = 1; i < BCPixelBlock; ++i)
+      for (size_t i = 0; i < BCBlockLength; ++i)
       {
          //  If there are boundary values in input texels, should use 4 interpolated color values to guarantee
          //  the exact code of the boundary values.
@@ -799,52 +1019,44 @@ namespace
             break;
          }
       }
-      // Using Optimize
-      float fStart, fEnd;
-      if (bUsing4BlockCodec)
-      {
-         // 4 interpolated color values
-         OptimizeAlpha(&fStart, &fEnd, block, 6);
-         destination[0] = ColorFloat2UInt8(fStart);
-         destination[1] = ColorFloat2UInt8(fEnd);
-      }
-      else
-      {
-         // 6 interpolated color values
-         OptimizeAlpha(&fStart, &fEnd, block, 8);
-         destination[0] = ColorFloat2UInt8(fEnd);
-         destination[1] = ColorFloat2UInt8(fStart);
-      }
-      // Step2: Compute indices, which follows the below mapping:
-      // 0-C0, 1-C1, 2-Interpolation1, ..., 5-Interpolation4, 6-Interpolation5/0.0f, 7-Interpolation6/1.0f
-      for (size_t i = 0; i < BCPixelBlock; ++i)
+      float min, max;
+      OptimizeAlpha(min, max, block, bUsing4BlockCodec ? 6 : 8);
+      ColorFloat2Byte(destination[0], bUsing4BlockCodec ? min : max);
+      ColorFloat2Byte(destination[1], bUsing4BlockCodec ? max : min);
+      // Step 2: Compute indices, which follows the below mapping:
+      // 0:C0, 1:C1, 2:Interpolation1, ..., 5:Interpolation4, 6:Interpolation5/0.0f, 7:Interpolation6/1.0f
+      for (size_t i = 0; i < BCBlockLength; i++)
       {
          uint32_t value;
          if (bUsing4BlockCodec)
          {
             if (block[i] == 0) value = 6;
             else if (block[i] == 1) value = 7;
-            if (fStart > 0 && fStart > block[i]) value = (fStart - block[i]) / fStart <= 0.5f ? 6 : 0;
-            if (fEnd < 1 && fEnd < block[i]) value = (block[i] - fEnd) / (1 - fEnd) <= 0.5f ? 1 : 7;
+            else if (block[i] < min) value = (min - block[i]) / min <= 0.5f ? 6 : 0;
+            else if (block[i] > max) value = (block[i] - max) / (1 - max) <= 0.5f ? 1 : 7;
             else
             {
-               value = uint32_t(5.f * (block[i] - fStart) / (fEnd - fStart) + 0.5f);
+               value = 5.f * (block[i] - min) / (max - min) + 0.5f;
+               if (value == 0) value = 0;
+               else if (value == 5) value = 1;
+               else value += 1;
             }
          }
          else
          {
-            value = uint32_t(7.f * (block[i] - fEnd) / (fStart - fEnd) + 0.5f);
-            if (value == fEnd) value = 0;
-            else if (value == fStart) value = 1;
+            value = 7.f * (block[i] - max) / (min - max) + 0.5f;
+            if (value == 0) value = 0;
+            else if (value == 7) value = 1;
             else value += 1;
          }
-         PlaceBCIndex(destination, value, i);
+         PlaceBCIndex(destination + 2, value, i); // +2: Point it to the index block
       }
    }
 
-   void EncodeBC5Normal()
+   void EncodeBC5Normal(const float* blockRed, const float* blockGreen, uint8_t* destination)
    {
-
+      EncodeBC4Alpha(blockRed, destination);
+      EncodeBC4Alpha(blockGreen, destination + BC4BlockSize);
    }
 
    ForceInline void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
