@@ -635,7 +635,8 @@ namespace
          middleTargets.reserve(count);
          for (int i = 0; i < count; i++)
          {
-            middlePool.push_back(std::move(std::make_unique<UnitedBuffer>(heapType, _DataType, ElementCount, RawElementSize, KeepMidPool, TexInfo)));
+            auto ptr = std::unique_ptr<UnitedBuffer>(new UnitedBuffer(heapType, _DataType, ElementCount, RawElementSize, KeepMidPool, TexInfo));
+            middlePool.push_back(std::move(ptr));
          }
       }
 
