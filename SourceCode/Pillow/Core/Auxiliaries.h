@@ -47,7 +47,7 @@ namespace Pillow
 {
    struct alignas(64) CacheLine
    {
-      uint64_t padding[8]{}; // 64 bytes cache line padding
+      uint8_t padding[64]{}; // 64 bytes cache line padding
    };
 
    // The alignment must be a power of two.
