@@ -9,6 +9,7 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
+#include <fstream>
 
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;
@@ -686,6 +687,42 @@ namespace
             lateReleaseMgr->Enqueue(std::move(middlePool.back()));
             middlePool.pop_back();
          }
+      }
+   };
+
+   struct PipelineConfig
+   {
+      ComPtr<ID3D12PipelineState> pso;
+      ComPtr<ID3D12RootSignature> sign;
+      int32_t vsTexCount;
+      int32_t psTexCount;
+      int32_t rtCount;
+   };
+
+   class HLSLInclude final: public ID3DInclude
+   {
+   public:
+      HRESULT Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
+      {
+         std::filesystem::path location(Wstring2String(GetResourcePath(L"Shaders")));
+         location /= pFileName;
+         std::ifstream file(location, std::ios::binary | std::ios::ate);
+         if (!file.is_open()) return E_FAIL;
+         uint32_t size = uint32_t(file.tellg());
+         file.seekg(0, std::ios::beg);
+         char* data = new char[size];
+         if (!file.read(data, size)) return E_FAIL;
+         file.close();
+         *ppData = data;
+         *pBytes = size;
+         return S_OK;
+      }
+
+      HRESULT Close(LPCVOID pData)
+      {
+         const char* ptr = reinterpret_cast<const char*>(pData);
+         delete[] ptr;
+         return S_OK;
       }
    };
 
