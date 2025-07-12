@@ -6,7 +6,7 @@
 # This fact reflects one significant belief of Pillow Basics —— useless things ain't used.
 # We will never pursue "advanced techs" unless they are better or needed.
 
-set(LIBRARIES DirectXMath UTF8cc LodePNG OpenAL PhysX)
+set(LIBRARIES DirectXMath UTF8cc LodePNG OpenAL PhysX HashLib)
 
 function(get_prebuilt_path dependencyPath)
    set(PREBUILT_PATH "${dependencyPath}\\Prebuilt")
@@ -101,7 +101,15 @@ elseif(ANDROID)
 endif()
 target_link_libraries(PhysX INTERFACE ${LIBS})
 
-# Config target Pillow
+# HashLib
+file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+   "${CMAKE_CURRENT_SOURCE_DIR}/HashLib/*.h"
+   "${CMAKE_CURRENT_SOURCE_DIR}/HashLib/*.cc"
+)
+add_library(HashLib STATIC ${SOURCES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/HashLib" FILES ${SOURCES})
+
+# Config the target Pillow
 target_link_libraries(Pillow PRIVATE ${LIBRARIES})
 set_target_properties(${LIBRARIES} PROPERTIES FOLDER "3rdParty")
 target_link_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
