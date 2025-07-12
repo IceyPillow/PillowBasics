@@ -9,17 +9,16 @@ double Pillow::GlobalDeltaTime{ 0 }, Pillow::GlobalLastingTime{ 0 };
 namespace
 {
    GameClock globalGameClock;
+   static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 }
 
 std::string Pillow::Wstring2String(const std::wstring& wstr)
 {
-   static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
    return converter.to_bytes(wstr);
 }
 
 std::wstring Pillow::String2Wstring(const std::string& str)
 {
-   static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
    return converter.from_bytes(str);
 }
 
