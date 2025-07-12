@@ -18,6 +18,7 @@ namespace Pillow::Graphics
       // 1.Supports .hdr files.
       // 2.R8G8B8 isn't supported in DXGI_FORMAT, use R8G8B8A8 to store it.
       UnsignedNormalized_R8G8B8A8,
+      UnsignedNormalized_R8G8B8,
       UnsignedNormalized_R8G8,
       UnsignedNormalized_R8,
       Count
@@ -26,6 +27,7 @@ namespace Pillow::Graphics
    const int32_t PixelSize[int32_t(GenericTexFmt::Count)]
    {
       4, // UnsignedNormalized_R8G8B8A8
+      3, // UnsignedNormalized_R8G8B8
       2, // UnsignedNormalized_R8G8
       1, // UnsignedNormalized_R8
    };
