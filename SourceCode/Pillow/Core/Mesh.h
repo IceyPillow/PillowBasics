@@ -9,31 +9,33 @@ using namespace DirectX;
 
 namespace Pillow::Graphics
 {
-   struct alignas(CacheLine) BasicVertex
+   struct alignas(XMFLOAT4A) BasicVertex
    {
       XMFLOAT3 position;
       uint8_t texIdx[2];
+      uint16_t padding0;
       XMFLOAT4 uv01;
    };
 
    // C++ inheritance makes a base type be aligned to itself,
    // which wastes a block of memory between the base type and the child type.
-   struct alignas(CacheLine) StaticVertex
+   struct alignas(XMFLOAT4A) StaticVertex
    {
       XMFLOAT3 position;
       uint8_t texIdx[2];
+      uint16_t padding0;
       XMFLOAT4 uv01;
-      XMFLOAT3 normal;
-      XMFLOAT3 tangent;
+      XMFLOAT4 normal;
+      XMFLOAT4 tangent;
    };
 
-   struct alignas(CacheLine) SkeletalVertex
+   struct alignas(XMFLOAT4A) SkeletalVertex
    {
       XMFLOAT3 position;
-      uint8_t texIdx_boneIndx[4];
+      uint8_t texIdx_boneIdx[4];
       XMFLOAT4 uv01;
-      XMFLOAT3 normal_boneWeight0;
-      XMFLOAT3 tangent_boneWeight1;
+      XMFLOAT4 normal_boneWeight0;
+      XMFLOAT4 tangent_boneWeight1;
    };
 
    class BasicMesh
