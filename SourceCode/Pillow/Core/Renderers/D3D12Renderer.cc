@@ -84,6 +84,21 @@ namespace
    const D3D12_INPUT_LAYOUT_DESC InputLayoutStatic{ _StaticVertex, 5 };
    const D3D12_INPUT_LAYOUT_DESC InputLayoutSkeletal{ _SkeletalVertex, 5 };
 
+#define TEX_WRAP D3D12_TEXTURE_ADDRESS_MODE_WRAP
+#define TEX_CLAMP D3D12_TEXTURE_ADDRESS_MODE_CLAMP
+#define SMAPLER_DESC(filter, addressMode, cmpFunc, maxLOD, registerNum) \
+{filter, addressMode, addressMode, addressMode, 0, Constants::AnisotropyLevel, cmpFunc, \
+D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY_ALL}
+   const D3D12_STATIC_SAMPLER_DESC StaticSamplers[6]
+   {
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), 0, 0),         // Point-Clamp (Post-processing)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), 99, 1),       // Trilinear-Clamp (Post-processing / UI)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_WRAP, D3D12_COMPARISON_FUNC(0), 99, 2),        // Trilinear-Wrap (Post-processing / UI)
+      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), 99, 3),              // Anisotropic-Clamp (Mesh)
+      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_WRAP, D3D12_COMPARISON_FUNC(0), 99, 4),               // Anisotropic-Wrap (Mesh)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC_LESS_EQUAL, 0, 5) // LessEqual-PCF-Comparison (Shadow)
+   };
+
    class FenceSync;
    class DescriptorHeapManager;
    class lateReleaseManager;
