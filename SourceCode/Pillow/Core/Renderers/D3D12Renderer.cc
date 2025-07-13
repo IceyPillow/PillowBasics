@@ -699,31 +699,55 @@ namespace
       int32_t rtCount;
    };
 
-   class HLSLInclude final: public ID3DInclude
+   class HLSLInclude : public ID3DInclude
    {
+      ReadonlyProperty(std::filesystem::path, ParentDir)
+
    public:
+      HLSLInclude(std::filesystem::path location)
+      {
+         _ParentDir = location.parent_path();
+      }
+
       HRESULT Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
       {
-         std::filesystem::path location(Wstring2String(GetResourcePath(L"Shaders")));
-         location /= pFileName;
+         std::filesystem::path location = Wstring2String(GetResourcePath(L"Shaders"));
+         location = location / pFileName;
+         // If the root dir doesn't own the file, use the local dir.
+         // Ignore D3D_INCLUDE_TYPE, which makes things complicated.
+         if (!std::filesystem::exists(location))
+         {
+            location = _ParentDir;
+            location /= pFileName;
+            if (!std::filesystem::exists(location)) return E_FAIL;
+         }
          std::ifstream file(location, std::ios::binary | std::ios::ate);
          if (!file.is_open()) return E_FAIL;
          uint32_t size = uint32_t(file.tellg());
          file.seekg(0, std::ios::beg);
-         char* data = new char[size];
-         if (!file.read(data, size)) return E_FAIL;
+         std::vector<char> buffer;
+         buffer.reserve(size);
+         if (!file.read(buffer.data(), size)) return E_FAIL;
          file.close();
-         *ppData = data;
+         *ppData = buffer.data();
          *pBytes = size;
+         buffers.push_back(std::move(buffer));
          return S_OK;
       }
 
       HRESULT Close(LPCVOID pData)
       {
-         const char* ptr = reinterpret_cast<const char*>(pData);
-         delete[] ptr;
+         for (std::vector<char>& a : buffers)
+         {
+            if (a.data() != pData) continue;
+            buffers.clear();
+            break;
+         }
          return S_OK;
       }
+
+   private:
+      std::vector<std::vector<char>> buffers;
    };
 
    class PipelineStateManager
