@@ -19,10 +19,12 @@ using Microsoft::WRL::ComPtr;
 {\
    if (FAILED(hr))\
    {\
-      std::string errorMsg;\
-      errorMsg = errorMsg + "File:" + __FILE__ + ", Line:" + std::to_string(__LINE__);\
-      errorMsg = errorMsg + "\nError: " + Wstring2String(_com_error(hr).ErrorMessage());\
-      throw std::exception(errorMsg.c_str());\
+      string msg;\
+      msg = msg + "File:" + __FILE__ + ", Line:" + std::to_string(__LINE__);\
+      msg = msg + "\nError: ";\
+      std::wstring systemMsg = _com_error(hr).ErrorMessage();\
+      utf8::utf16to8(systemMsg.begin(), systemMsg.end(), std::back_inserter(msg));\
+      throw std::exception(msg.c_str());\
    }\
 }
 
@@ -711,7 +713,7 @@ namespace
 
       HRESULT Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
       {
-         std::filesystem::path location = Wstring2String(GetResourcePath(L"Shaders"));
+         std::filesystem::path location = GetResourcePath("Shaders");
          location = location / pFileName;
          // If the root dir doesn't own the file, use the local dir.
          // Ignore D3D_INCLUDE_TYPE, which makes things complicated.

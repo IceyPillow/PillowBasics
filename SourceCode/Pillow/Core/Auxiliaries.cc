@@ -9,20 +9,9 @@ double Pillow::GlobalDeltaTime{ 0 }, Pillow::GlobalLastingTime{ 0 };
 namespace
 {
    GameClock globalGameClock;
-   static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 }
 
-std::string Pillow::Wstring2String(const std::wstring& wstr)
-{
-   return converter.to_bytes(wstr);
-}
-
-std::wstring Pillow::String2Wstring(const std::string& str)
-{
-   return converter.from_bytes(str);
-}
-
-std::wstring Pillow::GetResourcePath(const std::wstring& name)
+string Pillow::GetResourcePath(const string& name)
 {
    using namespace std::filesystem;
    static std::filesystem::path resourceRootPath;
@@ -31,7 +20,7 @@ std::wstring Pillow::GetResourcePath(const std::wstring& name)
       path currentPath = current_path();
       do
       {
-         path searchPath = currentPath / path(L"Resources");
+         path searchPath = currentPath / path("Resources");
          if (exists(searchPath))
          {
             resourceRootPath = searchPath;
@@ -41,20 +30,29 @@ std::wstring Pillow::GetResourcePath(const std::wstring& name)
       } while (currentPath != currentPath.root_path());
       if (resourceRootPath.empty()) throw std::exception("\"Resources\" folder does not exist.");
    }
-   return resourceRootPath / path(name);
+   string result;
+#if defined(_WIN64)
+   std::wstring _result = resourceRootPath / name;
+   utf8::utf16to8(_result.begin(), _result.end(), std::back_inserter(result));
+#elif defined(__ANDROID__)
+#endif
+   return result;
 }
 
-void Pillow::LogSystem(const std::wstring& text)
+void Pillow::LogSystem(const string& text)
 {
 #if defined(_WIN64)
-   OutputDebugString(text.c_str());
+   std::wstring _text;
+   utf8::utf8to16(text.begin(), text.end(), std::back_inserter(_text));
+   OutputDebugString(_text.c_str());
    OutputDebugString(L"\n");
 #elif defined(__ANDROID__)
 #endif
 }
 
-void Pillow::LogGame(const std::wstring& text)
+void Pillow::LogGame(const string& text)
 {
+   //
 }
 
 void GameClock::Start()

@@ -41,7 +41,7 @@ namespace Pillow::Graphics
    class GenericRenderer
    {
       DeleteDefautedMethods(GenericRenderer)
-         ReadonlyProperty(std::string, RendererName)
+         ReadonlyProperty(string, RendererName)
          ReadonlyProperty(int32_t, ThreadCount)
    public:
       virtual ~GenericRenderer() = 0;
@@ -53,7 +53,7 @@ namespace Pillow::Graphics
       void Commit();
 
    protected:
-      GenericRenderer(int32_t threadCount, std::string name);
+      GenericRenderer(int32_t threadCount, string name);
       virtual void Worker(int32_t workerIndex) = 0;
       virtual void Pioneer() = 0;
       virtual void Assembler() = 0;

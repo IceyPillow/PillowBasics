@@ -71,7 +71,7 @@ namespace Pillow::Graphics
       const GenericTextureInfo Info;
    };
 
-   void LoadTexture(const std::wstring& relativePath);
+   void LoadTexture(const string& relativePath);
 
 
    ForceInline void ColorFloat2Byte(uint8_t& destination, float color)

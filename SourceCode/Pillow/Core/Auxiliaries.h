@@ -13,6 +13,7 @@
 #include <Windows.h>
 #elif defined(__ANDROID__)
 #endif
+#include "utfcpp-4.0.6/utf8.h"
 
 // Template
 #if defined(_WIN64)
@@ -25,7 +26,7 @@
 #define ForceInline __attribute__((always_inline))
 #endif
 
-// Known issue: VS applies wrong formats for consecutive "PropertyReadonly" macros.
+// A known issue: VS applies wrong formats for consecutive "PropertyReadonly" macros.
 #define ReadonlyProperty(type, name) \
 protected: type _##name{}; \
 public: ForceInline type Get##name() const { return _##name; }
@@ -45,6 +46,26 @@ type& operator=(type&&) = delete;
 
 namespace Pillow
 {
+   // I. The Mystery of Character Set
+   // ASCII char set:   char = code point(a number)  = encoding(actual binaries)
+   // Unicode char set: char = code point(a number) != encoding(actual binaries)
+   // Unicode has several encoding methods. The most famous ones are UTF-8, UTF-16, and UTF-32
+   // Only UTF-32 is completely equal to the code points of Unicode.
+   // 
+   // II. Win and UTF-8
+   // On Win, it's bad to invoke the system's interfaces with UTF-8.
+   // Cause UTF-8 is optional(Region->Change System locale->Beta: Use Unicode UTF-8...),
+   // which means the client's machines may not support it.
+   // For example, MessageBoxA supports UTF-8 only when clients enable the above option(off 
+   // by default), but MessageBoxW always supports UTF-16.
+   // 
+   // III. The Naughty Wide Character
+   // whcar_t represents UTF-16 on Win, However, represents UTF-32 on Android typically.
+   // 
+   // IV. The String Convention of Pillow Basics
+   // Only use UTF-8 strings in Pillow Basics for coherence.
+   using std::string;
+
    struct alignas(64) CacheLine
    {
       uint8_t padding[64]{}; // 64 bytes cache line padding
@@ -62,11 +83,14 @@ namespace Pillow
       return std::make_unique<CacheLine[]>((unalignedSize + sizeof(CacheLine) - 1) / sizeof(CacheLine));
    }
 
-   std::string Wstring2String(const std::wstring& wstr);
-   std::wstring String2Wstring(const std::string& str);
-   std::wstring GetResourcePath(const std::wstring& name);
-   void LogSystem(const std::wstring& text);
-   void LogGame(const std::wstring& text);
+   ForceInline bool CheckUTF8(const string& str)
+   {
+      return utf8::is_valid(str.begin(), str.end());
+   }
+
+   string GetResourcePath(const string& name);
+   void LogSystem(const string& text);
+   void LogGame(const string& text);
 
    /*
    * std::chrono::steady_clock

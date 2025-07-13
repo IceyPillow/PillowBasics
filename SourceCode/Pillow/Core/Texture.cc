@@ -119,10 +119,10 @@ GenericTextureInfo::GenericTextureInfo(GenericTexFmt format, int32_t width, bool
    _TotalSize = _ArrayCount * _ArraySliceSize;
 }
 
-void Pillow::Graphics::LoadTexture(const std::wstring& relativePath)
+void Pillow::Graphics::LoadTexture(const string& relativePath)
 {
    // Read the binary file.
-   std::wstring path = GetResourcePath(relativePath);
+   string path = GetResourcePath(relativePath);
    std::ifstream file(path, std::ios::binary | std::ios::ate);
    if (!file.is_open()) throw std::runtime_error("Unable to open file");
    std::streamsize size = file.tellg();
