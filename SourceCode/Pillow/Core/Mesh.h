@@ -9,6 +9,13 @@ using namespace DirectX;
 
 namespace Pillow::Graphics
 {
+   enum struct VertexType
+   {
+      Basic,
+      Static,
+      Skeletal
+   };
+
    struct alignas(XMFLOAT4A) BasicVertex
    {
       XMFLOAT3 position;
