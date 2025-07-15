@@ -38,6 +38,21 @@ namespace Pillow::Graphics
       void* sth;
    };
 
+   struct GenericPipelineConfig
+   {
+      ReadonlyProperty(string, HashID)
+   public:
+      const string ConfigName;
+      const int32_t VSTextureCount;
+      const int32_t PSTextureCount;
+      const int32_t RenderTargetCount;
+      const std::map<string, string> Macros;
+
+      GenericPipelineConfig(string name, int32_t vsTexNum, int32_t psTexNum, int32_t rtNum, std::map<string, string>&& macros);
+
+      bool operator==(const GenericPipelineConfig& right);
+   };
+
    class GenericRenderer
    {
       DeleteDefautedMethods(GenericRenderer)

@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "HashLib/sha256.h"
 
 using namespace Pillow;
 using namespace Pillow::Graphics;
@@ -29,6 +30,28 @@ namespace
    std::optional<std::barrier<void(*)() noexcept>> frameBarrier;
    std::atomic<bool> signal_IsActive;
    std::atomic<bool> signal_IsComputing;
+}
+
+GenericPipelineConfig::GenericPipelineConfig(string name, int32_t vsTexNum, int32_t psTexNum, int32_t rtNum, std::map<string, string>&& macros) :
+   ConfigName(name),
+   VSTextureCount(vsTexNum),
+   PSTextureCount(psTexNum),
+   RenderTargetCount(rtNum),
+   Macros(macros)
+{
+   SHA256 sha256;
+   sha256.add(ConfigName.c_str(), ConfigName.size());
+   for (const auto& [macroName, macroValue] : Macros)
+   {
+      sha256.add(macroName.c_str(), macroName.size());
+      sha256.add(macroValue.c_str(), macroValue.size());
+   }
+   _HashID = sha256.getHash();
+}
+
+bool GenericPipelineConfig::operator==(const GenericPipelineConfig& right)
+{
+   return this->_HashID == right._HashID;
 }
 
 static void Pillow::Graphics::BarrierCompletionAction() noexcept
