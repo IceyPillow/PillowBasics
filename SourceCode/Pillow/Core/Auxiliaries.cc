@@ -1,5 +1,5 @@
 #include "Auxiliaries.h"
-#include <codecvt>
+#include <regex>
 
 using namespace Pillow;
 using namespace std::chrono;
@@ -9,6 +9,61 @@ double Pillow::GlobalDeltaTime{ 0 }, Pillow::GlobalLastingTime{ 0 };
 namespace
 {
    GameClock globalGameClock;
+}
+
+KeyValuePair::KeyValuePair(string key, string value, bool isStringValue) :
+   _Key(std::regex_replace(key, std::regex("\\s"), "")),
+   _ValueRaw(std::regex_replace(value, std::regex("\\s"), ""))
+{
+   if (value.empty() || isStringValue)
+   {
+      _Type = ValueType::String;
+   }
+   else if (std::regex_match(value, std::regex(R"(^\-?\d+$)")))
+   {
+      _Type = ValueType::Integer;
+   }
+   else if (std::regex_match(value, std::regex(R"(^\-?\d+\.\d+$)")))
+   {
+      _Type = ValueType::Float;
+   }
+   else if (std::regex_match(value, std::regex(R"(^\-?\d+\.\d+(,\-?\d+\.\d+){1,3}$)")))
+   {
+      _Type = ValueType::Float4;
+   }
+   else
+   {
+      _Type = ValueType::String;
+   }
+}
+
+XMFLOAT4A Pillow::KeyValuePair::GetFloat4Aligned()
+{
+
+   auto view = std::ranges::split_view(_ValueRaw, ',');
+   XMFLOAT4A result{};
+   int32_t i = 0;
+   for (auto it = view.begin(); it != view.end(); it++, i++)
+   {
+      string temp((*it).begin(), (*it).end());
+      result[i] = std::stof(temp);
+   }
+   return result;
+}
+
+bool KeyValuePair::operator==(const KeyValuePair& right) const
+{
+   return this->_Key == right._Key && this->_ValueRaw == right._ValueRaw;
+}
+
+bool Pillow::KeyValuePair::operator>(const KeyValuePair& right) const
+{
+   return this->_Key > right._Key;
+}
+
+bool Pillow::KeyValuePair::operator<(const KeyValuePair& right) const
+{
+   return this->operator>(right);
 }
 
 string Pillow::GetResourcePath(const string& name)

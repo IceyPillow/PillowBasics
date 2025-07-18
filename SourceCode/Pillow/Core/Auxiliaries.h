@@ -5,6 +5,7 @@
 #include <exception>
 #include <shared_mutex>
 #include <string>
+#include <ranges>
 #include <filesystem>
 #include <locale>
 #include <chrono>
@@ -14,6 +15,7 @@
 #elif defined(__ANDROID__)
 #endif
 #include "utfcpp-4.0.6/utf8.h"
+#include "DirectXMath-apr2025/DirectXMath.h"
 
 // Template
 #if defined(_WIN64)
@@ -65,6 +67,7 @@ namespace Pillow
    // IV. The String Convention of Pillow Basics
    // Only use UTF-8 strings in Pillow Basics for coherence.
    using std::string;
+   using namespace DirectX;
 
    struct alignas(64) CacheLine
    {
@@ -76,6 +79,40 @@ namespace Pillow
    {
       return (size + alignment - 1) & ~(alignment - 1);
    }
+
+   class KeyValuePair
+   {
+   public:
+      enum ValueType : uint8_t
+      {
+         String,
+         Integer,
+         Float,
+         Float4
+      };
+
+      ReadonlyProperty(string, Key)
+         ReadonlyProperty(string, ValueRaw)
+         ReadonlyProperty(ValueType, Type)
+
+   public:
+      // isStringValue: True if using quick initialing route.
+      KeyValuePair(string key, string value, bool isStringValue = false);
+
+      ForceInline bool isOnlyKey() const { return _ValueRaw.empty(); }
+
+      ForceInline int32_t GetInteger() const { return std::stoi(_ValueRaw); }
+
+      ForceInline float GetFloat() const { return std::stof(_ValueRaw); }
+
+      XMFLOAT4A GetFloat4Aligned();
+
+      bool operator==(const KeyValuePair& right) const;
+
+      bool operator>(const KeyValuePair& right) const;
+
+      bool operator<(const KeyValuePair& right) const;
+   };
 
    // Create 64-bytes-aligned memory.
    ForceInline std::unique_ptr<CacheLine[]> CreateAlignedMemory(int32_t unalignedSize)
