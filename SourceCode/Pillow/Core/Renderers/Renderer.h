@@ -7,6 +7,7 @@
 #include "../Auxiliaries.h"
 #include "../Constants.h"
 #include "../Texture.h"
+#include "../Mesh.h"
 
 using namespace Pillow::Graphics;
 using namespace DirectX;
@@ -38,19 +39,24 @@ namespace Pillow::Graphics
       void* sth;
    };
 
-   struct GenericPipelineConfig
+   class GenericPipelineConfig
    {
-      ReadonlyProperty(string, HashID)
+      DeleteDefautedMethods(GenericPipelineConfig)
+
    public:
-      const string ConfigName;
-      const int32_t VSTextureCount;
-      const int32_t PSTextureCount;
-      const int32_t RenderTargetCount;
-      const std::map<string, string> Macros;
+      string ConfigName;
+      std::vector<KeyValuePair> Macros;
+      std::vector<string> VSTextures;
+      std::vector<string> PSTextures;
+      std::vector<string> ConstantBuffers;
+      int32_t RenderTargetCount;
 
-      GenericPipelineConfig(string name, int32_t vsTexNum, int32_t psTexNum, int32_t rtNum, std::map<string, string>&& macros);
+      // Example
+      // ConfigName: SimpleShader@CheckOn@Quality=2
+      GenericPipelineConfig(string name, const std::vector<KeyValuePair>& macros,
+         const std::vector<string>& cbv, const std::vector<string>& vsTex, const std::vector<string>& psTex, int32_t rtNum);
 
-      bool operator==(const GenericPipelineConfig& right);
+      bool EqualTo(const GenericPipelineConfig& right) const;
    };
 
    class GenericRenderer
@@ -58,6 +64,7 @@ namespace Pillow::Graphics
       DeleteDefautedMethods(GenericRenderer)
          ReadonlyProperty(string, RendererName)
          ReadonlyProperty(int32_t, ThreadCount)
+
    public:
       virtual ~GenericRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;

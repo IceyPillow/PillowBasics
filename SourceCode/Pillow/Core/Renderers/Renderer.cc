@@ -1,5 +1,6 @@
 #include "Renderer.h"
-#include "HashLib/sha256.h"
+#include <ranges>
+#include <algorithm>
 
 using namespace Pillow;
 using namespace Pillow::Graphics;
@@ -30,28 +31,55 @@ namespace
    std::optional<std::barrier<void(*)() noexcept>> frameBarrier;
    std::atomic<bool> signal_IsActive;
    std::atomic<bool> signal_IsComputing;
-}
 
-GenericPipelineConfig::GenericPipelineConfig(string name, int32_t vsTexNum, int32_t psTexNum, int32_t rtNum, std::map<string, string>&& macros) :
-   ConfigName(name),
-   VSTextureCount(vsTexNum),
-   PSTextureCount(psTexNum),
-   RenderTargetCount(rtNum),
-   Macros(macros)
-{
-   SHA256 sha256;
-   sha256.add(ConfigName.c_str(), ConfigName.size());
-   for (const auto& [macroName, macroValue] : Macros)
+   ForceInline std::vector<KeyValuePair> Sort(const std::vector<KeyValuePair>& macros)
    {
-      sha256.add(macroName.c_str(), macroName.size());
-      sha256.add(macroValue.c_str(), macroValue.size());
+      std::vector<KeyValuePair> result = macros;
+      std::sort(result.begin(), result.end());
+      return result;
    }
-   _HashID = sha256.getHash();
 }
 
-bool GenericPipelineConfig::operator==(const GenericPipelineConfig& right)
+GenericPipelineConfig::GenericPipelineConfig(string name, const std::vector<KeyValuePair>& macros,
+   const std::vector<string>& cbv, const std::vector<string>& vsTex, const std::vector<string>& psTex, int32_t rtNum) :
+   Macros(Sort(macros)),
+   VSTextures(vsTex),
+   PSTextures(psTex),
+   ConstantBuffers(cbv),
+   RenderTargetCount(rtNum)
 {
-   return this->_HashID == right._HashID;
+   const char prefixMacro = '@';
+   const char prefixValue = '=';
+   for (const auto& pair : Macros)
+   {
+      name += "@" + pair.GetKey();
+      if (!pair.IsKeyOnly())
+      {
+         name += "=" + pair.GetValueRaw();
+      }
+   }
+   ConfigName = name;
+   //auto view = std::ranges::split_view(name, _char0) | std::ranges::views::drop(1);
+   //_Macros.reserve(std::ranges::distance(view));
+   //for (auto&& _macro : view)
+   //{
+   //   // Uses std::string_view to avoid a string copy.
+   //   auto subView = std::ranges::split_view(std::string_view(_macro.begin(), _macro.end()), _char1);
+   //   auto iterator = subView.begin();
+   //   ShaderMacro macro;
+   //   macro.Name = string((*iterator).begin(), (*iterator).end());
+   //   iterator++;
+   //   if (iterator != subView.end())
+   //   {
+   //      macro.Value = string((*iterator).begin(), (*iterator).end());
+   //   }
+   //   _Macros.push_back(std::move(macro));
+   //}
+}
+
+bool GenericPipelineConfig::EqualTo(const GenericPipelineConfig& right) const
+{
+   return this->ConfigName == right.ConfigName;
 }
 
 static void Pillow::Graphics::BarrierCompletionAction() noexcept
