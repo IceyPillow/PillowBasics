@@ -692,15 +692,6 @@ namespace
       }
    };
 
-   struct PipelineConfig
-   {
-      ComPtr<ID3D12PipelineState> pso;
-      ComPtr<ID3D12RootSignature> sign;
-      int32_t vsTexCount;
-      int32_t psTexCount;
-      int32_t rtCount;
-   };
-
    class HLSLInclude : public ID3DInclude
    {
       ReadonlyProperty(std::filesystem::path, ParentDir)
