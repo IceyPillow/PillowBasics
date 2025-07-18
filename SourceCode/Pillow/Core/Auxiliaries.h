@@ -83,7 +83,7 @@ namespace Pillow
    class KeyValuePair
    {
    public:
-      enum ValueType : uint8_t
+      enum struct ValueType : uint8_t
       {
          String,
          Integer,
@@ -99,7 +99,7 @@ namespace Pillow
       // isStringValue: True if using quick initialing route.
       KeyValuePair(string key, string value, bool isStringValue = false);
 
-      ForceInline bool isOnlyKey() const { return _ValueRaw.empty(); }
+      ForceInline bool IsKeyOnly() const { return _ValueRaw.empty(); }
 
       ForceInline int32_t GetInteger() const { return std::stoi(_ValueRaw); }
 
