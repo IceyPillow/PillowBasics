@@ -1,3 +1,4 @@
+#include "Core/Mesh.h"
 //#include "DirectXMath-apr2025/DirectXMath.h"
 //#include "DirectXMath-apr2025/DirectXMathSSE4.h"
 //#include "Core/Auxiliaries.h"
