@@ -10,6 +10,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 
 add_executable(Pillow WIN32 ${SOURCES})
 
+target_include_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 # link static libraries.
 target_link_libraries(Pillow PRIVATE dxgi.lib D3D12.lib d3dcompiler.lib)
 # Build an IDE hierarchy.
