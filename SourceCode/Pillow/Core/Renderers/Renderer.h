@@ -4,10 +4,10 @@
 #include <atomic>
 #include <vector>
 #include <functional>
-#include "../Auxiliaries.h"
-#include "../Constants.h"
-#include "../Texture.h"
-#include "../Mesh.h"
+#include "Core/Auxiliaries.h"
+#include "Core/Constants.h"
+#include "Core/Resources/Texture.h"
+#include "Core/Resources/Mesh.h"
 
 using namespace Pillow::Graphics;
 using namespace DirectX;

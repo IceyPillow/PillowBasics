@@ -1,7 +1,7 @@
-#include "Core/Mesh.h"
+#include "Core/Resources/Mesh.h"
 #include "DirectXMath-apr2025/DirectXMath.h"
 #include "Core/Auxiliaries.h"
-#include "Core/Texture.h"
+#include "Core/Resources/Texture.h"
 
 #include "OpenAL-1.24.3/al.h"
 #include "OpenAL-1.24.3/alc.h"
