@@ -1,5 +1,5 @@
 #pragma once
-#include "Auxiliaries.h"
+#include "Core/Auxiliaries.h"
 #include "DirectXMath-apr2025/DirectXMath.h"
 
 namespace Pillow::Graphics
@@ -50,7 +50,7 @@ namespace Pillow::Graphics
          ReadonlyProperty(uint8_t, MipCount)
          ReadonlyProperty(uint8_t, ArrayCount)
          ReadonlyProperty(bool, IsCubemap)
-         ReadonlyProperty(CompressionMode, CompressionMode)
+         ReadonlyProperty(CompressionMode, CompressionType)
          // Size
          ReadonlyProperty(uint16_t, MipZeroSize)
          ReadonlyProperty(uint16_t, ArraySliceSize)
@@ -69,6 +69,8 @@ namespace Pillow::Graphics
    {
    public:
       const GenericTextureInfo Info;
+   private:
+      std::unique_ptr<uint8_t[]> data;
    };
 
    void LoadTexture(const string& relativePath);

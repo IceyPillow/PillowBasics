@@ -108,7 +108,7 @@ GenericTextureInfo::GenericTextureInfo(GenericTexFmt format, int32_t width, bool
    f_Width(uint16_t(width)),
    f_ArrayCount(uint8_t(arraySize* (bCube ? 6 : 1))),
    f_IsCubemap(bCube),
-   f_CompressionMode(compMode)
+   f_CompressionType(compMode)
 {
    if (width < 4 || (width & (width - 1))) throw std::exception("Texture width restriction: w=2^n and w>=4");
    int32_t power = std::log2f(width);
@@ -152,5 +152,4 @@ void Pillow::Graphics::LoadTexture(const string& relativePath)
    {
       texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    }
-
 }

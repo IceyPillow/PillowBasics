@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
-#include "Auxiliaries.h"
-#include "Constants.h"
+#include "Core/Auxiliaries.h"
+#include "Core/Constants.h"
 #include "Texture.h"
 
 using namespace Pillow::Graphics;
@@ -56,6 +56,11 @@ namespace Pillow::Graphics
    };
 
    class SkeletalMesh
+   {
+
+   };
+
+   class GenericMeshInfo
    {
 
    };
