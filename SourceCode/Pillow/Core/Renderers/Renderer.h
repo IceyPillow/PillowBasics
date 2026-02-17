@@ -77,7 +77,7 @@ namespace Pillow::Graphics
          SetActiveCamera,
          SetViewport,
          // Bind commands
-         // resource barriers are implicitly applied when executing bind commands.
+         // Resource barriers are implicitly applied when executing bind commands.
          // We don't want GenericRenderer exposes explicit resource barriers. (CS term: encapsulation)
          BindPipelineState,
          BindShaderResourceView,
@@ -162,7 +162,7 @@ namespace Pillow::Graphics
       virtual void Assembler() = 0;
 
    private:
-      void BaseWorker(int32_t workerIndex);
+      void BaseWorker(std::stop_token token, int32_t workerIndex);
       friend static void BarrierCompletionAction() noexcept;
    };
 
