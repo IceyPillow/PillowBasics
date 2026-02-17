@@ -24,8 +24,8 @@ namespace
    //
    // We choose the first method for a better performance.
 
-   std::vector<Drawcall> cachedDrawcalls;
-   std::vector<Drawcall> submittedDrawcalls;
+   //std::vector<Drawcall> cachedDrawcalls;
+   //std::vector<Drawcall> submittedDrawcalls;
 
    std::vector<std::thread> workers;
    std::optional<std::barrier<void(*)() noexcept>> frameBarrier;

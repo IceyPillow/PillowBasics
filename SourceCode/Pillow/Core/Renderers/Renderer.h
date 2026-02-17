@@ -23,21 +23,93 @@ namespace Pillow::Graphics
    class GenericRenderer;
    extern std::unique_ptr<GenericRenderer> Instance;
 
-   typedef uint32_t ResourceHandle;
+   typedef uint32_t ResourceHandle; // 28 bits for index, 4 bits for type
+
+   constexpr ResourceHandle NullResourceHandle = 0;
+   constexpr uint32_t ResourceTypeMask = 0xF << 28;
+
+   // DIRECT3D12 VIEW TYPES
+   // IN  DESCRIPTOR HEAP： CRV SRV UAV Sampler
+   // OUT DESCRIPTOR HEAP： RTV DSV, VBV IBV SOV
+   //
+   // DIRECT3D12 RESOURCE HEAP TYPES
+   // Upload Default Readback Custom
 
    enum class ResourceType : uint32_t
    {
       None = 0,
-      Mesh = 1 << 28,
-      Texture = 2 << 28,
-      PiplelineState = 3 << 28,
-      ConstantBuffer = 4 << 28,
+      Mesh = 0X1 << 28,
+      PiplelineState = 0X2 << 28,
+      ShaderResourceView = 0X3 << 28,
+      ConstantBufferView = 0X4 << 28,
+      UnorderedAccessView = 0X5 << 28,
+      ReadbackBuffer = 0X6 << 28,
    };
 
-   struct Drawcall
+   ForceInline ResourceType GetResourceType(ResourceHandle handle) { return ResourceType(handle & ResourceTypeMask); }
+
+   ForceInline bool IsValidHandle(ResourceHandle handle) { return handle != 0; }
+
+   struct GenericRendererResourceDesc
    {
-      void* sth;
+      ResourceType Type;
+      union
+      {
+         //std::weak_ptr<GenericTextureInfo> TextureInfo;
+         //MeshDesc Mesh;
+         //TextureDesc Texture;
+         //PipelineStateDesc PipelineState;
+         //ConstantBufferDesc ConstantBuffer;
+      };
    };
+
+   // Designed for a modifiable deferred pipeline.
+   struct GenericRendererCommand
+   {
+      enum class Type : uint8_t {
+         None,
+         // Clear commands
+         ClearRenderTarget,
+         ClearDepthStencil,
+         // Set commands
+         SetRenderTarget,
+         SetDepthStencil,
+         SetActiveCamera,
+         SetViewport,
+         // Bind commands
+         // resource barriers are implicitly applied when executing bind commands.
+         // We don't want GenericRenderer exposes explicit resource barriers. (CS term: encapsulation)
+         BindPipelineState,
+         BindShaderResourceView,
+         BindConstantBufferView,
+         BindUnorderedAccessView,
+         // Dispatch commands
+         DispatchMesh,
+         DispatchShadow,
+         DispatchPostProcess,
+         DispatchCompute
+      };
+
+      Type CmdType;
+
+      uint8_t Flags8;
+      uint8_t Index1;
+      uint8_t Index2;
+
+      union UnionParams
+      {
+         XMFLOAT4X4 Matrix;
+         struct
+         {
+            ResourceHandle Handle[4];
+            XMFLOAT4 Float4_1;
+            XMFLOAT4 Float4_2;
+            XMINT4 Int4;
+         };
+      } Params;
+   };
+
+   static_assert(std::is_trivially_copyable_v<GenericRendererCommand>); //POD test.
 
    class GenericPipelineConfig
    {
@@ -77,7 +149,8 @@ namespace Pillow::Graphics
       virtual ~GenericRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
       ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
-      virtual void ReleaseResource(uint32_t handle) = 0;
+      inline virtual void ResourceRegister(ResourceHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
+      inline virtual void ResourceRelease(ResourceHandle handle) {/*dumb*/};
       void Launch();
       void Terminate();
       void Commit();
@@ -102,7 +175,6 @@ namespace Pillow::Graphics
       D3D12Renderer(HWND windowHandle, int32_t threadCount);
       ~D3D12Renderer();
       uint64_t GetFrameIndex();
-      void ReleaseResource(uint32_t handle);
 
    private:
       void Worker(int32_t workerIndex);
@@ -126,10 +198,6 @@ namespace Pillow::Graphics
    //};
 
 #endif
-
-   ForceInline ResourceType GetResourceType(ResourceHandle handle) { return ResourceType(handle & (7 << 28)); }
-
-   ForceInline bool IsValidHandle(ResourceHandle handle) { return (handle & !(7 << 28)) != 0; }
 
    ForceInline void InitializeRenderer(int32_t threadCount, const void* parameter)
    {
