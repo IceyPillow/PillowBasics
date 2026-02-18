@@ -6,7 +6,7 @@
 # This fact reflects one significant belief of Pillow Basics —— useless things ain't used.
 # We will never pursue "advanced techs" unless they are better or needed.
 
-set(LIBRARIES DirectXMath UTF8cc LodePNG OpenAL PhysX HashLib)
+set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib)
 
 function(get_prebuilt_path dependencyPath)
    set(PREBUILT_PATH "${dependencyPath}\\Prebuilt")
@@ -41,24 +41,6 @@ file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_library(LodePNG STATIC ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/lodepng-apr2025" FILES ${SOURCES})
-
-# OpenAL
-file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/OpenAL-1.24.3/*.h")
-add_library(OpenAL INTERFACE ${SOURCES})
-# message("Pillow:SOURCES=${SOURCES}")
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/OpenAL-1.24.3" FILES ${SOURCES})
-set(PREBUILT_PATH "")
-get_prebuilt_path(".\\OpenAL-1.24.3")
-if(WIN32)
-   set(LIBS
-      optimized "${PREBUILT_PATH}\\Release\\OpenAL32.lib"
-      debug "${PREBUILT_PATH}\\RelWithDebInfo\\OpenAL32.lib"
-      avrt.lib
-   )
-elseif(ANDROID)
-   set(LIBS "${PREBUILT_PATH}\\libopenal.a")
-endif()
-target_link_libraries(OpenAL INTERFACE ${LIBS})
 
 # PhysX
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/PhysX-4.1/*.h")
