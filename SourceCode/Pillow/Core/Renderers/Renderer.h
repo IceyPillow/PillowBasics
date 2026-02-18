@@ -29,8 +29,8 @@ namespace Pillow::Graphics
    constexpr uint32_t ResourceTypeMask = 0xF << 28;
 
    // DIRECT3D12 VIEW TYPES
-   // IN  DESCRIPTOR HEAP： CRV SRV UAV Sampler
-   // OUT DESCRIPTOR HEAP： RTV DSV, VBV IBV SOV
+   // IN  DESCRIPTOR HEAP： RTV DSV CSV SRV UAV Sampler
+   // OUT DESCRIPTOR HEAP： VBV IBV SOV
    //
    // DIRECT3D12 RESOURCE HEAP TYPES
    // Upload Default Readback Custom
@@ -40,15 +40,36 @@ namespace Pillow::Graphics
       None = 0,
       Mesh = 0X1 << 28,
       PiplelineState = 0X2 << 28,
-      ShaderResourceView = 0X3 << 28,
-      ConstantBufferView = 0X4 << 28,
-      UnorderedAccessView = 0X5 << 28,
-      ReadbackBuffer = 0X6 << 28,
+      RenderTargetView = 0X3 << 28,
+      DepthStencilVIew = 0X4 << 28,
+      ShaderResourceView = 0X5 << 28,
+      ConstantBufferView = 0X6 << 28,
+      UnorderedAccessView = 0X7 << 28,
+      ReadbackBuffer = 0X8 << 28,
    };
 
-   ForceInline ResourceType GetResourceType(ResourceHandle handle) { return ResourceType(handle & ResourceTypeMask); }
 
-   ForceInline bool IsValidHandle(ResourceHandle handle) { return handle != 0; }
+   // Those resources have no handles, client should refer to them by this enum type.
+   enum class PiplelineBuffer : uint8_t
+   {
+      None,
+      // Swap chain
+      Backbuffer,
+      // For half-resolution post-process effects
+      PostProcessingHalf,
+      PostProcessingHalfOld,
+      // Lighting pass of the deferred pipeline
+      LightBuffer,
+      LightBufferOld,
+      // G-buffer pass of the deferred pipeline
+      Depth,
+      DepthOld,
+      MotionVector,
+      MotionVectorOld,
+      GBuffer1,
+      GBuffer2,
+      GBuffer3,
+   };
 
    struct GenericRendererResourceDesc
    {
@@ -66,9 +87,11 @@ namespace Pillow::Graphics
    // Designed for a modifiable deferred pipeline.
    struct GenericRendererCommand
    {
-      enum class Type : uint8_t {
+      enum class Type : uint8_t
+      {
          None,
          // Clear commands
+         ClearPiplelineBuffers,
          ClearRenderTarget,
          ClearDepthStencil,
          // Set commands
@@ -91,10 +114,9 @@ namespace Pillow::Graphics
       };
 
       Type CmdType;
-
       uint8_t Flags8;
-      uint8_t Index1;
-      uint8_t Index2;
+      uint8_t Byte1;
+      uint8_t Byte2;
 
       union UnionParams
       {
@@ -108,8 +130,7 @@ namespace Pillow::Graphics
          };
       } Params;
    };
-
-   static_assert(std::is_trivially_copyable_v<GenericRendererCommand>); //POD test.
+   static_assert(std::is_trivially_copyable_v<GenericRendererCommand>); //POD test
 
    class GenericPipelineConfig
    {
@@ -196,7 +217,6 @@ namespace Pillow::Graphics
    //   void CPUFrameBegin() override;
    //   void CPUFrameEnd() override;
    //};
-
 #endif
 
    ForceInline void InitializeRenderer(int32_t threadCount, const void* parameter)
