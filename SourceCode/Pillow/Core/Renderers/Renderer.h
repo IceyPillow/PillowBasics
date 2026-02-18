@@ -92,20 +92,20 @@ namespace Pillow::Graphics
          None,
          // Clear commands
          ClearPiplelineBuffers,
-         ClearRenderTarget,
-         ClearDepthStencil,
+         ClearRenderTargets,
+         ClearDepthStencils,
          // Set commands
-         SetRenderTarget,
-         SetDepthStencil,
+         SetPiplelineBuffers,
+         SetRenderTargets,
          SetActiveCamera,
          SetViewport,
          // Bind commands
          // Resource barriers are implicitly applied when executing bind commands.
-         // We don't want GenericRenderer exposes explicit resource barriers. (CS term: encapsulation)
+         // We don't want GenericRenderer to expose explicit resource barriers. (CS term: encapsulation)
          BindPipelineState,
-         BindShaderResourceView,
-         BindConstantBufferView,
-         BindUnorderedAccessView,
+         BindShaderResourceViews,
+         BindConstantBufferViews,
+         BindUnorderedAccessViews,
          // Dispatch commands
          DispatchMesh,
          DispatchShadow,
@@ -115,18 +115,15 @@ namespace Pillow::Graphics
 
       Type CmdType;
       uint8_t Flags8;
-      uint8_t Byte1;
-      uint8_t Byte2;
+      int16_t Count;
 
       union UnionParams
       {
          XMFLOAT4X4 Matrix;
          struct
          {
-            ResourceHandle Handle[4];
-            XMFLOAT4 Float4_1;
-            XMFLOAT4 Float4_2;
-            XMINT4 Int4;
+            XMFLOAT4 Float4_1, Float4_2;
+            uint32_t UIntArray8[8];
          };
       } Params;
    };
