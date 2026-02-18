@@ -229,4 +229,103 @@ namespace Pillow::Graphics
       //RendererInstance = std::make_unique<Pillow::GLES32Renderer>(Hwnd, 2);
 #endif
    }
+
+   ForceInline ResourceType GetResourceType(ResourceHandle handle) { return ResourceType(handle & ResourceTypeMask); }
+
+   ForceInline bool CheckHandle(ResourceHandle handle) { return handle != 0; }
+
+   ForceInline GenericRendererCommand CmdNone()
+   {
+      return GenericRendererCommand{/*empty*/};
+   }
+
+   ForceInline GenericRendererCommand CmdGenericRendererCommand()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdClearRenderTarget()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdClearDepthStencil()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdSetRenderTarget()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdSetDepthStencil()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdSetActiveCamera()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdSetViewport()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdBindPipelineState()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdBindShaderResourceView()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdBindConstantBufferView()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdBindUnorderedAccessView()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdDispatchMesh()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdDispatchShadow()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdDispatchPostProcess()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
+
+   ForceInline GenericRendererCommand CmdDispatchCompute()
+   {
+      GenericRendererCommand cmd;
+      return cmd;
+   }
 }
