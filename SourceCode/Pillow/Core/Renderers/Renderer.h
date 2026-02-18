@@ -23,9 +23,9 @@ namespace Pillow::Graphics
    class GenericRenderer;
    extern std::unique_ptr<GenericRenderer> Instance;
 
-   typedef uint32_t ResourceHandle; // 28 bits for index, 4 bits for type
+   typedef uint32_t ResHandle; // 28 bits for index, 4 bits for type
 
-   constexpr ResourceHandle NullResourceHandle = 0;
+   constexpr ResHandle NullResHandle = 0;
    constexpr uint32_t ResourceTypeMask = 0xF << 28;
 
    // DIRECT3D12 VIEW TYPES
@@ -45,7 +45,7 @@ namespace Pillow::Graphics
       ShaderResourceView = 0X5 << 28,
       ConstantBufferView = 0X6 << 28,
       UnorderedAccessView = 0X7 << 28,
-      ReadbackBuffer = 0X8 << 28,
+      ReadbackBuffer = 0X8U << 28,
    };
 
 
@@ -69,6 +69,7 @@ namespace Pillow::Graphics
       GBuffer1,
       GBuffer2,
       GBuffer3,
+      Count = GBuffer3,
    };
 
    struct GenericRendererResourceDesc
@@ -167,8 +168,8 @@ namespace Pillow::Graphics
       virtual ~GenericRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
       ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
-      inline virtual void ResourceRegister(ResourceHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
-      inline virtual void ResourceRelease(ResourceHandle handle) {/*dumb*/};
+      inline virtual void ResourceRegister(ResHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
+      inline virtual void ResourceRelease(ResHandle handle) {/*dumb*/};
       void Launch();
       void Terminate();
       void Commit();
@@ -227,9 +228,9 @@ namespace Pillow::Graphics
 #endif
    }
 
-   ForceInline ResourceType GetResourceType(ResourceHandle handle) { return ResourceType(handle & ResourceTypeMask); }
+   ForceInline ResourceType GetResourceType(ResHandle handle) { return ResourceType(handle & ResourceTypeMask); }
 
-   ForceInline bool CheckHandle(ResourceHandle handle) { return handle != 0; }
+   ForceInline bool CheckHandle(ResHandle handle) { return handle != 0; }
 
    ForceInline GenericRendererCommand CmdNone()
    {
