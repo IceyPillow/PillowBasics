@@ -29,6 +29,16 @@ namespace Pillow::Graphics
    constexpr ResHandle NullResHandle = 0;
    constexpr uint32_t ResourceTypeMask = 0xF << 28;
 
+   enum class LightType : uint8_t
+   {
+      Directional,
+      Point,
+      Spot,
+      AreaDisc,
+      AreaSphere,
+      AreaRectangle
+   };
+
    // DIRECT3D12 VIEW TYPES
    // IN  DESCRIPTOR HEAP： RTV DSV CSV SRV UAV Sampler
    // OUT DESCRIPTOR HEAP： VBV IBV SOV
@@ -48,7 +58,6 @@ namespace Pillow::Graphics
       UnorderedAccessView = 0X7 << 28,
       ReadbackBuffer = 0X8U << 28,
    };
-
 
    // Those resources have no handles, client should refer to them by this enum type.
    enum class PiplelineBuffer : uint8_t
@@ -101,6 +110,7 @@ namespace Pillow::Graphics
          SetRenderTargets,
          SetActiveCamera,
          SetViewport,
+         SetLight,
          // Bind commands
          // Resource barriers are implicitly applied when executing bind commands.
          // We don't want GenericRenderer to expose explicit resource barriers. (CS term: encapsulation)
