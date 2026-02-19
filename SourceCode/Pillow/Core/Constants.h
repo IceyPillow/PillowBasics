@@ -1,5 +1,6 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 #pragma once
+#include <bit>
 #include "Auxiliaries.h"
 #include "DirectXMath-apr2025/DirectXMath.h"
 #if defined(_WIN64)
@@ -28,6 +29,13 @@ namespace Pillow::Constants
    const int32_t MaxThreadNumRenderer = 4, MaxThreadNumOther = 8;
 
    extern int32_t ThreadNumRenderer, ThreadNumPhysics, ThreadNumTick;
+
+   constexpr float FloatInfinity = std::bit_cast<float>(std::uint32_t(0X7F800000U));
+   
+   constexpr float FloatNegativeInfinity = -FloatInfinity;
+
+   static_assert(sizeof(float) == sizeof(std::uint32_t));
+   static_assert(std::numeric_limits<float>::is_iec559); // IEEE-754
 
    void SetThreadNumbers();
 }
