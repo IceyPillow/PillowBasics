@@ -17,6 +17,7 @@
 #endif
 #include "utfcpp-4.0.6/utf8.h"
 #include "DirectXMath-apr2025/DirectXMath.h"
+#include "Constants.h"
 
 // Template
 #if defined(_WIN64)
@@ -148,8 +149,12 @@ namespace Pillow
       ReadonlyProperty(double, DeltaTime)
          ReadonlyProperty(double, LastingTime)
    public:
-      void Start();
+      inline GameClock() { Restart(); }
+      void Restart();
+      // Updates inner data. Call it every frame.
       void Tick();
+      // A code candy for time-slicing algorithm.
+      bool CheckSlice(float sliceSize);
       static double GetPrecisionMilliseconds();
 
    private:

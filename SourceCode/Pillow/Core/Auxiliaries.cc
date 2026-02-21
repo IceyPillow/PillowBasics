@@ -1,6 +1,7 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 #include "Auxiliaries.h"
 #include <regex>
+#include <ranges>
 
 using namespace Pillow;
 using namespace std::chrono;
@@ -125,10 +126,12 @@ void Pillow::LogGame(const string& text)
    //
 }
 
-void GameClock::Start()
+void GameClock::Restart()
 {
    startPoint = steady_clock::now();
    lastPoint = startPoint;
+   f_DeltaTime = 0;
+   f_LastingTime = 0;
 }
 
 void GameClock::Tick()
@@ -139,17 +142,31 @@ void GameClock::Tick()
    lastPoint = currentPoint;
 }
 
+bool Pillow::GameClock::CheckSlice(float sliceSize)
+{
+   auto currentPoint = steady_clock::now();
+   float deltaTime = duration_cast<duration<double, std::ratio<1>>>(currentPoint - lastPoint).count();
+   bool bSliced = deltaTime > sliceSize;
+   if (bSliced)
+   {
+      f_DeltaTime = deltaTime;
+      f_LastingTime = duration_cast<duration<double, std::ratio<1>>>(currentPoint - startPoint).count();
+      lastPoint = currentPoint;
+   }
+   return bSliced;
+
+}
+
 double GameClock::GetPrecisionMilliseconds()
 {
-   const int32_t test_rounds = 5;
-   auto last = steady_clock::now();
-   steady_clock::duration precision = steady_clock::duration::max();
-   for (size_t i = 0; i < test_rounds; ++i) {
-      auto next = steady_clock::now();
+   auto precision = steady_clock::duration::max();
+   const int32_t sampleCount = 4;
+   for (int32_t i : std::views::iota(0, sampleCount)) {
+      auto last = steady_clock::now();
+      auto next = last;
       while (next == last) next = steady_clock::now();
       auto interval = next - last;
       precision = std::min(precision, interval);
-      last = next;
    }
    return duration_cast<duration<double, std::milli>>(precision).count();
 }
