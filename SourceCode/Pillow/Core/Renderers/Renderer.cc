@@ -12,6 +12,7 @@ namespace
    //std::vector<Drawcall> cachedDrawcalls;
    //std::vector<Drawcall> submittedDrawcalls;
 
+   std::unique_ptr<IRenderer> rendererInstance;
    std::vector<std::jthread> workers; // jthread from C++20
    std::optional<std::barrier<void(*)() noexcept>> frameBarrier;
    std::atomic<bool> signalCompute;
@@ -74,7 +75,35 @@ static void Pillow::Graphics::BarrierCompletionAction() noexcept
    signalCompute.store(false, std::memory_order::release);
 }
 
-GenericRenderer::GenericRenderer(int32_t threadCount, std::string name) :
+void IRenderer::Initialize(int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate, const void* parameter)
+{
+   if (rendererInstance) throw std::runtime_error("Renderer has already been initialized.");
+#if defined(_WIN64)
+   HWND hwnd = *static_cast<const HWND*>(parameter);
+   rendererInstance = std::make_unique<Graphics::D3D12Renderer>(hwnd, threadCount, renderBufferSize, refreshRate);
+#elif defined(__ANDROID__)
+   //RendererInstance = std::make_unique<Pillow::Vulkan12Renderer>(Hwnd, 2);
+#endif
+}
+
+IRenderer* IRenderer::GetInstance()
+{
+#ifdef PILLOW_DEBUG
+   if (!rendererInstance) throw std::runtime_error("Renderer instance is not initialized.");
+#endif
+   return rendererInstance.get();
+}
+
+void IRenderer::Terminate()
+{
+   if (!rendererInstance) throw std::runtime_error("Renderer instance is not initialized.");
+   signalTerminate.request_stop();
+   for (auto& thread : workers)
+   {
+      if (thread.joinable()) thread.join();
+   }
+   rendererInstance.reset();
+}
    f_RendererName(name),
    f_ThreadCount(threadCount)
 {

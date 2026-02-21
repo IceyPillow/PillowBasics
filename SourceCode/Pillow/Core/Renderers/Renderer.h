@@ -176,6 +176,11 @@ namespace Pillow::Graphics
          ReadonlyProperty(XMINT2, RenderBufferSize)
 
    public:
+      static void Initialize(int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate, const void* parameter);
+      static IRenderer* GetInstance();
+      static void Terminate();
+
+   public:
       virtual ~IRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
       ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
@@ -204,7 +209,7 @@ namespace Pillow::Graphics
       DeleteDefautedMethods(D3D12Renderer)
 
    public:
-      D3D12Renderer(HWND windowHandle, int32_t threadCount);
+      D3D12Renderer(HWND windowHandle, int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate);
       ~D3D12Renderer();
       uint64_t GetFrameIndex();
 
@@ -222,17 +227,6 @@ namespace Pillow::Graphics
    //   ~Vulkan12Renderer();
    //};
 #endif
-
-   ForceInline void InitializeRenderer(int32_t threadCount, const void* parameter)
-   {
-      if (Instance) throw std::runtime_error("Renderer has already been initialized.");
-#if defined(_WIN64)
-      HWND hwnd = *(const HWND*)parameter;
-      Instance = std::make_unique<Graphics::D3D12Renderer>(hwnd, threadCount);
-#elif defined(__ANDROID__)
-      //RendererInstance = std::make_unique<Pillow::GLES32Renderer>(Hwnd, 2);
-#endif
-   }
 
    ForceInline ResourceType GetResourceType(ResHandle handle) { return ResourceType(handle & ResourceTypeMask); }
 
