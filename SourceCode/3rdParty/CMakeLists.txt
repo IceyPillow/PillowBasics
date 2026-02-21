@@ -7,6 +7,7 @@
 # We will never pursue "advanced techs" unless they are better or needed.
 
 set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib cgltf stb_truetype)
+set(LIBRARIES ${LIBRARIES} PARENT_SCOPE) # Write back to the parent scope.
 if(WIN32)
     list(APPEND LIBRARIES XeSS)
 endif()
@@ -100,11 +101,6 @@ file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 add_library(HashLib STATIC ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/HashLib" FILES ${SOURCES})
 
-# Config the target Pillow
-target_link_libraries(Pillow PRIVATE ${LIBRARIES})
-set_target_properties(${LIBRARIES} PROPERTIES FOLDER "3rdParty")
-target_link_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 # cgltf
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
    "${CMAKE_CURRENT_SOURCE_DIR}/cgltf-1.15/*.h"
