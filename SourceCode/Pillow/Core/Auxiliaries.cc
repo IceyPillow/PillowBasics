@@ -6,6 +6,11 @@
 using namespace Pillow;
 using namespace std::chrono;
 
+namespace Pillow::Hidden
+{
+   GameClock globalClock{};
+}
+
 KeyValuePair::KeyValuePair(string key, string value, bool isStringValue) :
    f_Key(std::regex_replace(key, std::regex("\\s"), "")),
    f_ValueRaw(std::regex_replace(value, std::regex("\\s"), ""))
@@ -32,7 +37,7 @@ KeyValuePair::KeyValuePair(string key, string value, bool isStringValue) :
    }
 }
 
-XMFLOAT4A Pillow::KeyValuePair::GetFloat4Aligned()
+XMFLOAT4A KeyValuePair::GetFloat4Aligned()
 {
 
    auto view = std::ranges::split_view(f_ValueRaw, ',');
@@ -59,7 +64,7 @@ bool KeyValuePair::operator==(const KeyValuePair& right) const
    return this->f_Key == right.f_Key && this->f_ValueRaw == right.f_ValueRaw;
 }
 
-bool Pillow::KeyValuePair::operator>(const KeyValuePair& right) const
+bool KeyValuePair::operator>(const KeyValuePair& right) const
 {
    if (this->f_Type == ValueType::Integer)
    {
@@ -72,7 +77,7 @@ bool Pillow::KeyValuePair::operator>(const KeyValuePair& right) const
    return this->f_Key > right.f_Key;
 }
 
-bool Pillow::KeyValuePair::operator<(const KeyValuePair& right) const
+bool KeyValuePair::operator<(const KeyValuePair& right) const
 {
    return this->operator>(right);
 }
@@ -137,7 +142,7 @@ void GameClock::Tick()
    lastPoint = currentPoint;
 }
 
-bool Pillow::GameClock::CheckSlice(float sliceSize)
+bool GameClock::CheckSlice(float sliceSize)
 {
    auto currentPoint = steady_clock::now();
    float deltaTime = duration_cast<duration<double, std::ratio<1>>>(currentPoint - lastPoint).count();
@@ -164,4 +169,14 @@ double GameClock::GetPrecisionMilliseconds()
       precision = std::min(precision, interval);
    }
    return duration_cast<duration<double, std::milli>>(precision).count();
+}
+
+double Pillow::GetFrameDeltaTime()
+{
+   return Hidden::globalClock.GetDeltaTime();
+}
+
+double Pillow::GetLapseTimeSinceLaunch()
+{
+   return Hidden::globalClock.GetLastingTime();
 }

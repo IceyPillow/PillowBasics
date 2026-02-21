@@ -161,4 +161,10 @@ namespace Pillow
       std::chrono::steady_clock::time_point startPoint;
       std::chrono::steady_clock::time_point lastPoint;
    };
+
+   // Check the global clock.
+   double GetFrameDeltaTime();
+
+   // Check the global clock.
+   double GetLapseTimeSinceLaunch();
 }

@@ -16,9 +16,9 @@
 
 extern void TempCode();
 
-namespace Pillow
+namespace Pillow::Hidden
 {
-   Pillow::GameClock GlobalClock{};
+   extern Pillow::GameClock globalClock;
 }
 
 // Static definitions. External code cannot access those contents.
@@ -229,7 +229,7 @@ namespace
 
    void EngineLaunch()
    {
-      GlobalClock.Restart();
+      Hidden::globalClock.Restart();
       Constants::SetThreadNumbers();
    #if defined(_WIN64)
       IRenderer::Initialize(Constants::ThreadNumRenderer, clientSize, refreshRate, (void*)&hwnd);
@@ -242,7 +242,7 @@ namespace
    
    void EngineTick()
    {
-      GlobalClock.Tick();
+      Hidden::globalClock.Tick();
       auto renderer = IRenderer::GetInstance();
       static GameClock localClock;
       // To trigger the swap-chain resizing.

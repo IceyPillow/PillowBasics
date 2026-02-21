@@ -15,11 +15,6 @@
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
 
-namespace Pillow
-{
-   extern Pillow::GameClock GlobalClock;
-}
-
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;
 
@@ -1314,7 +1309,7 @@ void D3D12Renderer::Worker(int32_t workerIndex)
    if (workerIndex == 0)
    {
       ApplyBarrier(cmdList, backbuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-      XMVECTOR _color = XMVectorReplicate(GlobalClock.GetLastingTime());
+      XMVECTOR _color = XMVectorReplicate(GetLapseTimeSinceLaunch());
       _color = XMVectorAdd(_color, XMVectorSet(0, XM_PI * 0.66f, XM_PI * 1.33f, 0));
       _color = XMVectorMultiplyAdd(XMVectorSin(_color), XMVectorReplicate(0.5f), XMVectorReplicate(0.5f));
       XMFLOAT4 color;
