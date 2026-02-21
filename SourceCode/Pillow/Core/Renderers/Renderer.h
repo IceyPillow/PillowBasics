@@ -212,19 +212,12 @@ namespace Pillow::Graphics
       void Assembler();
    };
 #elif defined(__ANDROID__)
-   //class GLES32Renderer : public GenericRenderer
+   //class Vulkan12Renderer : public GenericRenderer
    //{
-   //   DeleteDefautedMethods(GLES32Renderer)
+   //   DeleteDefautedMethods(Vulkan12Renderer)
    //public:
-   //   GLES32Renderer(HWND windowHandle);
-   //   ~GLES32Renderer();
-   //   int32_t CreateMesh() override;
-   //   int32_t CreateTexture() override;
-   //   int32_t CreatePiplelineState() override;
-   //   int32_t CreateConstantBuffer() override;
-   //   void ReleaseResource(int32_t handle) override;
-   //   void CPUFrameBegin() override;
-   //   void CPUFrameEnd() override;
+   //   Vulkan12Renderer(HWND windowHandle);
+   //   ~Vulkan12Renderer();
    //};
 #endif
 
