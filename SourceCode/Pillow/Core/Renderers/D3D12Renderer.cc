@@ -1231,9 +1231,9 @@ namespace
          // After resizing the swapchain, the frame array index may not be euqal to the active backbuffer index.
          // So, we should associate the first buffer of the resized swapchain to the current frame array index.
          // e.g. frameIdx = 8, frameArrayIdx = 2, in this case, backbuffers[2] should refer to swapChain->GetBuffer(0).
-         int32_t offset = (fenceSync->GetFrameIndex() + i) % Constants::SwapChainSize;
-         CheckHResult(swapChain->GetBuffer(i, IID_PPV_ARGS(&backbuffers[offset])));
-         tempRTVs[offset] = descriptorMgr->CreateView(device, backbuffers[offset], &rtvDesc, ViewType::RTV);
+         int32_t frameArrayIdx = (fenceSync->GetFrameIndex() + i) % Constants::SwapChainSize;
+         CheckHResult(swapChain->GetBuffer(i, IID_PPV_ARGS(&backbuffers[frameArrayIdx])));
+         tempRTVs[frameArrayIdx] = descriptorMgr->CreateView(device, backbuffers[frameArrayIdx], &rtvDesc, ViewType::RTV);
       }
    }
 
@@ -1274,7 +1274,7 @@ namespace
    }
 }
 
-D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRenderer(threadCount, "D3D12Renderer")
+D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate) : IRenderer(threadCount, "D3D12Renderer")
 {
    SingletonCheck();
    hwnd = windowHandle;
@@ -1333,7 +1333,7 @@ void Pillow::Graphics::D3D12Renderer::Pioneer()
 void D3D12Renderer::Assembler()
 {
    lateReleaseMgr->ReleaseGarbage(); // Place it here, so it works not in the main thread.
-   cmdQueue->ExecuteCommandLists(threads, _cmdLists.data());
+   cmdQueue->ExecuteCommandLists(_cmdLists.size(), _cmdLists.data());
    CheckHResult(swapChain->Present(verticalBlanks, (allowTearing && verticalBlanks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
    fenceSync->NextFrame();
 }
