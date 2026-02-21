@@ -102,6 +102,12 @@ target_link_libraries(Pillow PRIVATE ${LIBRARIES})
 set_target_properties(${LIBRARIES} PROPERTIES FOLDER "3rdParty")
 target_link_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+# cgltf
+file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+   "${CMAKE_CURRENT_SOURCE_DIR}/cgltf-1.15/*.h"
+)
+add_library(cgltf INTERFACE ${SOURCES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/cgltf-1.15" FILES ${SOURCES})
 
 # stb_truetype
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
