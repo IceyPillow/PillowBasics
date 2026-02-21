@@ -6,11 +6,6 @@
 using namespace Pillow;
 using namespace std::chrono;
 
-namespace
-{
-   GameClock globalGameClock;
-}
-
 KeyValuePair::KeyValuePair(string key, string value, bool isStringValue) :
    f_Key(std::regex_replace(key, std::regex("\\s"), "")),
    f_ValueRaw(std::regex_replace(value, std::regex("\\s"), ""))

@@ -20,8 +20,6 @@ namespace Pillow::Graphics
    const XMVECTOR RGBLuminance = XMVectorSet(0.2125f / 0.7154f, 1, 0.0721f / 0.7154f, 1);
    const XMVECTOR RGBLuminanceInv = XMVectorSet(0.7154f / 0.2125f, 1, 0.7154f / 0.0721f, 1);
 
-   extern int32_t RefreshRate;
-   extern XMINT2 ScreenSize;
    class GenericRenderer;
    extern std::unique_ptr<GenericRenderer> Instance;
 
@@ -174,11 +172,15 @@ namespace Pillow::Graphics
       DeleteDefautedMethods(GenericRenderer)
          ReadonlyProperty(string, RendererName)
          ReadonlyProperty(int32_t, ThreadCount)
+         ReadonlyProperty(int32_t, RefreshRate)
+         ReadonlyProperty(XMINT2, RenderBufferSize)
 
    public:
       virtual ~GenericRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
       ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
+      inline void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
+      inline void SetRenderBufferSize(XMINT2 size) { f_RenderBufferSize = size; }
       inline virtual void ResourceRegister(ResHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
       inline virtual void ResourceRelease(ResHandle handle) {/*dumb*/};
       void Launch();

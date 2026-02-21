@@ -16,17 +16,24 @@
 
 extern void TempCode();
 
+namespace Pillow
+{
+   Pillow::GameClock GlobalClock{};
+}
+
 // Static definitions. External code cannot access those contents.
 namespace
 {
    using namespace Pillow;
+   using namespace Pillow::Graphics;
    using namespace DirectX; // DXMath
 
    void EngineLaunch();
    void EngineTick();
    void EngineTerminate();
 
-   GameClock GlobalClock;
+   XMINT2 screenSize{};
+   int32_t refreshRate{};
 
 #if defined(_WIN64)
    HWND hwnd;
@@ -35,21 +42,23 @@ namespace
    XMINT2 screenOrigin;
    const XMINT2 minClientSize{ 400, 300 };
    XMINT2 minWindowSize; // The border makes the window size bigger than the client size.
+   XMINT2 clientSize;
 
    void CreateGameWindow(HINSTANCE hInstance, int show);
    void GameMessageLoop();
    LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
    void CALLBACK TimerEvent(HWND hwnd, UINT arg1, UINT_PTR arg2, DWORD arg3);
    void GetMonitorParams();
-   void GetWindowSize();
+   void GetMinWindowSize();
+   void GetClientSize();
    void SetWindowMode(bool fullScreen, bool allowResizing = true);
 
    void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
    {
       GetMonitorParams();
-      GetWindowSize();
-      int32_t posX = screenOrigin.x + (ScreenSize.x - minWindowSize.x) / 2;
-      int32_t posY = screenOrigin.y + (ScreenSize.y - minWindowSize.y) / 2;
+      GetMinWindowSize();
+      int32_t posX = screenOrigin.x + (screenSize.x - minWindowSize.x) / 2;
+      int32_t posY = screenOrigin.y + (screenSize.y - minWindowSize.y) / 2;
       // 1 Register Window
       const wchar_t* className = L"PillowBasics";
       WNDCLASS windowSettings{};
@@ -179,16 +188,23 @@ namespace
          MessageBoxA(0, "EnumDisplaySettings FAILED", 0, MB_OK);
          exit(EXIT_FAILURE);
       }
-      RefreshRate = int32_t(devMode.dmDisplayFrequency);
-      ScreenSize = XMINT2{ int32_t(devMode.dmPelsWidth), int32_t(devMode.dmPelsHeight) };
+      screenSize = XMINT2{ int32_t(devMode.dmPelsWidth), int32_t(devMode.dmPelsHeight) };
+      refreshRate = int32_t(devMode.dmDisplayFrequency);
    }
 
-   void GetWindowSize()
+   void GetMinWindowSize()
    {
       RECT rect{ 0,0,minClientSize.x,minClientSize.y };
       AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
       minWindowSize = XMINT2{ rect.right - rect.left, rect.bottom - rect.top };
    }
+
+  void GetClientSize()
+  {
+     RECT rect{};
+     GetClientRect(hwnd, &rect);
+     clientSize = XMINT2{ rect.right, rect.bottom };
+  }
 
    void SetWindowMode(bool fullScreen, bool allowResizing)
    {
@@ -199,7 +215,7 @@ namespace
          GetMonitorParams();
          GetWindowRect(hwnd, &lastRect);
          SetWindowLongPtr(hwnd, GWL_STYLE, WS_OVERLAPPED);
-         SetWindowPos(hwnd, 0, screenOrigin.x, screenOrigin.y, ScreenSize.x, ScreenSize.y, flags);
+         SetWindowPos(hwnd, 0, screenOrigin.x, screenOrigin.y, screenSize.x, screenSize.y, flags);
       }
       else if (!fullScreen && isFullscreen) // To a window
       {
@@ -213,39 +229,38 @@ namespace
 
    void EngineLaunch()
    {
-      GlobalClock.Start();
+      GlobalClock.Restart();
       Constants::SetThreadNumbers();
    #if defined(_WIN64)
-      Graphics::InitializeRenderer(Constants::ThreadNumRenderer, (void*)&hwnd);
+      IRenderer::Initialize(Constants::ThreadNumRenderer, clientSize, refreshRate, (void*)&hwnd);
    #elif defined(__ANDROID__)
       //...
    #endif
-      Graphics::Instance->Launch();
+      IRenderer::GetInstance()->Launch();
       return;
    }
    
    void EngineTick()
    {
       GlobalClock.Tick();
-      Graphics::Instance->Commit();
+      auto renderer = IRenderer::GetInstance();
+      static GameClock localClock;
+      // To trigger the swap-chain resizing.
+      if (localClock.CheckSlice(Constants::FrameTime60FPS))
+      {
+         // Refresh rate is acquired only once when the game startsm because GetMonitorParams() costs a lot.
+         GetClientSize();
+         renderer->SetRenderBufferSize(clientSize);
+         renderer->SetRefreshRate(refreshRate);
+      }
+      renderer->CommitOrWait();
       //Pillow::Input::Update();
    }
    
    void EngineTerminate()
    {
-      Graphics::Instance->Terminate();
-      Graphics::Instance.reset();
+      IRenderer::Terminate();
    }
-}
-
-extern double TEMP_GetDeltaTime()
-{
-   return GlobalClock.GetDeltaTime();
-}
-
-extern double TEMP_GetLastingTime()
-{
-   return GlobalClock.GetLastingTime();
 }
 
 #if defined(_WIN64)

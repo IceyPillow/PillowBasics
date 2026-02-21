@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <queue>
+#include <ranges>
 #include <fstream>
 #include <filesystem>
 #include <comdef.h>
@@ -13,11 +14,13 @@
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
 
+namespace Pillow
+{
+   extern Pillow::GameClock GlobalClock;
+}
+
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;
-
-extern double TEMP_GetDeltaTime();
-extern double TEMP_GetLastingTime();
 
 // __LINE__ in an inline function doesn't show the line number of the caller, thus choose a macro.
 #define CheckHResult(hr)\
@@ -128,7 +131,7 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    HWND hwnd;
    int32_t threads;
    bool allowTearing;
-   XMINT2 backbufferSize;
+   XMINT2 currentRenderBufferSize;
    int32_t verticalBlanks{ 1 };
 }
 
@@ -1146,16 +1149,6 @@ namespace
       cmdList->ResourceBarrier(1, &barrier);
    }
 
-   // Return true if the client size doesn't change.
-   ForceInline bool GetClientSize()
-   {
-      RECT rect{};
-      GetClientRect(hwnd, &rect);
-      auto oldValue = backbufferSize;
-      backbufferSize = XMINT2{ rect.right, rect.bottom };
-      return oldValue == backbufferSize;
-   }
-
    void CreateBase()
    {
       // Factory
@@ -1247,18 +1240,13 @@ namespace
       }
    }
 
-   void TryResizingSwapchain()
+   void TryResizeSwapChain()
    {
-      // Interval check.
-      constexpr double MinInterval = 1.0 / 60.0;
-      static double interval = 0;
-      interval += TEMP_GetDeltaTime();
-      if (interval < MinInterval) return;
-      interval = 0;
-      if (GetClientSize()) return;
+      if (currentRenderBufferSize == IRenderer::GetInstance()->GetRenderBufferSize()) return;
+      currentRenderBufferSize = IRenderer::GetInstance()->GetRenderBufferSize();
       // Resize the swapchain.
       fenceSync->FlushQueue();
-      for (int i = 0; i < Constants::SwapChainSize; i++)
+      for (int32_t i : std::views::iota(0, Constants::SwapChainSize))
       {
          backbuffers[i].Reset();
          descriptorMgr->ReleaseView(tempRTVs[i]);
@@ -1294,7 +1282,10 @@ D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount) : GenericRe
    SingletonCheck();
    hwnd = windowHandle;
    threads = threadCount;
-   GetClientSize();
+   //GetClientSize();
+   currentRenderBufferSize = renderBufferSize;
+   IRenderer::SetRenderBufferSize(renderBufferSize);
+   IRenderer::SetRefreshRate(refreshRate);
    CreateBase();
    CreateHeapsAndPSOs();
    CreateFrames();
@@ -1326,7 +1317,7 @@ void D3D12Renderer::Worker(int32_t workerIndex)
    if (workerIndex == 0)
    {
       ApplyBarrier(cmdList, backbuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-      XMVECTOR _color = XMVectorReplicate(TEMP_GetLastingTime());
+      XMVECTOR _color = XMVectorReplicate(GlobalClock.GetLastingTime());
       _color = XMVectorAdd(_color, XMVectorSet(0, XM_PI * 0.66f, XM_PI * 1.33f, 0));
       _color = XMVectorMultiplyAdd(XMVectorSin(_color), XMVectorReplicate(0.5f), XMVectorReplicate(0.5f));
       XMFLOAT4 color;
@@ -1339,7 +1330,7 @@ void D3D12Renderer::Worker(int32_t workerIndex)
 
 void Pillow::Graphics::D3D12Renderer::Pioneer()
 {
-   TryResizingSwapchain();
+   TryResizeSwapChain();
 }
 
 void D3D12Renderer::Assembler()
