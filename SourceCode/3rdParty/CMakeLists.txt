@@ -102,3 +102,10 @@ target_link_libraries(Pillow PRIVATE ${LIBRARIES})
 set_target_properties(${LIBRARIES} PROPERTIES FOLDER "3rdParty")
 target_link_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+# stb_truetype
+file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+   "${CMAKE_CURRENT_SOURCE_DIR}/stb_truetype/*.h"
+)
+add_library(stb_truetype INTERFACE ${SOURCES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/stb_truetype" FILES ${SOURCES})
