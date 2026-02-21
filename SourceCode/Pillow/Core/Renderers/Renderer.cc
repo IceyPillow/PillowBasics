@@ -70,7 +70,7 @@ bool GenericPipelineConfig::EqualTo(const GenericPipelineConfig& right) const
 
 static void Pillow::Graphics::BarrierCompletionAction() noexcept
 {
-   if(Instance) Instance->Assembler();
+   if(rendererInstance) rendererInstance->Assembler();
    signalCompute.store(false, std::memory_order::release);
 }
 
@@ -83,14 +83,14 @@ GenericRenderer::GenericRenderer(int32_t threadCount, std::string name) :
    signalCompute.store(false);
 }
 
-GenericRenderer::~GenericRenderer()
+IRenderer::~IRenderer()
 {
    Terminate();
    workers.clear();
    frameBarrier.reset();
 }
 
-void GenericRenderer::Launch()
+void IRenderer::Launch()
 {
    for (int32_t i = 0; i < f_ThreadCount; i++)
    {
@@ -98,7 +98,7 @@ void GenericRenderer::Launch()
    }
 }
 
-void GenericRenderer::Terminate()
+void IRenderer::CommitOrWait()
 {
    signalTerminate.request_stop();
    for (auto& thread : workers)
@@ -116,7 +116,7 @@ void GenericRenderer::Commit()
 
 //#include <Windows.h>
 //#include <format>
-void GenericRenderer::BaseWorker(std::stop_token token, int32_t workerIndex)
+void IRenderer::BaseWorker(std::stop_token token, int32_t workerIndex)
 {
    while(true)
    {

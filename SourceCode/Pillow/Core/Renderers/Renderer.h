@@ -20,8 +20,7 @@ namespace Pillow::Graphics
    const XMVECTOR RGBLuminance = XMVectorSet(0.2125f / 0.7154f, 1, 0.0721f / 0.7154f, 1);
    const XMVECTOR RGBLuminanceInv = XMVectorSet(0.7154f / 0.2125f, 1, 0.7154f / 0.0721f, 1);
 
-   class GenericRenderer;
-   extern std::unique_ptr<GenericRenderer> Instance;
+   class IRenderer;
 
    typedef uint32_t ResHandle; // 28 bits for index, 4 bits for type
 
@@ -167,16 +166,17 @@ namespace Pillow::Graphics
       bool EqualTo(const GenericPipelineConfig& right) const;
    };
 
-   class GenericRenderer
+   // Generic renderer, abstract class (resembles an interface in C#).
+   class IRenderer
    {
-      DeleteDefautedMethods(GenericRenderer)
+      DeleteDefautedMethods(IRenderer)
          ReadonlyProperty(string, RendererName)
          ReadonlyProperty(int32_t, ThreadCount)
          ReadonlyProperty(int32_t, RefreshRate)
          ReadonlyProperty(XMINT2, RenderBufferSize)
 
    public:
-      virtual ~GenericRenderer() = 0;
+      virtual ~IRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
       ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
       inline void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
@@ -188,7 +188,7 @@ namespace Pillow::Graphics
       void Commit();
 
    protected:
-      GenericRenderer(int32_t threadCount, string name);
+      IRenderer(int32_t threadCount, string name);
       virtual void Worker(int32_t workerIndex) = 0;
       virtual void Pioneer() = 0;
       virtual void Assembler() = 0;
@@ -199,7 +199,7 @@ namespace Pillow::Graphics
    };
 
 #if defined(_WIN64)
-   class D3D12Renderer final: public GenericRenderer
+   class D3D12Renderer final: public IRenderer
    {
       DeleteDefautedMethods(D3D12Renderer)
 
