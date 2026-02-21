@@ -8,6 +8,7 @@
 #include <ranges>
 #include <fstream>
 #include <filesystem>
+#include <exception>
 #include <comdef.h>
 #include <wrl.h> // import Component Object Model Pointer
 #include <d3d12.h>
@@ -647,7 +648,7 @@ namespace
             resourceDesc.Height = texInfo.GetWidth();
             resourceDesc.DepthOrArraySize = uint16_t(texInfo.GetArrayCount());
             resourceDesc.MipLevels = uint16_t(texInfo.GetMipCount());
-            resourceDesc.Format = texInfo.GetCompressionMode() == CompressionMode::None ? NativeTexFmt[fmt] : NativeBCTexFmt[fmt];
+            resourceDesc.Format = texInfo.GetCompressionType() == CompressionMode::None ? NativeTexFmt[fmt] : NativeBCTexFmt[fmt];
             resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
          }
          auto flags = D3D12_HEAP_FLAG_NONE;
@@ -702,12 +703,12 @@ namespace
 
    class HLSLInclude : public ID3DInclude
    {
-      ReadonlyProperty(std::filesystem::path, ParentDir)
+      ReadonlyProperty(std::filesystem::path, LocalPath)
 
    public:
       HLSLInclude(std::filesystem::path location)
       {
-         f_ParentDir = location.parent_path();
+         f_LocalPath = location.parent_path();
       }
 
       HRESULT Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
@@ -718,7 +719,7 @@ namespace
          // Ignore D3D_INCLUDE_TYPE, which makes things complicated.
          if (!std::filesystem::exists(location))
          {
-            location = f_ParentDir;
+            location = f_LocalPath;
             location /= pFileName;
             if (!std::filesystem::exists(location)) return E_FAIL;
          }
@@ -726,29 +727,25 @@ namespace
          if (!file.is_open()) return E_FAIL;
          uint32_t size = uint32_t(file.tellg());
          file.seekg(0, std::ios::beg);
-         std::vector<char> buffer;
-         buffer.reserve(size);
-         if (!file.read(buffer.data(), size)) return E_FAIL;
+         buffer = std::make_unique<char[]>(size);
+         if (!file.read(buffer.get(), size)) return E_FAIL;
          file.close();
-         *ppData = buffer.data();
+         *ppData = buffer.get();
          *pBytes = size;
-         buffers.push_back(std::move(buffer));
          return S_OK;
       }
 
       HRESULT Close(LPCVOID pData)
       {
-         for (std::vector<char>& a : buffers)
-         {
-            if (a.data() != pData) continue;
-            buffers.clear();
-            break;
-         }
+         if (pData != buffer.get()) throw std::runtime_error("HLSLInclude cannot be closed safely.");
+         buffer.reset();
          return S_OK;
       }
 
    private:
-      std::vector<std::vector<char>> buffers;
+      // Modern C++ memory management.
+      std::unique_ptr<char[]> buffer;
+   };
    };
 
    class PipelineStateManager
