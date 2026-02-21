@@ -6,7 +6,10 @@
 # This fact reflects one significant belief of Pillow Basics —— useless things ain't used.
 # We will never pursue "advanced techs" unless they are better or needed.
 
-set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib)
+set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib cgltf stb_truetype)
+if(WIN32)
+    list(APPEND LIBRARIES XeSS)
+endif()
 
 function(get_prebuilt_path dependencyPath)
    set(PREBUILT_PATH "${dependencyPath}/Prebuilt")
@@ -115,3 +118,22 @@ file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_library(stb_truetype INTERFACE ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/stb_truetype" FILES ${SOURCES})
+
+if(WIN32)
+# XeSS
+   file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/*.h")
+   add_library(XeSS INTERFACE ${SOURCES})
+   source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1" FILES ${SOURCES})
+   SET(LIBS
+      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxess.lib"
+      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxell.lib"
+      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxess_fg.lib"
+   )
+   target_link_libraries(XeSS INTERFACE ${LIBS})
+   list(APPEND RUNTIMES
+      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxess.dll"
+      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxell.dll"
+      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxess_fg.dll"
+   )
+endif()
+set(RUNTIMES ${RUNTIMES} PARENT_SCOPE) # Write back to the parent scope.
