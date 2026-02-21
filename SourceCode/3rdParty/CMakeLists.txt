@@ -9,11 +9,11 @@
 set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib)
 
 function(get_prebuilt_path dependencyPath)
-   set(PREBUILT_PATH "${dependencyPath}\\Prebuilt")
+   set(PREBUILT_PATH "${dependencyPath}/Prebuilt")
    if(WIN32)
-      set(PREBUILT_PATH "${PREBUILT_PATH}\\Windows-x64")
+      set(PREBUILT_PATH "${PREBUILT_PATH}/Windows-x64")
    elseif(ANDROID)
-      set(PREBUILT_PATH "${PREBUILT_PATH}\\Android-Armv8a")
+      set(PREBUILT_PATH "${PREBUILT_PATH}/Android-Armv8a")
    endif()
    return(PROPAGATE PREBUILT_PATH)
 endfunction()
@@ -47,44 +47,44 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_
 add_library(PhysX INTERFACE ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/PhysX-4.1" FILES ${SOURCES})
 set(PREBUILT_PATH "")
-get_prebuilt_path(".\\PhysX-4.1")
+get_prebuilt_path("${CMAKE_CURRENT_SOURCE_DIR}/PhysX-4.1")
 if(WIN32)
    set(LIBS
-      optimized "${PREBUILT_PATH}\\Release\\PhysXCharacterKinematic_static_64.lib"
-      optimized "${PREBUILT_PATH}\\Release\\PhysXCommon_static_64.lib"
-      optimized "${PREBUILT_PATH}\\Release\\PhysXCooking_static_64.lib"
-      optimized "${PREBUILT_PATH}\\Release\\PhysXExtensions_static_64.lib"
-      optimized "${PREBUILT_PATH}\\Release\\PhysXFoundation_static_64.lib"
-      optimized "${PREBUILT_PATH}\\Release\\PhysXVehicle_static_64.lib"
-      optimized "${PREBUILT_PATH}\\Release\\PhysXPvdSDK_static_64.lib"
-      optimized "${PREBUILT_PATH}\\Release\\PhysX_static_64.lib"
-      debug "${PREBUILT_PATH}\\Checked\\PhysXCharacterKinematic_static_64.lib"
-      debug "${PREBUILT_PATH}\\Checked\\PhysXCommon_static_64.lib"
-      debug "${PREBUILT_PATH}\\Checked\\PhysXCooking_static_64.lib"
-      debug "${PREBUILT_PATH}\\Checked\\PhysXExtensions_static_64.lib"
-      debug "${PREBUILT_PATH}\\Checked\\PhysXFoundation_static_64.lib"
-      debug "${PREBUILT_PATH}\\Checked\\PhysXVehicle_static_64.lib"
-      debug "${PREBUILT_PATH}\\Checked\\PhysXPvdSDK_static_64.lib"
-      debug "${PREBUILT_PATH}\\Checked\\PhysX_static_64.lib"
+      optimized "${PREBUILT_PATH}/Release/PhysXCharacterKinematic_static_64.lib"
+      optimized "${PREBUILT_PATH}/Release/PhysXCommon_static_64.lib"
+      optimized "${PREBUILT_PATH}/Release/PhysXCooking_static_64.lib"
+      optimized "${PREBUILT_PATH}/Release/PhysXExtensions_static_64.lib"
+      optimized "${PREBUILT_PATH}/Release/PhysXFoundation_static_64.lib"
+      optimized "${PREBUILT_PATH}/Release/PhysXVehicle_static_64.lib"
+      optimized "${PREBUILT_PATH}/Release/PhysXPvdSDK_static_64.lib"
+      optimized "${PREBUILT_PATH}/Release/PhysX_static_64.lib"
+      debug "${PREBUILT_PATH}/Checked/PhysXCharacterKinematic_static_64.lib"
+      debug "${PREBUILT_PATH}/Checked/PhysXCommon_static_64.lib"
+      debug "${PREBUILT_PATH}/Checked/PhysXCooking_static_64.lib"
+      debug "${PREBUILT_PATH}/Checked/PhysXExtensions_static_64.lib"
+      debug "${PREBUILT_PATH}/Checked/PhysXFoundation_static_64.lib"
+      debug "${PREBUILT_PATH}/Checked/PhysXVehicle_static_64.lib"
+      debug "${PREBUILT_PATH}/Checked/PhysXPvdSDK_static_64.lib"
+      debug "${PREBUILT_PATH}/Checked/PhysX_static_64.lib"
    )
 elseif(ANDROID)
    set(LIBS
-      optimized "${PREBUILT_PATH}\\Release\\libPhysXCharacterKinematic_static.a"
-      optimized "${PREBUILT_PATH}\\Release\\libPhysXCommon_static.a"
-      optimized "${PREBUILT_PATH}\\Release\\libPhysXCooking_static.a"
-      optimized "${PREBUILT_PATH}\\Release\\libPhysXExtensions_static.a"
-      optimized "${PREBUILT_PATH}\\Release\\libPhysXFoundation_static.a"
-      optimized "${PREBUILT_PATH}\\Release\\libPhysXVehicle_static.a"
-      optimized "${PREBUILT_PATH}\\Release\\libPhysXPvdSDK_static.a"
-      optimized "${PREBUILT_PATH}\\Release\\libPhysX_static.a"
-      debug "${PREBUILT_PATH}\\Checked\\libPhysXCharacterKinematic_static.a"
-      debug "${PREBUILT_PATH}\\Checked\\libPhysXCommon_static.a"
-      debug "${PREBUILT_PATH}\\Checked\\libPhysXCooking_static.a"
-      debug "${PREBUILT_PATH}\\Checked\\libPhysXExtensions_static.a"
-      debug "${PREBUILT_PATH}\\Checked\\libPhysXFoundation_static.a"
-      debug "${PREBUILT_PATH}\\Checked\\libPhysXVehicle_static.a"
-      debug "${PREBUILT_PATH}\\Checked\\libPhysXPvdSDK_static.a"
-      debug "${PREBUILT_PATH}\\Checked\\libPhysX_static.a"
+      optimized "${PREBUILT_PATH}/Release/libPhysXCharacterKinematic_static.a"
+      optimized "${PREBUILT_PATH}/Release/libPhysXCommon_static.a"
+      optimized "${PREBUILT_PATH}/Release/libPhysXCooking_static.a"
+      optimized "${PREBUILT_PATH}/Release/libPhysXExtensions_static.a"
+      optimized "${PREBUILT_PATH}/Release/libPhysXFoundation_static.a"
+      optimized "${PREBUILT_PATH}/Release/libPhysXVehicle_static.a"
+      optimized "${PREBUILT_PATH}/Release/libPhysXPvdSDK_static.a"
+      optimized "${PREBUILT_PATH}/Release/libPhysX_static.a"
+      debug "${PREBUILT_PATH}/Checked/libPhysXCharacterKinematic_static.a"
+      debug "${PREBUILT_PATH}/Checked/libPhysXCommon_static.a"
+      debug "${PREBUILT_PATH}/Checked/libPhysXCooking_static.a"
+      debug "${PREBUILT_PATH}/Checked/libPhysXExtensions_static.a"
+      debug "${PREBUILT_PATH}/Checked/libPhysXFoundation_static.a"
+      debug "${PREBUILT_PATH}/Checked/libPhysXVehicle_static.a"
+      debug "${PREBUILT_PATH}/Checked/libPhysXPvdSDK_static.a"
+      debug "${PREBUILT_PATH}/Checked/libPhysX_static.a"
    )
 endif()
 target_link_libraries(PhysX INTERFACE ${LIBS})
