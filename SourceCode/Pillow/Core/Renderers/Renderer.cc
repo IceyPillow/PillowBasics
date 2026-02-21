@@ -9,10 +9,9 @@ using namespace DirectX;
 
 namespace
 {
-   //std::vector<Drawcall> cachedDrawcalls;
-   //std::vector<Drawcall> submittedDrawcalls;
-
    std::unique_ptr<IRenderer> rendererInstance;
+   std::vector<GenericRendererCommand> cmdListIdle;
+   std::vector<GenericRendererCommand> cmdListBusy;
    std::vector<std::jthread> workers; // jthread from C++20
    std::optional<std::barrier<void(*)() noexcept>> frameBarrier;
    std::atomic<bool> signalCompute;
@@ -104,9 +103,13 @@ void IRenderer::Terminate()
    }
    rendererInstance.reset();
 }
+
+IRenderer::IRenderer(int32_t threadCount, std::string name) :
    f_RendererName(name),
    f_ThreadCount(threadCount)
 {
+   cmdListIdle.reserve(ReservedCommandCount);
+   cmdListBusy.reserve(ReservedCommandCount);
    workers.reserve(threadCount);
    frameBarrier.emplace(threadCount, BarrierCompletionAction);
    signalCompute.store(false);
@@ -114,8 +117,12 @@ void IRenderer::Terminate()
 
 IRenderer::~IRenderer()
 {
-   Terminate();
+   cmdListIdle.clear();
+   cmdListIdle.shrink_to_fit();
+   cmdListBusy.clear();
+   cmdListBusy.shrink_to_fit();
    workers.clear();
+   workers.shrink_to_fit();
    frameBarrier.reset();
 }
 
@@ -123,24 +130,33 @@ void IRenderer::Launch()
 {
    for (int32_t i = 0; i < f_ThreadCount; i++)
    {
-      workers.emplace_back(std::jthread(&GenericRenderer::BaseWorker, this, signalTerminate.get_token(), i));
+      workers.emplace_back(std::jthread(&IRenderer::BaseWorker, this, signalTerminate.get_token(), i));
    }
 }
 
 void IRenderer::CommitOrWait()
 {
-   signalTerminate.request_stop();
-   for (auto& thread : workers)
-   {
-      if (thread.joinable()) thread.join();
-   }
+   while (signalCompute.load(std::memory_order::acquire)) std::this_thread::yield();
+   cmdListIdle.swap(cmdListBusy);
+   cmdListIdle.clear();
+   
+   // ***CORE WORKLOAD*** Translate generic graphics commands.
+   int32_t cmdCount = int32_t(cmdListBusy.size());
+
+   this->Pioneer();
+   signalCompute.store(true, std::memory_order::release); // Activates all workers.
 }
 
-void GenericRenderer::Commit()
+std::vector<GenericRendererCommand>* IRenderer::GetIdleCmdList()
 {
-   while (signalCompute.load(std::memory_order::acquire)) std::this_thread::yield();
-   this->Pioneer();
-   signalCompute.store(true, std::memory_order::release);
+   if (!rendererInstance) throw std::runtime_error("Renderer instance is not initialized.");
+   return &cmdListIdle;
+}
+
+std::vector<GenericRendererCommand>* IRenderer::GetBusyCmdList()
+{
+   if (!rendererInstance) throw std::runtime_error("Renderer instance is not initialized.");
+   return &cmdListBusy;
 }
 
 //#include <Windows.h>

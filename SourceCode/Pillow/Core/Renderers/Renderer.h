@@ -16,6 +16,7 @@ using namespace DirectX;
 
 namespace Pillow::Graphics
 {
+   const int32_t ReservedCommandCount = 20000; // 68B*20000 = nearly 1.3MB
    // Perceptual weightings for the importance of each channel.
    const XMVECTOR RGBLuminance = XMVectorSet(0.2125f / 0.7154f, 1, 0.0721f / 0.7154f, 1);
    const XMVECTOR RGBLuminanceInv = XMVectorSet(0.7154f / 0.2125f, 1, 0.7154f / 0.0721f, 1);
@@ -189,14 +190,19 @@ namespace Pillow::Graphics
       inline virtual void ResourceRegister(ResHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
       inline virtual void ResourceRelease(ResHandle handle) {/*dumb*/};
       void Launch();
-      void Terminate();
-      void Commit();
+      // Commit one frame immediately, or wait for the old CPU-sided renderer frame to finish.
+      void CommitOrWait();
+      // Get the idle generic command list.
+      // Client code should never invoke it; instead, uses CmdXXX() (see: CmdNone()) to record commands.
+      std::vector<GenericRendererCommand>* GetIdleCmdList();
 
    protected:
       IRenderer(int32_t threadCount, string name);
       virtual void Worker(int32_t workerIndex) = 0;
       virtual void Pioneer() = 0;
       virtual void Assembler() = 0;
+      // Get the busy generic command list, provided for a renderer backend.
+      std::vector<GenericRendererCommand>* GetBusyCmdList();
 
    private:
       void BaseWorker(std::stop_token token, int32_t workerIndex);
