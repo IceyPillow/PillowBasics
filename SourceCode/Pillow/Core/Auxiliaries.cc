@@ -8,7 +8,7 @@ using namespace std::chrono;
 
 namespace Pillow::Hidden
 {
-   GameClock globalClock{};
+   GameClock GlobalClock{};
 }
 
 KeyValuePair::KeyValuePair(string key, string value, bool isStringValue) :
@@ -173,10 +173,10 @@ double GameClock::GetPrecisionMilliseconds()
 
 double Pillow::GetFrameDeltaTime()
 {
-   return Hidden::globalClock.GetDeltaTime();
+   return Hidden::GlobalClock.GetDeltaTime();
 }
 
 double Pillow::GetLapseTimeSinceLaunch()
 {
-   return Hidden::globalClock.GetLastingTime();
+   return Hidden::GlobalClock.GetLastingTime();
 }
