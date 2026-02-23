@@ -119,7 +119,7 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    class UnitedBuffer;
    std::unique_ptr<FenceSync> fenceSync;
    std::unique_ptr<DescriptorHeapMgr> descriptorMgr;
-   std::unique_ptr<LateReleaseManager> lateReleaseMgr;
+   std::unique_ptr<LateReleaseMgr> lateReleaseMgr;
    ComPtr<IFactory> factory;
    ComPtr<IDevice> device;
    ComPtr<ID3D12CommandQueue> cmdQueue;
@@ -203,19 +203,22 @@ namespace
       ID3D12CommandQueue* cmdQueue; // Use it, not own it.
    };
 
-   class LateReleaseManager
+   class LateReleaseMgr
    {
    public:
-      LateReleaseManager() {};
-
-      // Enqueue an element that will be released after current frame.
-      void Enqueue(std::unique_ptr<UnitedBuffer>&& buffer)
+      LateReleaseMgr()
       {
-         Item item{ std::move(buffer), fenceSync->GetTargetFence() };
-         releaseQueue.push(std::move(item));
+         SingletonCheck();
       }
 
-      void ReleaseGarbage()
+      // Enqueue an element that will be released after current frame.
+      void Enqueue(std::unique_ptr<UnionBuffer>&& buffer)
+      {
+         // Construt an item in the queue directly
+         releaseQueue.emplace(std::move(buffer), fenceSync->GetTargetFence());
+      }
+
+      void GarbageCollect()
       {
          uint64_t completedFence = fenceSync->GetCompletedFence();
          if (completedFence == 0) return;
