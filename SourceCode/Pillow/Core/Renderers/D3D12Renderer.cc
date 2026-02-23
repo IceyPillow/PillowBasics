@@ -115,8 +115,9 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
 
    class FenceSync;
    class DescriptorHeapMgr;
-   class LateReleaseManager;
-   class UnitedBuffer;
+   class LateReleaseMgr;
+   class UnionBuffer;
+ 
    std::unique_ptr<FenceSync> fenceSync;
    std::unique_ptr<DescriptorHeapMgr> descriptorMgr;
    std::unique_ptr<LateReleaseMgr> lateReleaseMgr;
@@ -235,7 +236,7 @@ namespace
    private:
       struct Item
       {
-         std::unique_ptr<UnitedBuffer> buffer;
+         std::unique_ptr<UnionBuffer> buffer;
          uint64_t targetFence;
       };
 
@@ -1217,7 +1218,7 @@ namespace
          cmdLists.push_back(std::move(temp));
       }
       // Others
-      lateReleaseMgr = std::make_unique<LateReleaseManager>();
+      lateReleaseMgr = std::make_unique<LateReleaseMgr>();
    }
 
    void CreateHeapsAndPSOs()
@@ -1268,7 +1269,7 @@ namespace
 
    }
 
-   void RendererTestZone()
+   void TEMP_RendererTestZone()
    {
       // footprint
       D3D12_RESOURCE_DESC resourceDesc
@@ -1281,6 +1282,23 @@ namespace
       uint64_t rowSize[10];
       uint64_t totalSize;
       device->GetCopyableFootprints(&resourceDesc, 0, 10, 0, footprint, rows, rowSize, &totalSize);
+   }
+
+   // Like a view in C++20, std::span doesn't own the data, so it's cheap to pass around.
+   void TranslateCommands_RHI_IR_Mixed(int32_t workerIndex, std::span<const GenericRendererCommand> subSpan)
+   {
+      int32_t frameIdx = fenceSync->GetFrameArrayIdx();
+      ComPtr<ICommandList>& cmdList = cmdLists[workerIndex];
+      for (const GenericRendererCommand& cmd : subSpan)
+      {
+         if (cmd.CmdType == GenericRendererCommand::Type::ClearPiplelineBuffers)
+         {
+            if (cmd.Count == 1 && cmd.Params.UIntArray8[0] == (int32_t)PiplelineBuffer::Backbuffer)
+            {
+               cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(tempRTVs[frameIdx]), (float*)(&cmd.Params.Float4_1), 0, nullptr);
+            }
+         }
+      }
    }
 }
 
@@ -1296,7 +1314,7 @@ D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount, XMINT2 rend
    CreateBase();
    CreateHeapsAndPSOs();
    CreateFrames();
-   RendererTestZone();
+   TEMP_RendererTestZone();
 }
 
 D3D12Renderer::~D3D12Renderer()
@@ -1308,28 +1326,44 @@ uint64_t D3D12Renderer::GetFrameIndex()
    return fenceSync->GetFrameIndex();
 }
 
-void D3D12Renderer::ReleaseResource(uint32_t handle)
-{
-}
-
 void D3D12Renderer::Worker(int32_t workerIndex)
 {
    int32_t frameIdx = fenceSync->GetFrameArrayIdx();
    ComPtr<ICommandList>& cmdList = cmdLists[workerIndex];
-   ID3D12CommandAllocator* allocator = cmdAllocators[frameIdx * threads + workerIndex].Get();
+   ID3D12CommandAllocator* allocator = cmdAllocators[workerIndex * Constants::SwapChainSize + frameIdx].Get();
    CheckHResult(allocator->Reset());
    CheckHResult(cmdList->Reset(allocator, nullptr));
-   if (workerIndex == 0) UnitedBuffer::GPUCopy(cmdList); // Copy all dirty buffers to default heaps.
+
+   // Copy all dirty buffers to default heaps.
+   if (workerIndex == 0) UnionBuffer::GPUCopy(cmdList);
+
    // Do actual work.
    if (workerIndex == 0)
    {
       ApplyBarrier(cmdList, backbuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-      XMVECTOR _color = XMVectorReplicate(GetLapseTimeSinceLaunch());
-      _color = XMVectorAdd(_color, XMVectorSet(0, XM_PI * 0.66f, XM_PI * 1.33f, 0));
-      _color = XMVectorMultiplyAdd(XMVectorSin(_color), XMVectorReplicate(0.5f), XMVectorReplicate(0.5f));
-      XMFLOAT4 color;
-      XMStoreFloat4(&color, _color);
-      cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(tempRTVs[frameIdx]), (float*)(&color), 0, nullptr);
+   }
+   const auto mixedCmdList = GetBusyCmdList();
+   int32_t cmdCount = mixedCmdList->size();
+   int32_t cmdSlice = cmdCount / workerThreadCount;
+   // Split the command list into sublists for each worker.
+   std::span<const GenericRendererCommand> bigSpan(*mixedCmdList);
+   std::span<const GenericRendererCommand> subSpan;
+   if (cmdSlice == 0 && workerIndex == 0)
+   {
+      subSpan = bigSpan;
+   }
+   else if (cmdSlice == 0 && workerIndex != 0)
+   {
+      subSpan = {};
+   }
+   else
+   {
+      subSpan = bigSpan.subspan(workerIndex * cmdSlice, std::min((workerIndex + 1) * cmdSlice, cmdCount));
+   }
+   TranslateCommands_RHI_IR_Mixed(workerIndex, subSpan);
+   // ...
+   if (workerIndex == workerThreadCount - 1)
+   {
       ApplyBarrier(cmdList, backbuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
    }
    CheckHResult(cmdList->Close());
@@ -1342,7 +1376,7 @@ void Pillow::Graphics::D3D12Renderer::Pioneer()
 
 void D3D12Renderer::Assembler()
 {
-   lateReleaseMgr->ReleaseGarbage(); // Place it here, so it works not in the main thread.
+   lateReleaseMgr->GarbageCollect(); // Place it here, so it works not in the main thread.
    cmdQueue->ExecuteCommandLists(_cmdLists.size(), _cmdLists.data());
    CheckHResult(swapChain->Present(verticalBlanks, (bDeviceSupportTearing && verticalBlanks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
    fenceSync->NextFrame();
