@@ -7,10 +7,10 @@
 # We will never pursue "advanced techs" unless they are better or needed.
 
 set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib cgltf stb_truetype)
-set(LIBRARIES ${LIBRARIES} PARENT_SCOPE) # Write back to the parent scope.
 if(WIN32)
     list(APPEND LIBRARIES XeSS)
 endif()
+set(LIBRARIES ${LIBRARIES} PARENT_SCOPE) # Write back to the parent scope.
 
 function(get_prebuilt_path dependencyPath)
    set(PREBUILT_PATH "${dependencyPath}/Prebuilt")
