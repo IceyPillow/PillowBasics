@@ -10,7 +10,7 @@ using namespace DirectX;
 
 namespace Pillow::Graphics
 {
-   enum struct VertexType
+   enum class VertexType
    {
       Basic,
       Static,
@@ -44,6 +44,19 @@ namespace Pillow::Graphics
       XMFLOAT4 uv01;
       XMFLOAT4 normal_boneWeight0;
       XMFLOAT4 tangent_boneWeight1;
+   };
+
+   const int32_t VertexSize[3]
+   {
+      sizeof(BasicVertex),
+      sizeof(StaticVertex),
+      sizeof(SkeletalVertex)
+   };
+
+   struct BoneData
+   {
+      XMVECTOR quaternion;
+      XMVECTOR translation;
    };
 
    class BasicMesh
