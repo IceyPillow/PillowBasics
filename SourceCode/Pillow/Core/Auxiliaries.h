@@ -38,9 +38,9 @@ protected: type f_##name{}; \
 public: ForceInline type Get##name() const { return f_##name; }
 
 #define SingletonCheck() \
-static decltype(this) instance = nullptr; \
-if(instance) throw std::exception("A singleton class cannot be created twice."); \
-instance = this;
+static decltype(this) hidden_instance = nullptr; \
+if(hidden_instance) throw std::exception("A singleton class cannot be created twice."); \
+hidden_instance = this;
 
 #define DeleteDefautedMethods(type) \
 public: \
@@ -117,12 +117,6 @@ namespace Pillow
 
       bool operator<(const KeyValuePair& right) const;
    };
-
-   // Create 64-bytes-aligned memory.
-   ForceInline std::unique_ptr<CacheLine[]> CreateAlignedMemory(int32_t unalignedSize)
-   {
-      return std::make_unique<CacheLine[]>((unalignedSize + sizeof(CacheLine) - 1) / sizeof(CacheLine));
-   }
 
    ForceInline bool CheckUTF8(const string& str)
    {
