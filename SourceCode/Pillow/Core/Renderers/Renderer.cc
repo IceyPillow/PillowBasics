@@ -106,7 +106,8 @@ void IRenderer::Terminate()
 
 IRenderer::IRenderer(int32_t threadCount, std::string name) :
    f_RendererName(name),
-   f_ThreadCount(threadCount)
+   f_ThreadCount(threadCount),
+   f_VSyncBlanks(1)
 {
    cmdListIdle.reserve(ReservedCommandCount);
    cmdListBusy.reserve(ReservedCommandCount);
@@ -139,11 +140,9 @@ void IRenderer::CommitOrWait()
    while (signalCompute.load(std::memory_order::acquire)) std::this_thread::yield();
    cmdListIdle.swap(cmdListBusy);
    cmdListIdle.clear();
-   
-   // ***CORE WORKLOAD*** Translate generic graphics commands.
-   int32_t cmdCount = int32_t(cmdListBusy.size());
-
+   // Pre-process before the worker threads.
    this->Pioneer();
+   // Start the worker threads.
    signalCompute.store(true, std::memory_order::release); // Activates all workers.
 }
 
@@ -153,14 +152,12 @@ std::vector<GenericRendererCommand>* IRenderer::GetIdleCmdList()
    return &cmdListIdle;
 }
 
-std::vector<GenericRendererCommand>* IRenderer::GetBusyCmdList()
+const std::vector<GenericRendererCommand>* IRenderer::GetBusyCmdList()
 {
    if (!rendererInstance) throw std::runtime_error("Renderer instance is not initialized.");
    return &cmdListBusy;
 }
 
-//#include <Windows.h>
-//#include <format>
 void IRenderer::BaseWorker(std::stop_token token, int32_t workerIndex)
 {
    while(true)
@@ -170,7 +167,7 @@ void IRenderer::BaseWorker(std::stop_token token, int32_t workerIndex)
          if (token.stop_requested()) return;
          std::this_thread::yield();
       }
-      //OutputDebugString(std::format(L"Frame={} Worker={}\n", this->GetFrameIndex(), workerIndex).c_str());
+      // ***CORE WORKLOAD*** Translate generic graphics commands.
       this->Worker(workerIndex);
       frameBarrier->arrive_and_wait();
    }

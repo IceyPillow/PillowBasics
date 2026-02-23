@@ -61,7 +61,6 @@ namespace Pillow::Graphics
    // Those resources have no handles, client should refer to them by this enum type.
    enum class PiplelineBuffer : uint8_t
    {
-      None,
       // Swap chain
       Backbuffer,
       // For half-resolution post-process effects
@@ -78,7 +77,7 @@ namespace Pillow::Graphics
       GBuffer1,
       GBuffer2,
       GBuffer3,
-      Count = GBuffer3,
+      Count,
    };
 
    struct GenericRendererResourceDesc
@@ -174,6 +173,7 @@ namespace Pillow::Graphics
          ReadonlyProperty(string, RendererName)
          ReadonlyProperty(int32_t, ThreadCount)
          ReadonlyProperty(int32_t, RefreshRate)
+         ReadonlyProperty(int32_t, VSyncBlanks)
          ReadonlyProperty(XMINT2, RenderBufferSize)
 
    public:
@@ -185,12 +185,14 @@ namespace Pillow::Graphics
       virtual ~IRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
       ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
-      inline void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
       inline void SetRenderBufferSize(XMINT2 size) { f_RenderBufferSize = size; }
+      inline void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
+      inline void SetVSyncBlanks(int32_t blanks) { f_VSyncBlanks = blanks; }
       inline virtual void ResourceRegister(ResHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
       inline virtual void ResourceRelease(ResHandle handle) {/*dumb*/};
       void Launch();
-      // Commit one frame immediately, or wait for the old CPU-sided renderer frame to finish.
+      // ***CORE WORKLOAD***
+      // Commit a frame, or wait for the last CPU renderer frame.
       void CommitOrWait();
       // Get the idle generic command list.
       // Client code should never invoke it; instead, uses CmdXXX() (see: CmdNone()) to record commands.
@@ -202,7 +204,7 @@ namespace Pillow::Graphics
       virtual void Pioneer() = 0;
       virtual void Assembler() = 0;
       // Get the busy generic command list, provided for a renderer backend.
-      std::vector<GenericRendererCommand>* GetBusyCmdList();
+      const std::vector<GenericRendererCommand>* GetBusyCmdList();
 
    private:
       void BaseWorker(std::stop_token token, int32_t workerIndex);
@@ -217,12 +219,12 @@ namespace Pillow::Graphics
    public:
       D3D12Renderer(HWND windowHandle, int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate);
       ~D3D12Renderer();
-      uint64_t GetFrameIndex();
+      uint64_t GetFrameIndex() override final;
 
    private:
-      void Worker(int32_t workerIndex);
-      void Pioneer();
-      void Assembler();
+      void Worker(int32_t workerIndex) override final;
+      void Pioneer() override final;
+      void Assembler() override final;
    };
 #elif defined(__ANDROID__)
    //class Vulkan12Renderer : public GenericRenderer
@@ -300,7 +302,7 @@ namespace Pillow::Graphics
    }
 
    // Set 1~8 built-in pipeline buffers.
-   ForceInline void CmdSetPipelineBuffers(ResHandle handles[], int32_t count)
+   ForceInline void CmdSetPipelineBuffers(PiplelineBuffer builtinBuffers[], int32_t count)
    {
       if (count > 8) throw std::runtime_error("Too many pipeline buffers to set. Max is 8.");
       GenericRendererCommand cmd;
@@ -308,7 +310,7 @@ namespace Pillow::Graphics
       cmd.Count = count;
       for (int32_t i : std::views::iota(0, count))
       {
-         cmd.Params.UIntArray8[i] = handles[i];
+         cmd.Params.UIntArray8[i] = (uint32_t)builtinBuffers[i];
       }
       IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
    }
