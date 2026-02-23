@@ -226,41 +226,6 @@ namespace
    }
 #elif defined(__ANDROID__)
 #endif
-
-   void EngineLaunch()
-   {
-      Hidden::GlobalClock.Restart();
-      Constants::SetThreadNumbers();
-   #if defined(_WIN64)
-      IRenderer::Initialize(Constants::ThreadNumRenderer, clientSize, refreshRate, (void*)&hwnd);
-   #elif defined(__ANDROID__)
-      //...
-   #endif
-      IRenderer::GetInstance()->Launch();
-      return;
-   }
-   
-   void EngineTick()
-   {
-      Hidden::GlobalClock.Tick();
-      auto renderer = IRenderer::GetInstance();
-      static GameClock localClock;
-      // To trigger the swap-chain resizing.
-      if (localClock.CheckSlice(Constants::FrameTime60FPS))
-      {
-         // Refresh rate is acquired only once when the game startsm because GetMonitorParams() costs a lot.
-         GetClientSize();
-         renderer->SetRenderBufferSize(clientSize);
-         renderer->SetRefreshRate(refreshRate);
-      }
-      renderer->CommitOrWait();
-      //Pillow::Input::Update();
-   }
-   
-   void EngineTerminate()
-   {
-      IRenderer::Terminate();
-   }
 }
 
 #if defined(_WIN64)
@@ -273,3 +238,61 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 }
 #elif defined(__ANDROID__)
 #endif
+
+namespace
+{
+   void GameTick();
+
+   void EngineLaunch()
+   {
+      Hidden::GlobalClock.Restart();
+      Constants::SetThreadNumbers();
+#if defined(_WIN64)
+      IRenderer::Initialize(Constants::ThreadNumRenderer, clientSize, refreshRate, (void*)&hwnd);
+#elif defined(__ANDROID__)
+      //...
+#endif
+      IRenderer::GetInstance()->Launch();
+      return;
+   }
+
+   void EngineTick()
+   {
+      Hidden::GlobalClock.Tick();
+      auto renderer = IRenderer::GetInstance();
+
+#ifdef _WIN64
+      static GameClock localClock;
+      // To trigger the swap-chain resizing.
+      if (localClock.CheckSlice(Constants::FrameTime60FPS))
+      {
+         // Refresh rate is acquired only once when the game startsm because GetMonitorParams() costs a lot.
+         GetClientSize();
+         renderer->SetRenderBufferSize(clientSize);
+         renderer->SetRefreshRate(refreshRate);
+      }
+#endif _WIN64
+      GameTick();
+      renderer->CommitOrWait();
+      //Pillow::Input::Update();
+   }
+
+   void EngineTerminate()
+   {
+      IRenderer::Terminate();
+   }
+
+   // Game logic goes here.
+   void GameTick()
+   {
+      auto renderer = IRenderer::GetInstance();
+      // Clear the main render target.
+      XMVECTOR _color = XMVectorReplicate(GetLapseTimeSinceLaunch());
+      _color = XMVectorAdd(_color, XMVectorSet(0, XM_PI * 0.66f, XM_PI * 1.33f, 0));
+      _color = XMVectorMultiplyAdd(XMVectorSin(_color), XMVectorReplicate(0.5f), XMVectorReplicate(0.5f));
+      XMFLOAT4 color;
+      XMStoreFloat4(&color, _color);
+      PiplelineBuffer buffers[1] = { PiplelineBuffer::Backbuffer };
+      CmdClearPiplelineBuffers(buffers, 1, color);
+   }
+}
