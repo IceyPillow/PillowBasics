@@ -2,15 +2,18 @@
 // TODO: bundle cmd lists
 #if defined(_WIN64)
 #include "Renderer.h"
+#include <shared_mutex>
 #include <memory>
 #include <vector>
 #include <queue>
 #include <ranges>
+#include <format>
+#include <span>
 #include <fstream>
 #include <filesystem>
 #include <exception>
 #include <comdef.h>
-#include <wrl.h> // import Component Object Model Pointer
+#include <wrl.h> // Import Component Object Model Pointer
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
@@ -31,6 +34,8 @@ using Microsoft::WRL::ComPtr;
       throw std::exception(msg.c_str());\
    }\
 }
+
+typedef uint32_t DescriptorHandle;                // Inner descriptor handle
 
 typedef IDXGIFactory5 IFactory;                  // Has CheckFeatureSupport()
 typedef ID3D12Device4 IDevice;                   // Has CreateCommandList1()
@@ -107,11 +112,11 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    };
 
    class FenceSync;
-   class DescriptorHeapManager;
+   class DescriptorHeapMgr;
    class LateReleaseManager;
    class UnitedBuffer;
    std::unique_ptr<FenceSync> fenceSync;
-   std::unique_ptr<DescriptorHeapManager> descriptorMgr;
+   std::unique_ptr<DescriptorHeapMgr> descriptorMgr;
    std::unique_ptr<LateReleaseManager> lateReleaseMgr;
    ComPtr<IFactory> factory;
    ComPtr<IDevice> device;
@@ -232,54 +237,51 @@ namespace
       std::queue<Item> releaseQueue;
    };
 
-   enum class ViewType : uint8_t
-   {
-      // Stored in srvUavDescHeap.
-      CBV,
-      SRV,
-      UAV,
-      // Stored in rtvDescHeap.
-      RTV,
-      // stored in dsvDescHeap.
-      DSV
-   };
-
-   class DescriptorHeapManager
+   class DescriptorHeapMgr
    {
    public:
-      DescriptorHeapManager(ComPtr<IDevice>& device) :
+      enum class Type : uint8_t
+      {
+         // Stored in srvUavDescHeap.
+         CBV,
+         SRV,
+         UAV,
+         // Stored in rtvDescHeap.
+         RTV,
+         // stored in dsvDescHeap.
+         DSV,
+         Count
+      };
+
+   public:
+      DescriptorHeapMgr(ComPtr<IDevice>& device) :
          csuSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)),
          rtvSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)),
          dsvSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV))
       {
-         csuFreePool.reserve(MaxCsuCount);
-         rtvFreePool.reserve(MaxRtvCount);
-         dsvFreePool.reserve(MaxDsvCount);
-         for (uint16_t i = MaxCsuCount; i > 0; i--)
+         SingletonCheck();
+         std::unique_lock lock(mutex);
+         csuFreePool.reserve(MaxHeapCapcity);
+         rtvFreePool.reserve(MaxHeapCapcity);
+         dsvFreePool.reserve(MaxHeapCapcity);
+         for (DescriptorHandle idx = MaxHeapCapcity; idx >= 0; idx--)
          {
-            csuFreePool.push_back(i | uint16_t(InnerFlag::CSU) << 14);
-            if (i <= MaxRtvCount) rtvFreePool.push_back(i | uint16_t(InnerFlag::RTV) << 14);
-            if (i <= MaxDsvCount) dsvFreePool.push_back(i | uint16_t(InnerFlag::DSV) << 14);
+            csuFreePool.push_back(idx);
+            rtvFreePool.push_back(idx);
+            dsvFreePool.push_back(idx);
          }
 
          D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc
          {
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            (UINT)MaxCsuCount,
+            MaxHeapCapcity,
             D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
          };
          CheckHResult(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&csuDescHeap)));
-         descHeapDesc =
-         {
-            D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-            (UINT)MaxRtvCount,
-         };
+         descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+         descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
          CheckHResult(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&rtvDescHeap)));
-         descHeapDesc =
-         {
-            D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-            (UINT)MaxDsvCount
-         };
+         descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
          CheckHResult(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&dsvDescHeap)));
          csuCpuHandle0 = csuDescHeap->GetCPUDescriptorHandleForHeapStart();
          csuGpuHandle0 = csuDescHeap->GetGPUDescriptorHandleForHeapStart();
@@ -287,39 +289,44 @@ namespace
          dsvCpuHandle0 = dsvDescHeap->GetCPUDescriptorHandleForHeapStart();
       }
 
-      ForceInline void BindSrvHeap(ComPtr<ICommandList>& cmd)
+      // Only the CSU descriptor heap is shader-visible, so only it can be bound to command lists.
+      void BindCSUDescriptorHeap(ComPtr<ICommandList>& cmd)
       {
          cmd->SetDescriptorHeaps(1, csuDescHeap.GetAddressOf());
       }
 
-      ForceInline D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(uint16_t handle)
+      ForceInline D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(DescriptorHandle handle)
       {
          D3D12_CPU_DESCRIPTOR_HANDLE result{};
-         auto flag = GetInnerFlag(handle);
-         handle &= 0x3FFF; // Clear the flag bits
-         switch (flag)
+         Type type = GetType(handle);
+         handle = ClearType(handle);
+         switch (type)
          {
-         case InnerFlag::CSU:
+         case Type::CBV:
+         case Type::SRV:
+         case Type::UAV:
             result.ptr = csuCpuHandle0.ptr + csuSize * handle;
             break;
-         case InnerFlag::RTV:
+         case Type::RTV:
             result.ptr = rtvCpuHandle0.ptr + rtvSize * handle;
             break;
-         case InnerFlag::DSV:
+         case Type::DSV:
             result.ptr = dsvCpuHandle0.ptr + dsvSize * handle;
             break;
          }
          return result;
       }
 
-      ForceInline D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint16_t handle)
+      ForceInline D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(DescriptorHandle handle)
       {
          D3D12_GPU_DESCRIPTOR_HANDLE result{};
-         auto flag = GetInnerFlag(handle);
-         handle = RemoveFlag(handle);
-         switch (flag)
+         Type type = GetType(handle);
+         handle = ClearType(handle);
+         switch (type)
          {
-         case InnerFlag::CSU:
+         case Type::CBV:
+         case Type::SRV:
+         case Type::UAV:
             result.ptr = csuGpuHandle0.ptr + csuSize * handle;
             break;
          default:
@@ -328,35 +335,36 @@ namespace
          return result;
       }
 
-      uint16_t CreateView(ComPtr<IDevice>& device, ComPtr<IResource>& res, void* viewDesc, ViewType type)
+      DescriptorHandle CreateDescirptor(ComPtr<IDevice>& device, ComPtr<IResource>& res, void* viewDesc, Type type)
       {
-         uint16_t handle{};
-         auto GetHandle = [&](std::vector<uint16_t>& freePool, const char* name)
+         std::unique_lock lock(mutex);
+         DescriptorHandle handle{};
+         auto GetHandle = [&](std::vector<DescriptorHandle>& freePool, const char* name)
             {
                if (freePool.empty())
-                  throw std::exception((std::string(name) + ": This descriptor heap is full.").c_str());
-               handle = freePool.back();
+                  throw std::exception(std::format("Descriptor heap[{}] is full, try to alter MaxHeapCapcity.", name).c_str());
+               handle = SetType(freePool.back(), type);
                freePool.pop_back();
             };
          switch (type)
          {
-         case ViewType::CBV:
+         case Type::CBV:
             GetHandle(csuFreePool, "CSV_SRV_UAV");
             device->CreateConstantBufferView((D3D12_CONSTANT_BUFFER_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
-         case ViewType::SRV:
+         case Type::SRV:
             GetHandle(csuFreePool, "CSV_SRV_UAV");
             device->CreateShaderResourceView(res.Get(), (D3D12_SHADER_RESOURCE_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
-         case ViewType::UAV:
+         case Type::UAV:
             GetHandle(csuFreePool, "CSV_SRV_UAV");
             device->CreateUnorderedAccessView(res.Get(), nullptr, (D3D12_UNORDERED_ACCESS_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
-         case ViewType::RTV:
+         case Type::RTV:
             GetHandle(rtvFreePool, "RTV");
             device->CreateRenderTargetView(res.Get(), (D3D12_RENDER_TARGET_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
-         case ViewType::DSV:
+         case Type::DSV:
             GetHandle(dsvFreePool, "DSV");
             device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
          }
@@ -366,64 +374,66 @@ namespace
          return handle;
       }
 
-      void ReleaseView(uint16_t handle)
+      void ReleaseDescriptor(DescriptorHandle handle)
       {
-         auto ReleaseHandle = [&handle](std::vector<uint16_t>& freePool)
+         std::unique_lock lock(mutex);
+         auto ReleaseHandle = [&](std::vector<DescriptorHandle>& freePool)
             {
 #ifdef PILLOW_DEBUG
-               bool found = std::find(freePool.begin(), freePool.end(), handle) != freePool.end();
-               if (found) throw std::exception("Invalid index.");
+               //bool found = std::find(freePool.begin(), freePool.end(), handle) != freePool.end();
+               //if (found) throw std::exception("Invalid index.");
 #endif
                freePool.push_back(handle);
             };
-         auto flag = GetInnerFlag(handle);
-         switch (flag)
+         auto Type = GetType(handle);
+         handle = ClearType(handle);
+         switch (Type)
          {
-         case InnerFlag::CSU:
+         case Type::CBV:
+         case Type::SRV:
+         case Type::UAV:
             ReleaseHandle(csuFreePool);
             break;
-         case InnerFlag::RTV:
+         case Type::RTV:
             ReleaseHandle(rtvFreePool);
             break;
-         case InnerFlag::DSV:
+         case Type::DSV:
             ReleaseHandle(dsvFreePool);
             break;
          }
       }
 
    private:
-      enum struct InnerFlag : uint32_t
+      static Type GetType(DescriptorHandle handle)
       {
-         CSU = 0,
-         RTV = 1,
-         DSV = 2
-      };
-
-      ForceInline InnerFlag GetInnerFlag(uint16_t handle)
-      {
-         return InnerFlag(handle >> 14);
+         return Type(handle >> IndexBits);
       }
 
-      ForceInline uint16_t RemoveFlag(uint16_t handle)
+      static DescriptorHandle ClearType(DescriptorHandle handle)
       {
-         return handle & 0x3FFF; // Clear the flag bits
+         return handle & ((1 << IndexBits) - 1);
+      }
+
+      static DescriptorHandle SetType(DescriptorHandle handle, Type type)
+      {
+         return ClearType(handle) | (DescriptorHandle(type) << IndexBits);
       }
 
    private:
-      const uint32_t FlagBits = 2;
-      const uint32_t HandleMaxNum = (1 << (16 - FlagBits)); // value=16384
+      const static uint32_t FlagBits = 3;
+      const static uint32_t IndexBits = sizeof(DescriptorHandle) * 8 - FlagBits;
+      const static uint32_t HandleMaxNum = 1 << IndexBits;
+      const static uint32_t MaxHeapCapcity = 1 << 16;
+      static_assert(MaxHeapCapcity <= HandleMaxNum, "MaxHeapCapcity exceeds the max allowed number of handles.");
 
-      const int32_t MaxCsuCount = 4096;
-      const int32_t MaxRtvCount = 64;
-      const int32_t MaxDsvCount = 16;
-
+      mutable std::shared_mutex mutex;
       const int32_t csuSize, rtvSize, dsvSize;
       ComPtr<ID3D12DescriptorHeap> csuDescHeap;
       ComPtr<ID3D12DescriptorHeap> rtvDescHeap;
       ComPtr<ID3D12DescriptorHeap> dsvDescHeap;
-      std::vector<uint16_t> csuFreePool;
-      std::vector<uint16_t> rtvFreePool;
-      std::vector<uint16_t> dsvFreePool;
+      std::vector<DescriptorHandle> csuFreePool;
+      std::vector<DescriptorHandle> rtvFreePool;
+      std::vector<DescriptorHandle> dsvFreePool;
       D3D12_CPU_DESCRIPTOR_HANDLE csuCpuHandle0;
       D3D12_GPU_DESCRIPTOR_HANDLE csuGpuHandle0;
       // RTV and DSV don't have gpu handles.
