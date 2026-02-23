@@ -68,47 +68,49 @@ namespace
       DXGI_FORMAT_BC5_UNORM,
       DXGI_FORMAT_BC4_UNORM,
    };
-#define DEFAULT_LAYOUT \
+#define DEFAULT_INPUT_LAYOUT \
 0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0
    const D3D12_INPUT_ELEMENT_DESC _BasicVertex[3]
    {
-      { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
-      { "texIdx", 0, DXGI_FORMAT_R8G8_UINT, DEFAULT_LAYOUT },
-      { "uv01", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_LAYOUT }
+      { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT },
+      { "texIdx", 0, DXGI_FORMAT_R8G8_UINT, DEFAULT_INPUT_LAYOUT },
+      { "uv01", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_INPUT_LAYOUT }
    };
    const D3D12_INPUT_ELEMENT_DESC _StaticVertex[5]
    {
-      { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
-      { "texIdx", 0, DXGI_FORMAT_R8G8_UINT, DEFAULT_LAYOUT },
-      { "uv01", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_LAYOUT },
-      { "normal", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
-      { "tangent", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT }
+      { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT },
+      { "texIdx", 0, DXGI_FORMAT_R8G8_UINT, DEFAULT_INPUT_LAYOUT },
+      { "uv01", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_INPUT_LAYOUT },
+      { "normal", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT },
+      { "tangent", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT }
    };
    const D3D12_INPUT_ELEMENT_DESC _SkeletalVertex[5]
    {
-      { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_LAYOUT },
-      { "texIdx_boneIdx", 0, DXGI_FORMAT_R8G8B8A8_UINT, DEFAULT_LAYOUT },
-      { "uv01", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_LAYOUT },
-      { "normal_boneWeight0", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_LAYOUT },
-      { "tangent_boneWeight1", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_LAYOUT }
+      { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT },
+      { "texIdx_boneIdx", 0, DXGI_FORMAT_R8G8B8A8_UINT, DEFAULT_INPUT_LAYOUT },
+      { "uv01", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_INPUT_LAYOUT },
+      { "normal_boneWeight0", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_INPUT_LAYOUT },
+      { "tangent_boneWeight1", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_INPUT_LAYOUT }
    };
    const D3D12_INPUT_LAYOUT_DESC InputLayoutBasic{ _BasicVertex , 3};
    const D3D12_INPUT_LAYOUT_DESC InputLayoutStatic{ _StaticVertex, 5 };
    const D3D12_INPUT_LAYOUT_DESC InputLayoutSkeletal{ _SkeletalVertex, 5 };
 
-#define TEX_WRAP D3D12_TEXTURE_ADDRESS_MODE_WRAP
 #define TEX_CLAMP D3D12_TEXTURE_ADDRESS_MODE_CLAMP
+#define TEX_WRAP D3D12_TEXTURE_ADDRESS_MODE_WRAP
+#define MAX_MIPS 16
 #define SMAPLER_DESC(filter, addressMode, cmpFunc, maxLOD, registerNum) \
 {filter, addressMode, addressMode, addressMode, 0, Constants::AnisotropyLevel, cmpFunc, \
 D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY_ALL}
-   const D3D12_STATIC_SAMPLER_DESC StaticSamplers[6]
+   const D3D12_STATIC_SAMPLER_DESC StaticSamplers[7]
    {
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), 0, 0),         // Point-Clamp (Post-processing)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), 99, 1),       // Trilinear-Clamp (Post-processing / UI)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_WRAP, D3D12_COMPARISON_FUNC(0), 99, 2),        // Trilinear-Wrap (Post-processing / UI)
-      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), 99, 3),              // Anisotropic-Clamp (Mesh)
-      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_WRAP, D3D12_COMPARISON_FUNC(0), 99, 4),               // Anisotropic-Wrap (Mesh)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC_LESS_EQUAL, 0, 5) // LessEqual-PCF-Comparison (Shadow)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), 0, 0),         // Point-Clamp (Post-process)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_WRAP, D3D12_COMPARISON_FUNC(0), 0, 1),          // Point-Wrap (Retro rendering)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 2), // Trilinear-Clamp (Post-process / UI)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_WRAP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 3),  // Trilinear-Wrap (Post-process / UI)
+      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 4),        // Anisotropic-Clamp (Mesh)
+      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_WRAP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 5),         // Anisotropic-Wrap (Mesh)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC_LESS_EQUAL, 0, 6) // LessEqual-PCF-Comparison (Shadow)
    };
 
    class FenceSync;
@@ -130,10 +132,10 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    ComPtr<IResource> backbuffers[Constants::SwapChainSize]{};
 
    HWND hwnd;
-   int32_t threads;
-   bool allowTearing;
+   D3D12Renderer* rendererInstance;
+   int32_t workerThreadCount;
+   bool bDeviceSupportTearing;
    XMINT2 currentRenderBufferSize;
-   int32_t verticalBlanks{ 1 };
 }
 
 // Types
@@ -147,9 +149,9 @@ namespace
       ReadonlyProperty(uint64_t, FrameIndex)
 
    public:
-      FenceSync(ComPtr<IDevice>& device, ComPtr<ID3D12CommandQueue>& commandQueue)
+      FenceSync(ComPtr<IDevice>& device, ID3D12CommandQueue* commandQueue)
       {
-         this->commandQueue = commandQueue;
+         this->cmdQueue = commandQueue;
          syncEventHandle = CreateEventEx(nullptr, L"D3D12Renderer Fence Event", 0, EVENT_ALL_ACCESS);
          if (syncEventHandle == 0) throw std::exception("Failed to create fence sync event handle.");
          CheckHResult(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
@@ -166,18 +168,18 @@ namespace
 
       // Get the next frame.
       // ***WARNING***
-      // Invoke this AFTER ExecuteCommandList() in one frame.
+      // Invoke this AFTER ExecuteCommandLists() in one frame.
       void NextFrame()
       {
          f_FrameIndex++;
-         commandQueue->Signal(fence.Get(), f_FrameIndex);
+         cmdQueue->Signal(fence.Get(), f_FrameIndex);
          uint64_t minFence = (f_FrameIndex < Constants::SwapChainSize) ? 0 : (f_FrameIndex - Constants::SwapChainSize + 1);
          Synchronize(minFence);
       }
 
       // Get all GPU's work done.
       // ***WARNING***
-      // Invoke this BEFORE entering worker threads (to avoid resource references existing in uncommitted cmd lists), or AFTER NextFrame() in one frame.
+      // To make suere GPU doesn't access any resource, invoke this BEFORE entering worker threads or right AFTER NextFrame().
       void FlushQueue()
       {
          uint64_t minFence = f_FrameIndex;
@@ -198,7 +200,7 @@ namespace
    private:
       HANDLE syncEventHandle;
       ComPtr<ID3D12Fence> fence;
-      ComPtr<ID3D12CommandQueue> commandQueue;
+      ID3D12CommandQueue* cmdQueue; // Use it, not own it.
    };
 
    class LateReleaseManager
@@ -1164,7 +1166,7 @@ namespace
       CheckHResult(CreateDXGIFactory2(factoryFlags, IID_PPV_ARGS(&factory)));
       BOOL winBool = 0;
       factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &winBool, sizeof(winBool));
-      allowTearing = (winBool == TRUE);
+      bDeviceSupportTearing = (winBool == TRUE);
       // Device
       try
       {
@@ -1187,13 +1189,13 @@ namespace
          0,0, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
          DXGI_USAGE_RENDER_TARGET_OUTPUT, Constants::SwapChainSize, DXGI_SCALING_NONE,
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
-         uint32_t(allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
+         uint32_t(bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
       };
       CheckHResult(factory->CreateSwapChainForHwnd(cmdQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
       DXGI_RGBA color{ 0.f, 0.f, 0.f, 1.f };
       swapChain->SetBackgroundColor(&color);
       // Command Allocators & Lists
-      int32_t count = Constants::SwapChainSize * threads;
+      int32_t count = Constants::SwapChainSize * workerThreadCount;
       cmdAllocators.reserve(count);
       for (int i = 0; i < count; i++)
       {
@@ -1202,9 +1204,9 @@ namespace
          cmdAllocators.push_back(std::move(temp));
       }
       // CreateCommandList1 closes the cmd list automatically.
-      cmdLists.reserve(threads);
-      _cmdLists.reserve(threads);
-      for (int i = 0; i < threads; i++)
+      cmdLists.reserve(workerThreadCount);
+      _cmdLists.reserve(workerThreadCount);
+      for (int i = 0; i < workerThreadCount; i++)
       {
          ComPtr<ICommandList> temp;
          CheckHResult(device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&temp)));
@@ -1218,7 +1220,7 @@ namespace
    void CreateHeapsAndPSOs()
    {
       // Build all descriptor heaps.
-      descriptorMgr = std::make_unique<DescriptorHeapManager>(device);
+      descriptorMgr = std::make_unique<DescriptorHeapMgr>(device);
 
       // Create constant buffer and pass cbv.
 
@@ -1238,7 +1240,7 @@ namespace
          // e.g. frameIdx = 8, frameArrayIdx = 2, in this case, backbuffers[2] should refer to swapChain->GetBuffer(0).
          int32_t frameArrayIdx = (fenceSync->GetFrameIndex() + i) % Constants::SwapChainSize;
          CheckHResult(swapChain->GetBuffer(i, IID_PPV_ARGS(&backbuffers[frameArrayIdx])));
-         tempRTVs[frameArrayIdx] = descriptorMgr->CreateView(device, backbuffers[frameArrayIdx], &rtvDesc, ViewType::RTV);
+         tempRTVs[frameArrayIdx] = descriptorMgr->CreateDescirptor(device, backbuffers[frameArrayIdx], &rtvDesc, ViewType::RTV);
       }
    }
 
@@ -1251,10 +1253,10 @@ namespace
       for (int32_t i : std::views::iota(0, Constants::SwapChainSize))
       {
          backbuffers[i].Reset();
-         descriptorMgr->ReleaseView(tempRTVs[i]);
+         descriptorMgr->ReleaseDescriptor(tempRTVs[i]);
       }
       CheckHResult(swapChain->ResizeBuffers(Constants::SwapChainSize, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM,
-         allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
+         bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
       CreateFrames();
    }
 
@@ -1283,8 +1285,8 @@ D3D12Renderer::D3D12Renderer(HWND windowHandle, int32_t threadCount, XMINT2 rend
 {
    SingletonCheck();
    hwnd = windowHandle;
-   threads = threadCount;
-   //GetClientSize();
+   rendererInstance = this;
+   workerThreadCount = threadCount;
    currentRenderBufferSize = renderBufferSize;
    IRenderer::SetRenderBufferSize(renderBufferSize);
    IRenderer::SetRefreshRate(refreshRate);
@@ -1339,7 +1341,7 @@ void D3D12Renderer::Assembler()
 {
    lateReleaseMgr->ReleaseGarbage(); // Place it here, so it works not in the main thread.
    cmdQueue->ExecuteCommandLists(_cmdLists.size(), _cmdLists.data());
-   CheckHResult(swapChain->Present(verticalBlanks, (allowTearing && verticalBlanks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
+   CheckHResult(swapChain->Present(verticalBlanks, (bDeviceSupportTearing && verticalBlanks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
    fenceSync->NextFrame();
 }
 #endif
