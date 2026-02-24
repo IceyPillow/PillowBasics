@@ -18,18 +18,6 @@ namespace Pillow::Graphics
    // Pseudo Code: Subres Res[PlaneSlice][ArraySlice][MipSlice];     //
    class GenericTextureInfo
    {
-      // Format
-      ReadonlyProperty(GenericTexFmt, Format)
-         ReadonlyProperty(uint8_t, PixelSize)
-         ReadonlyProperty(uint16_t, Width)
-         ReadonlyProperty(uint8_t, MipCount)
-         ReadonlyProperty(uint8_t, ArrayCount)
-         ReadonlyProperty(bool, IsCubemap)
-         ReadonlyProperty(CompressionMode, CompressionType)
-         // Size
-         ReadonlyProperty(uint16_t, MipZeroSize)
-         ReadonlyProperty(uint16_t, ArraySliceSize)
-         ReadonlyProperty(uint16_t, TotalSize)
    public:
       // Resource type.
       enum class Type : uint8_t
@@ -68,6 +56,19 @@ namespace Pillow::Graphics
       };
 
    public:
+      // Format
+      Format TexFormat;
+      ZipType CompressionType;
+      uint16_t Width;
+      uint16_t Height;
+      uint8_t ArraySize;
+      uint8_t MipCount;
+      bool IsCubemap;
+      bool IsRenderTexture;
+      // Size
+      uint16_t ArraySliceSize;
+      uint16_t TotalSize;
+
       static const int32_t MaxArraySize = UINT8_MAX;
       static const int32_t MaxMipCount = UINT8_MAX;
 
