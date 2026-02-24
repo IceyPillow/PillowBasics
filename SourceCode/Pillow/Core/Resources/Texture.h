@@ -7,32 +7,6 @@ namespace Pillow::Graphics
 {
    using namespace DirectX;
 
-   enum class CompressionMode : uint8_t
-   {
-      None,
-      Hardware,
-      HardwareWithDithering
-   };
-
-   enum class GenericTexFmt : uint8_t
-   {
-      // 1.Supports .hdr files.
-      // 2.R8G8B8 isn't supported in DXGI_FORMAT, use R8G8B8A8 to store it.
-      UnsignedNormalized_R8G8B8A8,
-      UnsignedNormalized_R8G8B8,
-      UnsignedNormalized_R8G8,
-      UnsignedNormalized_R8,
-      Count
-   };
-
-   const int32_t PixelSize[int32_t(GenericTexFmt::Count)]
-   {
-      4, // UnsignedNormalized_R8G8B8A8
-      3, // UnsignedNormalized_R8G8B8
-      2, // UnsignedNormalized_R8G8
-      1, // UnsignedNormalized_R8
-   };
-
    //                     Subresource Indexing                       //
    //                                         ______________________ //
    // subres(0) subres(3) -> Row: Mip Slice 0 |subres(6) subres(9) | //
@@ -56,6 +30,42 @@ namespace Pillow::Graphics
          ReadonlyProperty(uint16_t, MipZeroSize)
          ReadonlyProperty(uint16_t, ArraySliceSize)
          ReadonlyProperty(uint16_t, TotalSize)
+   public:
+      // Resource type.
+      enum class Type : uint8_t
+      {
+         GameTexture,
+         Cubemap,
+         RenderTexture,
+      };
+
+      // Texture compression type.
+      enum class ZipType : uint8_t
+      {
+         None,
+         Hardware,
+         HardwareWithDithering
+      };
+
+      // Texture (pixel) format.
+      enum class Format : uint8_t
+      {
+         // 1.Supports .hdr files.
+         // 2.R8G8B8 isn't supported in DXGI_FORMAT, use R8G8B8A8 to store it.
+         UnsignedNormalized_R8,
+         UnsignedNormalized_R8G8,
+         UnsignedNormalized_R8G8B8,
+         UnsignedNormalized_R8G8B8A8,
+         Count
+      };
+
+      const uint8_t PixelBytes[int32_t(Format::Count)]
+      {
+         1, // UnsignedNormalized_R8
+         2, // UnsignedNormalized_R8G8
+         3, // UnsignedNormalized_R8G8B8
+         4, // UnsignedNormalized_R8G8B8A8
+      };
 
    public:
       static const int32_t MaxArraySize = UINT8_MAX;

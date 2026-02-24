@@ -49,10 +49,10 @@ namespace
 {
    const int32_t CBAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
    const int32_t BCBlockLength = 16; // 4 rows, 4 columns
-   const int32_t BC1BlockSize = 8; // C0(2B) C1(2B) Indices(16*2bits = 4B)
-   const int32_t BC4BlockSize = 8; // C0(1B) C1(1B) Indices(16*3bits = 6B)
-   const int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize;
-   const int32_t BC5BlockSize = BC4BlockSize * 2;
+   const int32_t BC1BlockSize = 8; // C0(2B) C1(2B) Indices(16*2bits = 4B) RGB
+   const int32_t BC4BlockSize = 8; // C0(1B) C1(1B) Indices(16*3bits = 6B) A
+   const int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize; // RGBA
+   const int32_t BC5BlockSize = BC4BlockSize * 2; // AA
 
    const DXGI_FORMAT NativeTexFmt[int32_t(GenericTexFmt::Count)]
    {
@@ -547,7 +547,7 @@ namespace
       // 
       // 2.ABOUT THE FOOTPRINT: In Direct3D 12 terminology, footprint describes the memory layouts of D3D12 resources.
       // In detail, the size of a texture row should be aligned(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT), which makes memory allocation more sophisticated.
-      // But there are ways to avoid touching the footprints.
+      // But there is a way to not deal with the footprints.
       // For instance, we can use ID3D12Resource::WriteToSubresource to copy unaligned data into a custom upload heap,
       // then use ID3DCommandList::CopyTextureRegion to copy it into a default buffer while ignoring the footprints.
       void WriteTexture(const uint8_t* rawTexture, const GenericTextureInfo& texInfo, int32_t arrayIndex = 0)
