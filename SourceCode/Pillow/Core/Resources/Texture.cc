@@ -153,4 +153,14 @@ void Pillow::Graphics::LoadTexture(const string& relativePath)
    {
       texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    }
+}bool Pillow::Graphics::GenericTextureInfo::operator==(const GenericTextureInfo& right) const
+{
+   bool result = this->Format == right.Format;
+   result &= this->CompressionType == right.CompressionType;
+   result &= this->Width == right.Width;
+   result &= this->Height == right.Height;
+   result &= this->MipCount == right.MipCount;
+   result &= this->IsCubemap == right.IsCubemap;
+   result &= this->ArrayCount == right.ArrayCount;
+   return result;
 }
