@@ -120,6 +120,23 @@ GenericTextureInfo::GenericTextureInfo(GenericTexFmt format, int32_t width, bool
    f_TotalSize = f_ArrayCount * f_ArraySliceSize;
 }
 
+TextureInfo Pillow::Graphics::TextureInfo::CreateTextureArray()
+{
+   /*dumb*/
+   return TextureInfo();
+}
+
+TextureInfo Pillow::Graphics::TextureInfo::CreateCubemap()
+{
+   /*dumb*/
+   return TextureInfo();
+}
+
+TextureInfo Pillow::Graphics::TextureInfo::CreateRenderTexture()
+{
+   /*dumb*/
+   return TextureInfo();
+}
 void Pillow::Graphics::LoadTexture(const string& relativePath)
 {
    // Read the binary file.

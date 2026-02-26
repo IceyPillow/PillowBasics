@@ -48,20 +48,20 @@ typedef ID3D12Resource IResource;                // The original one is fine
 namespace
 {
    const int32_t CBAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-   const int32_t BCBlockLength = 16; // 4 rows, 4 columns
-   const int32_t BC1BlockSize = 8; // C0(2B) C1(2B) Indices(16*2bits = 4B) RGB
-   const int32_t BC4BlockSize = 8; // C0(1B) C1(1B) Indices(16*3bits = 6B) A
-   const int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize; // RGBA
+   const int32_t BCBlockLength = 16; // 4 * 4
+   const int32_t BC1BlockSize = 8; // C0(2B) C1(2B) Indices(16*2bits = 4B) RGB, 1:6 zip rate
+   const int32_t BC4BlockSize = 8; // C0(1B) C1(1B) Indices(16*3bits = 6B) A, 1:2 zip rate
+   const int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize; // RGBA, 1:4 zip rate
    const int32_t BC5BlockSize = BC4BlockSize * 2; // AA
 
-   const DXGI_FORMAT NativeTexFmt[int32_t(GenericTexFmt::Count)]
+   const DXGI_FORMAT NativeTexFmt[int32_t(TextureInfo::Format::Count)]
    {
       DXGI_FORMAT_R8G8B8A8_UNORM,
       DXGI_FORMAT_R8G8B8A8_UNORM,
       DXGI_FORMAT_R8G8_SNORM,
       DXGI_FORMAT_R8_UNORM,
    };
-   const DXGI_FORMAT NativeBCTexFmt[int32_t(GenericTexFmt::Count)]
+   const DXGI_FORMAT NativeBCTexFmt[int32_t(TextureInfo::Format::Count)]
    {
       DXGI_FORMAT_BC3_UNORM,
       DXGI_FORMAT_BC1_UNORM,

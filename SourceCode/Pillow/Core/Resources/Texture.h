@@ -16,13 +16,16 @@ namespace Pillow::Graphics
    // Col: Array Slice 0                      ^^^ Plane Slice 1 ^^^  //
    //                                                                //
    // Pseudo Code: Subres Res[PlaneSlice][ArraySlice][MipSlice];     //
-   class GenericTextureInfo
+
+   // Generic texture info to the raw (unaligned) texture the in system memory.
+   class TextureInfo
    {
    public:
       // Resource type.
       enum class Type : uint8_t
       {
-         GameTexture,
+         Texture,
+         TextureAray,
          Cubemap,
          RenderTexture,
       };
@@ -76,17 +79,17 @@ namespace Pillow::Graphics
       GenericTextureInfo(const GenericTextureInfo&) = default;
       GenericTextureInfo(GenericTexFmt format, int32_t width,  bool bMips = true, CompressionMode compMode = CompressionMode::HardwareWithDithering, bool bCube = false, int32_t arraySize = 1);
    };
+      static TextureInfo CreateTexture();
 
-   class GenericTexture
-   {
-   public:
-      const GenericTextureInfo Info;
-   private:
-      std::unique_ptr<uint8_t[]> data;
+      static TextureInfo CreateTextureArray();
+
+      static TextureInfo CreateCubemap();
+
+      static TextureInfo CreateRenderTexture();
+
    };
 
    void LoadTexture(const string& relativePath);
-
 
    ForceInline void ColorFloat2Byte(uint8_t& destination, float color)
    {
