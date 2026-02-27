@@ -21,21 +21,24 @@ namespace Pillow::Graphics
    class TextureInfo
    {
    public:
+      // Texture usage.
+      // It's also a hint for GPU resident management.
+      enum class Tag : uint8_t
+      {
+         Menu,
+         Character,
+         Prop,
+         Artifact,
+         nature
+      };
+
       // Resource type.
       enum class Type : uint8_t
       {
-         Texture,
-         TextureAray,
-         Cubemap,
-         RenderTexture,
-      };
-
-      // Texture compression type.
-      enum class ZipType : uint8_t
-      {
-         None,
-         Hardware,
-         HardwareWithDithering
+         Tex,
+         TexArray, // Include cube maps.
+         BakedTex,
+         BakedTexArray,
       };
 
       // Texture (pixel) format.
@@ -50,6 +53,14 @@ namespace Pillow::Graphics
          Count
       };
 
+      // Texture compression type.
+      enum class ZipType : uint8_t
+      {
+         None,
+         Hardware,
+         HardwareWithDithering
+      };
+
       const uint8_t PixelBytes[int32_t(Format::Count)]
       {
          1, // UnsignedNormalized_R8
@@ -59,34 +70,44 @@ namespace Pillow::Graphics
       };
 
    public:
-      // Format
-      Format TexFormat;
-      ZipType CompressionType;
-      uint16_t Width;
-      uint16_t Height;
-      uint8_t ArraySize;
-      uint8_t MipCount;
-      bool IsCubemap;
-      bool IsRenderTexture;
-      // Size
-      uint16_t ArraySliceSize;
-      uint16_t TotalSize;
-
       static const int32_t MaxArraySize = UINT8_MAX;
+
       static const int32_t MaxMipCount = UINT8_MAX;
 
-      GenericTextureInfo() = default;
-      GenericTextureInfo(const GenericTextureInfo&) = default;
-      GenericTextureInfo(GenericTexFmt format, int32_t width,  bool bMips = true, CompressionMode compMode = CompressionMode::HardwareWithDithering, bool bCube = false, int32_t arraySize = 1);
-   };
-      static TextureInfo CreateTexture();
+      static TextureInfo DefineTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, bool useMip);
 
-      static TextureInfo CreateTextureArray();
+      static TextureInfo DefineTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip);
 
-      static TextureInfo CreateCubemap();
+      static TextureInfo DefineBakedTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height);
+      
+      static TextureInfo DefineBakedTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count);
 
-      static TextureInfo CreateRenderTexture();
+   public:
+      // Format
+      const Tag TexTag;
+      const Type TexType;
+      const Format TexFormat;
+      const ZipType CompressionType;
+      const uint16_t Width;
+      const uint16_t Height;
+      const uint8_t MipCount;
+      const uint8_t ArrayCount;
+      // Size
+      const uint16_t ArraySliceSize;
+      const uint16_t totalSize;
 
+   public:
+      TextureInfo() = delete;
+
+      // TextureInfo::Tag (texture usage) is not considered.
+      bool operator==(const TextureInfo& right) const;
+
+      inline int32_t GetPixelSize() const { return PixelBytes[int32_t(TexFormat)]; }
+      
+      int32_t GetMipLevelSize(int32_t mipLevel) const;
+
+   private:
+      TextureInfo(Tag tag, Type type, Format format, ZipType zip, int32_t w, int32_t h, int32_t mips, int32_t count);
    };
 
    void LoadTexture(const string& relativePath);

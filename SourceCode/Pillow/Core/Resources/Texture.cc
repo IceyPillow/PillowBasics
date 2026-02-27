@@ -103,39 +103,41 @@ namespace
    }
 }
 
-GenericTextureInfo::GenericTextureInfo(GenericTexFmt format, int32_t width, bool bMips, CompressionMode compMode, bool bCube, int32_t arraySize) :
-   f_Format(format),
-   f_PixelSize(uint8_t(PixelSize[int32_t(format)])),
-   f_Width(uint16_t(width)),
-   f_ArrayCount(uint8_t(arraySize* (bCube ? 6 : 1))),
-   f_IsCubemap(bCube),
-   f_CompressionType(compMode)
-{
-   if (width < 4 || (width & (width - 1))) throw std::exception("Texture width restriction: w=2^n and w>=4");
-   int32_t power = std::log2f(width);
-   // The lowest mipmap limit is 4x4, needed by block compression.
-   f_MipCount = bMips ? power - 1 : 1;
-   f_ArraySliceSize = bMips ? (((1 << (2 * f_MipCount + 4)) - 16) / 3) * GetPixelSize() : GetMipZeroSize();
-   f_MipZeroSize = f_Width * f_Width * f_PixelSize;
-   f_TotalSize = f_ArrayCount * f_ArraySliceSize;
-}
-
-TextureInfo Pillow::Graphics::TextureInfo::CreateTextureArray()
+TextureInfo TextureInfo::DefineTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, bool useMip)
 {
    /*dumb*/
-   return TextureInfo();
+   return TextureInfo((Tag)0, (Type)0, (Format)0, (ZipType)0, 0, 0, 0, 0);
 }
 
-TextureInfo Pillow::Graphics::TextureInfo::CreateCubemap()
+TextureInfo TextureInfo::DefineTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip)
 {
    /*dumb*/
-   return TextureInfo();
+   return TextureInfo((Tag)0, (Type)0, (Format)0, (ZipType)0, 0, 0, 0, 0);
 }
 
-TextureInfo Pillow::Graphics::TextureInfo::CreateRenderTexture()
+
+TextureInfo TextureInfo::DefineBakedTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height)
 {
    /*dumb*/
-   return TextureInfo();
+   return TextureInfo((Tag)0, (Type)0, (Format)0, (ZipType)0, 0, 0, 0, 0);
+}
+
+TextureInfo TextureInfo::DefineBakedTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count)
+{
+   /*dumb*/
+   return TextureInfo((Tag)0, (Type)0, (Format)0, (ZipType)0, 0, 0, 0, 0);
+}
+
+bool TextureInfo::operator==(const TextureInfo& right) const
+{
+   bool result = this->TexType == right.TexType;
+   result &= this->TexFormat == right.TexFormat;
+   result &= this->CompressionType == right.CompressionType;
+   result &= this->Width == right.Width;
+   result &= this->Height == right.Height;
+   result &= this->MipCount == right.MipCount;
+   result &= this->ArrayCount == right.ArrayCount;
+   return result;
 }
 void Pillow::Graphics::LoadTexture(const string& relativePath)
 {
@@ -170,14 +172,4 @@ void Pillow::Graphics::LoadTexture(const string& relativePath)
    {
       texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    }
-}bool Pillow::Graphics::GenericTextureInfo::operator==(const GenericTextureInfo& right) const
-{
-   bool result = this->Format == right.Format;
-   result &= this->CompressionType == right.CompressionType;
-   result &= this->Width == right.Width;
-   result &= this->Height == right.Height;
-   result &= this->MipCount == right.MipCount;
-   result &= this->IsCubemap == right.IsCubemap;
-   result &= this->ArrayCount == right.ArrayCount;
-   return result;
 }
