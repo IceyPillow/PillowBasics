@@ -1,5 +1,6 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 #include "Texture.h"
+#include <bit>
 #include "fstream"
 #include "filesystem"
 #include "lodepng-apr2025/lodepng.h"
@@ -10,6 +11,46 @@ using namespace DirectX;
 
 namespace
 {
+   const uint8_t PixelBytes[int32_t(TextureInfo::Format::Count)]
+   {
+      1, // UnsignedNormalized_R8
+      2, // UnsignedNormalized_R8G8
+      3, // UnsignedNormalized_R8G8B8
+      4, // UnsignedNormalized_R8G8B8A8
+   };
+
+   void CheckTextureSize(uint32_t w, uint32_t h, uint32_t count, bool bPowerOf2)
+   {
+      if (w > TextureInfo::MaxWidth || h > TextureInfo::MaxWidth)
+         throw std::runtime_error(std::format("Texture exceeds the maxmium edge size: {}", TextureInfo::MaxWidth));
+      if (count > TextureInfo::MaxArraySize)
+         throw std::runtime_error(std::format("Texture array exceeds the maxmium size: {}", TextureInfo::MaxArraySize));
+      if (bPowerOf2 && (std::bit_floor(w) != w || std::bit_floor(h) != h))
+         throw std::runtime_error("Texture's edge size is not the power of 2.");
+   }
+
+   // W and h should be the powers of 2.
+   uint8_t CalculateMipCount(uint16_t w, uint16_t h)
+   {
+      uint16_t max = std::max(w, h);
+      uint16_t exponent = std::bit_width(max);
+      return uint8_t(exponent + 1);
+   }
+
+   uint32_t CalculateArraySliceSize(TextureInfo::Format format, uint32_t w, uint32_t h)
+   {
+      uint32_t min = std::min(w, h);
+      uint32_t max = std::max(w, h);
+      uint32_t minMips = CalculateMipCount(min, min);
+      uint32_t an = max >> (minMips - 1);
+      // Geometric sequence, q=1/4, (a1-an*q)/(1-q)=(4a1-an)/3
+      uint32_t size = (4 * w * h - an) / 3;
+      // Geometric sequence, q=1/2, (a1'-an'*q)/(1-q)=(an/2-1*q)/(1-q)=an-1
+      size += an > 1 ? an - 1 : 0;
+      size *= GetPixelSize(format);
+      return size;
+   }
+
    void BicubicDownsampling(const uint8_t* input, uint8_t* output, int32_t inputWidth, bool is4Channels = true)
    {
       //auto ToFloat_DecodeSRGB = [](uint8_t x) -> float
@@ -105,27 +146,29 @@ namespace
 
 TextureInfo TextureInfo::DefineTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, bool useMip)
 {
-   /*dumb*/
-   return TextureInfo((Tag)0, (Type)0, (Format)0, (ZipType)0, 0, 0, 0, 0);
+   CheckTextureSize(width, height, 1, true);
+   uint8_t mips = useMip ? CalculateMipCount(width, height) : 1;
+   return TextureInfo(tag, Type::Tex, format, zip, width, height, mips, 1);
 }
 
 TextureInfo TextureInfo::DefineTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip)
 {
-   /*dumb*/
-   return TextureInfo((Tag)0, (Type)0, (Format)0, (ZipType)0, 0, 0, 0, 0);
+   CheckTextureSize(width, height, count, true);
+   uint8_t mips = useMip ? CalculateMipCount(width, height) : 1;
+   return TextureInfo(tag, Type::TexArray, format, zip, width, height, mips, count);
 }
 
 
-TextureInfo TextureInfo::DefineBakedTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height)
+TextureInfo TextureInfo::DefineBakedTexture(Format format, int32_t width, int32_t height)
 {
-   /*dumb*/
-   return TextureInfo((Tag)0, (Type)0, (Format)0, (ZipType)0, 0, 0, 0, 0);
+   CheckTextureSize(width, height, 1, false);
+   return TextureInfo(Tag::Development, Type::BakedTex, format, ZipType::None, width, height, 1, 1);
 }
 
-TextureInfo TextureInfo::DefineBakedTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count)
+TextureInfo TextureInfo::DefineBakedTextureArray(Format format, int32_t width, int32_t height, int32_t count)
 {
-   /*dumb*/
-   return TextureInfo((Tag)0, (Type)0, (Format)0, (ZipType)0, 0, 0, 0, 0);
+   CheckTextureSize(width, height, count, false);
+   return TextureInfo(Tag::Development, Type::BakedTex, format, ZipType::None, width, height, 1, count);
 }
 
 bool TextureInfo::operator==(const TextureInfo& right) const
@@ -139,6 +182,40 @@ bool TextureInfo::operator==(const TextureInfo& right) const
    result &= this->ArrayCount == right.ArrayCount;
    return result;
 }
+
+int32_t TextureInfo::GetMipmapSize(uint32_t mipLevel) const
+{
+   int32_t w = std::max(Width >> mipLevel, 1);
+   int32_t h = std::max(Width >> mipLevel, 1);
+   return w * h * GetPixelSize(TexFormat);
+}
+
+TextureInfo::TextureInfo(Tag tag, Type type, Format format, ZipType zip, int32_t w, int32_t h, int32_t mips, int32_t arrayNum) :
+   TexTag(tag),
+   TexType(type),
+   TexFormat(format),
+   CompressionType(zip),
+   Width(uint16_t(w)),
+   Height(uint16_t(h)),
+   MipCount(uint8_t(mips)),
+   ArrayCount(arrayNum),
+   ArraySliceSize(CalculateArraySliceSize(TexFormat, Width, Height)),
+   TotalSize(ArraySliceSize * ArrayCount),
+   ArrayTracking(arrayNum, 0)
+{
+   // No need to write the body.
+}
+
+int32_t Pillow::Graphics::GetPixelSize(TextureInfo::Format format)
+{
+   return PixelBytes[(int32_t)format];
+}
+
+int32_t Pillow::Graphics::GetPixelSize(const TextureInfo& info)
+{
+   return GetPixelSize(info.TexFormat);
+}
+
 void Pillow::Graphics::LoadTexture(const string& relativePath)
 {
    // Read the binary file.

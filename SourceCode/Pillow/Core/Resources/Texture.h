@@ -17,19 +17,20 @@ namespace Pillow::Graphics
    //                                                                //
    // Pseudo Code: Subres Res[PlaneSlice][ArraySlice][MipSlice];     //
 
-   // Generic texture info to the raw (unaligned) texture the in system memory.
+   // Generic texture info, to a raw (unaligned) texture in the system memory.
    class TextureInfo
    {
    public:
       // Texture usage.
-      // It's also a hint for GPU resident management.
+      // It's also a hint to the GPU resident management.
       enum class Tag : uint8_t
       {
-         Menu,
+         GameUI,
          Character,
          Prop,
          Artifact,
-         nature
+         Nature,
+         Development // Screen captures, debug UI, profile UI, etc.
       };
 
       // Resource type.
@@ -61,26 +62,14 @@ namespace Pillow::Graphics
          HardwareWithDithering
       };
 
-      const uint8_t PixelBytes[int32_t(Format::Count)]
-      {
-         1, // UnsignedNormalized_R8
-         2, // UnsignedNormalized_R8G8
-         3, // UnsignedNormalized_R8G8B8
-         4, // UnsignedNormalized_R8G8B8A8
-      };
-
    public:
+      static const int32_t MaxWidth = 1 << 13;
       static const int32_t MaxArraySize = UINT8_MAX;
 
-      static const int32_t MaxMipCount = UINT8_MAX;
-
       static TextureInfo DefineTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, bool useMip);
-
       static TextureInfo DefineTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip);
-
-      static TextureInfo DefineBakedTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height);
-      
-      static TextureInfo DefineBakedTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count);
+      static TextureInfo DefineBakedTexture(Format format, int32_t width, int32_t height);
+      static TextureInfo DefineBakedTextureArray(Format format, int32_t width, int32_t height, int32_t count);
 
    public:
       // Format
@@ -93,23 +82,26 @@ namespace Pillow::Graphics
       const uint8_t MipCount;
       const uint8_t ArrayCount;
       // Size
-      const uint16_t ArraySliceSize;
-      const uint16_t totalSize;
+      const uint32_t ArraySliceSize;
+      const uint32_t TotalSize;
+      // Resource Tracking
+      std::vector<uint32_t> ArrayTracking;
 
    public:
       TextureInfo() = delete;
-
       // TextureInfo::Tag (texture usage) is not considered.
       bool operator==(const TextureInfo& right) const;
-
-      inline int32_t GetPixelSize() const { return PixelBytes[int32_t(TexFormat)]; }
-      
-      int32_t GetMipLevelSize(int32_t mipLevel) const;
+      // The highest mipmap level is 0.
+      int32_t GetMipmapSize(uint32_t mipLevel) const;
 
    private:
-      TextureInfo(Tag tag, Type type, Format format, ZipType zip, int32_t w, int32_t h, int32_t mips, int32_t count);
+      TextureInfo(Tag tag, Type type, Format format, ZipType zip, int32_t w, int32_t h, int32_t mips, int32_t arrayNum);
    };
 
+   // Enquire the original pixel size.
+   int32_t GetPixelSize(TextureInfo::Format format); 
+   // Enquire the original pixel size.
+   int32_t GetPixelSize(const TextureInfo& info);
    void LoadTexture(const string& relativePath);
 
    ForceInline void ColorFloat2Byte(uint8_t& destination, float color)
