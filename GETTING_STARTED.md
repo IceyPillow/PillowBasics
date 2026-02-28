@@ -2,7 +2,7 @@
 ### 1 Engine Quick Setup
 Development Environment: You need to install them first.
 > Visual Studio 2022+<br>
-> Windows 10 SDK, version 1903 (10.0.18362.1)<br>
+> Windows 10 SDK, version 2004 (10.0.19041.0)<br>
 > CMake 4.0+<br>
 
 Then, run Make.bat at the root folder.<br>
