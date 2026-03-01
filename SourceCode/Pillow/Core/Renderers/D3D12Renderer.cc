@@ -16,7 +16,9 @@
 #include <wrl.h> // Import Component Object Model Pointer
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include <d3dcompiler.h>
+//#include <d3dcompiler.h>
+#include "dxc_feb2026/d3d12shader.h"
+#include "dxc_feb2026/dxcapi.h"
 
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;

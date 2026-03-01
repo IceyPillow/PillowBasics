@@ -8,7 +8,7 @@
 
 set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib cgltf stb_truetype)
 if(WIN32)
-    list(APPEND LIBRARIES XeSS)
+    list(APPEND LIBRARIES XeSS DXCompiler)
 endif()
 set(LIBRARIES ${LIBRARIES} PARENT_SCOPE) # Write back to the parent scope.
 
@@ -116,7 +116,7 @@ add_library(stb_truetype INTERFACE ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/stb_truetype" FILES ${SOURCES})
 
 if(WIN32)
-# XeSS
+   # XeSS
    file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/*.h")
    add_library(XeSS INTERFACE ${SOURCES})
    source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1" FILES ${SOURCES})
@@ -131,5 +131,22 @@ if(WIN32)
       "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxell.dll"
       "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxess_fg.dll"
    )
+
+   # DXCompiler
+   # Use a standalone DirectX shader compiler to avoid compatibility issues.
+   file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/*.h")
+   add_library(DXCompiler INTERFACE ${SOURCES})
+   source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026" FILES ${SOURCES})
+   SET(LIBS
+      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxil.lib"
+      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxcompiler.lib"
+   )
+   target_link_libraries(XeSS INTERFACE ${LIBS})
+   list(APPEND RUNTIMES
+      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxil.dll"
+      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxcompiler.dll"
+   )
 endif()
-set(RUNTIMES ${RUNTIMES} PARENT_SCOPE) # Write back to the parent scope.
+
+# Write back to the parent scope.
+set(RUNTIMES ${RUNTIMES} PARENT_SCOPE)
