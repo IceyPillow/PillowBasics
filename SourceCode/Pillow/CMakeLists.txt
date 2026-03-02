@@ -13,17 +13,42 @@ add_executable(Pillow WIN32 ${SOURCES})
 target_include_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Link static libraries.
-target_link_libraries(Pillow PRIVATE dxgi.lib D3D12.lib d3dcompiler.lib)
+# DirectX 12 is decoupled from Windows SDK now (DirectX12 Agility SDK + DirectX Shader Compiler).
+# target_link_libraries(Pillow PRIVATE dxgi.lib D3D12.lib d3dcompiler.lib)
+target_link_libraries(Pillow PRIVATE dxgi.lib D3D12.lib)
 
 #Copy the 3rd-party runtimes.
-message("RUNTIMES=" ${RUNTIMES})
+message(STATUS "")
+message(STATUS "RUNTIMES (Copyable Runtime Libraries) =")
+foreach(item IN LISTS RUNTIMES)
+    message(STATUS "${item}")
+endforeach()
+message(STATUS "")
 add_custom_command(TARGET Pillow
    POST_BUILD
    COMMAND ${CMAKE_COMMAND} -E copy_if_different
          ${RUNTIMES}
-         $<TARGET_FILE_DIR:Pillow>
-   COMMENT "Copying the 3rd-party runtimes to the output directory..."
+         "$<TARGET_FILE_DIR:Pillow>" # Generator Expressions in CMake
+   COMMAND_EXPAND_LISTS # Filter the list
+   VERBATIM # Adjust the command arguments, so they can be passed precisely
+   COMMENT "Copying the 3rd-party runtimes to the output dir..."
 )
+if(WIN32)
+   message(STATUS "D3D12_RUNTIMES (Only On Win64) =")
+   foreach(item IN LISTS D3D12_RUNTIMES)
+      message(STATUS "${item}")
+   endforeach()
+   add_custom_command(TARGET Pillow
+   POST_BUILD
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different
+         ${D3D12_RUNTIMES}
+         "$<TARGET_FILE_DIR:Pillow>/D3D12/" # Generator Expressions in CMake
+   COMMAND_EXPAND_LISTS # Filter the list
+   VERBATIM # Adjust the command arguments, so they can be passed precisely
+   COMMENT "Copying the DirectX 12 Agility runtimes to the output dir..."
+)
+message(STATUS "")
+endif()
 
 # Link the 3rd-party libraries.
 target_link_libraries(Pillow PRIVATE ${LIBRARIES})

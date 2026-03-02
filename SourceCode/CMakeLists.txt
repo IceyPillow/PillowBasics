@@ -17,6 +17,9 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;RelWithDebInfo;Release" CACHE STRING "Avail
 add_compile_definitions($<$<CONFIG:Debug>:PILLOW_DEBUG>) # A customized macro.
 set(LIBRARIES)
 set(RUNTIMES)
+if(WIN32)
+   set(D3D12_RUNTIMES)
+endif()
 
 # Projects.
 project(PillowBasics LANGUAGES CXX C)

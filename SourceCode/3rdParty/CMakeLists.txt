@@ -8,7 +8,7 @@
 
 set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib cgltf stb_truetype)
 if(WIN32)
-    list(APPEND LIBRARIES XeSS DXCompiler)
+    list(APPEND LIBRARIES DirectX12Agility DXCompiler XeSS)
 endif()
 set(LIBRARIES ${LIBRARIES} PARENT_SCOPE) # Write back to the parent scope.
 
@@ -116,6 +116,35 @@ add_library(stb_truetype INTERFACE ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/stb_truetype" FILES ${SOURCES})
 
 if(WIN32)
+   # DirectX12Agility
+   file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+      "${CMAKE_CURRENT_SOURCE_DIR}/DX12Agility-1.618/*.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/DX12Agility-1.618/*.cc"
+      )
+   add_library(DirectX12Agility STATIC ${SOURCES})
+   source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/DX12Agility-1.618" FILES ${SOURCES})
+   set(D3D12_RUNTIMES
+      "${CMAKE_CURRENT_SOURCE_DIR}/DX12Agility-1.618/binary/D3D12Core.dll"
+      "$<$<CONFIG:Debug>:${CMAKE_CURRENT_SOURCE_DIR}/DX12Agility-1.618/binary/d3d12SDKLayers.dll>"
+      "$<$<CONFIG:Debug>:${CMAKE_CURRENT_SOURCE_DIR}/DX12Agility-1.618/binary/D3D12StateObjectCompiler.dll>"
+   )
+   set(D3D12_RUNTIMES ${D3D12_RUNTIMES} PARENT_SCOPE)
+
+   # DXCompiler
+   # Use a standalone DirectX shader compiler to avoid compatibility issues.
+   file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/*.h")
+   add_library(DXCompiler INTERFACE ${SOURCES})
+   source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026" FILES ${SOURCES})
+   SET(LIBS
+      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxil.lib"
+      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxcompiler.lib"
+   )
+   target_link_libraries(DXCompiler INTERFACE ${LIBS})
+   list(APPEND RUNTIMES
+      "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxil.dll"
+      "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxcompiler.dll"
+   )
+
    # XeSS
    file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/*.h")
    add_library(XeSS INTERFACE ${SOURCES})
@@ -130,21 +159,6 @@ if(WIN32)
       "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxess.dll"
       "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxell.dll"
       "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_2.1.1/binary/libxess_fg.dll"
-   )
-
-   # DXCompiler
-   # Use a standalone DirectX shader compiler to avoid compatibility issues.
-   file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/*.h")
-   add_library(DXCompiler INTERFACE ${SOURCES})
-   source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026" FILES ${SOURCES})
-   SET(LIBS
-      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxil.lib"
-      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxcompiler.lib"
-   )
-   target_link_libraries(XeSS INTERFACE ${LIBS})
-   list(APPEND RUNTIMES
-      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxil.dll"
-      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxcompiler.dll"
    )
 endif()
 
