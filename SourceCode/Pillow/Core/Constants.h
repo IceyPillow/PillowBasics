@@ -3,10 +3,7 @@
 #include <bit>
 #include <limits>
 #include "DirectXMath-apr2025/DirectXMath.h"
-#if defined(_WIN64)
-#include <d3dcommon.h>
-#elif defined(__ANDROID__)
-#endif
+
 namespace Pillow::Constants
 {
    // Best anisotropy level value considering both performance and quality.
@@ -14,10 +11,6 @@ namespace Pillow::Constants
 
    const int32_t SwapChainSize = 3;
 
-#if defined(_WIN64)
-   // 11_0 feature level in DX12 can support GPU down to GeForce 400 series!
-   const D3D_FEATURE_LEVEL DX12FeatureLevel = D3D_FEATURE_LEVEL_11_0;
-#endif
    const DirectX::XMFLOAT4 CleanColor{0.2f, 0.21f, 0.2f, 0.0f};
 
    // 1 Unit = 1 km

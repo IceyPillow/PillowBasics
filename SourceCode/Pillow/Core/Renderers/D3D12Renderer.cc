@@ -50,6 +50,8 @@ typedef ID3D12Resource IResource;                // The original one is fine
 namespace
 {
    const int32_t CBAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+   // 11_0 feature level in DX12 can support GPU down to GeForce 400 series!
+   const D3D_FEATURE_LEVEL DX12FeatureLevel = D3D_FEATURE_LEVEL_11_0;
    const int32_t BCBlockLength = 16; // 4 * 4
    const int32_t BC1BlockSize = 8; // C0(2B) C1(2B) Indices(16*2bits = 4B) RGB, 1:6 zip rate
    const int32_t BC4BlockSize = 8; // C0(1B) C1(1B) Indices(16*3bits = 6B) A, 1:2 zip rate
