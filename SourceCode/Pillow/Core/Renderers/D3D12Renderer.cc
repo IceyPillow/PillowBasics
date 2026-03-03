@@ -1,7 +1,17 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 // TODO: bundle cmd lists
 #if defined(_WIN64)
+#define NOMINMAX
 #include "Renderer.h"
+//#include <d3d12.h> // Deprecated
+#include "DX12Agility-1.618/d3d12.h" // To avoid header order issues
+//#include <d3dcompiler.h> // Deprecated
+#include "dxc_feb2026/d3d12shader.h"
+#include "dxc_feb2026/dxcapi.h"
+#include <dxgi1_6.h>
+#include <comdef.h>
+#include <wrl.h> // Import Component Object Model Pointer
+#undef NOMINMAX
 #include <shared_mutex>
 #include <memory>
 #include <vector>
@@ -12,13 +22,6 @@
 #include <fstream>
 #include <filesystem>
 #include <exception>
-#include <comdef.h>
-#include <wrl.h> // Import Component Object Model Pointer
-#include <d3d12.h>
-#include <dxgi1_6.h>
-//#include <d3dcompiler.h>
-#include "dxc_feb2026/d3d12shader.h"
-#include "dxc_feb2026/dxcapi.h"
 
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;
@@ -40,9 +43,10 @@ using Microsoft::WRL::ComPtr;
 typedef uint32_t DescriptorHandle;                // Inner descriptor handle
 
 typedef IDXGIFactory5 IFactory;                  // Has CheckFeatureSupport()
+typedef IDXGISwapChain1 ISwapChain;              // Has SetBackgroundColor()
+
 typedef ID3D12Device4 IDevice;                   // Has CreateCommandList1()
 typedef ID3D12GraphicsCommandList2 ICommandList; // Has WriteBufferImmediate()
-typedef IDXGISwapChain1 ISwapChain;              // Has SetBackgroundColor() 
 typedef ID3D12Resource IResource;                // The original one is fine
 
 // An anonymous namespace has internal linkage (accessable in local translation unit)

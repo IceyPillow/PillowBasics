@@ -23,7 +23,9 @@
 #include "d3dx12_property_format_table.h"
 #include <algorithm>
 #include <cassert>
-#include "D3D12TokenizedProgramFormat.hpp"
+// Pillow: rename .hpp to .h
+//#include "D3D12TokenizedProgramFormat.hpp"
+#include "../D3D12TokenizedProgramFormat.h"
 #if defined(__cpp_exceptions) && (!defined(_HAS_EXCEPTIONS) || _HAS_EXCEPTIONS != 0)
 #include <stdexcept>
 #endif
