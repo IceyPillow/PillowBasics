@@ -26,19 +26,6 @@
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;
 
-// __LINE__ in an inline function doesn't show the line number of the caller, thus choose a macro.
-#define CheckHResult(hr)\
-{\
-   if (FAILED(hr))\
-   {\
-      string msg;\
-      msg = msg + "File:" + __FILE__ + ", Line:" + std::to_string(__LINE__);\
-      msg = msg + "\nError: ";\
-      std::wstring systemMsg = _com_error(hr).ErrorMessage();\
-      utf8::utf16to8(systemMsg.begin(), systemMsg.end(), std::back_inserter(msg));\
-      throw std::exception(msg.c_str());\
-   }\
-}
 
 typedef uint32_t DescriptorHandle;                // Inner descriptor handle
 
@@ -150,7 +137,8 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
 // Types
 namespace
 {
-   ForceInline void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+   void ApplyBarrier(ICommandList* cmdList, IResource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+   void Check_HRESULT(HRESULT hResult);
 
    // Fence synchronization wrapper
    class FenceSync
@@ -163,7 +151,7 @@ namespace
          this->cmdQueue = commandQueue;
          syncEventHandle = CreateEventEx(nullptr, L"D3D12Renderer Fence Event", 0, EVENT_ALL_ACCESS);
          if (syncEventHandle == 0) throw std::exception("Failed to create fence sync event handle.");
-         CheckHResult(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+         Check_HRESULT(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
       }
 
       ~FenceSync()
@@ -291,12 +279,12 @@ namespace
             MaxHeapCapcity,
             D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
          };
-         CheckHResult(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&csuDescHeap)));
+         Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&csuDescHeap)));
          descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
          descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-         CheckHResult(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&rtvDescHeap)));
+         Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&rtvDescHeap)));
          descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-         CheckHResult(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&dsvDescHeap)));
+         Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&dsvDescHeap)));
          csuCpuHandle0 = csuDescHeap->GetCPUDescriptorHandleForHeapStart();
          csuGpuHandle0 = csuDescHeap->GetGPUDescriptorHandleForHeapStart();
          rtvCpuHandle0 = rtvDescHeap->GetCPUDescriptorHandleForHeapStart();
@@ -1154,15 +1142,30 @@ namespace
       EncodeBC4Alpha(blockGreen, destination + BC4BlockSize);
    }
 
-   ForceInline void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+   void ApplyBarrier(ICommandList* cmdList, IResource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
    {
       D3D12_RESOURCE_BARRIER barrier
       {
          D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
          D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         D3D12_RESOURCE_TRANSITION_BARRIER { resource.Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, before, after }
+         D3D12_RESOURCE_TRANSITION_BARRIER { resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, before, after }
       };
       cmdList->ResourceBarrier(1, &barrier);
+   }
+
+   // IntelliSense doesn't work well with macros, use a function instead.
+   void Check_HRESULT(HRESULT hResult)
+   {
+      if (SUCCEEDED(hResult)) return;
+      string msg = "D3D12Renderer Error\n";
+      std::wstring systemMsg = _com_error(hResult).ErrorMessage();
+      utf8::utf16to8(systemMsg.begin(), systemMsg.end(), std::back_inserter(msg));
+      throw std::runtime_error(msg);
+   }
+
+   void CheckDriverFeatures()
+   {
+      //device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &deviceFeatures, sizeof(deviceFeatures));
    }
 
    void CreateBase()
@@ -1172,27 +1175,27 @@ namespace
 #ifdef PILLOW_DEBUG
       factoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
       ComPtr<ID3D12Debug3> debugController;
-      CheckHResult(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
+      Check_HRESULT(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
       debugController->EnableDebugLayer();
 #endif
-      CheckHResult(CreateDXGIFactory2(factoryFlags, IID_PPV_ARGS(&factory)));
+      Check_HRESULT(CreateDXGIFactory2(factoryFlags, IID_PPV_ARGS(&factory)));
       BOOL winBool = 0;
       factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &winBool, sizeof(winBool));
       bDeviceSupportTearing = (winBool == TRUE);
       // Device
       try
       {
-         CheckHResult(D3D12CreateDevice(nullptr, Constants::DX12FeatureLevel, IID_PPV_ARGS(&device))); // Default adapter
+         Check_HRESULT(D3D12CreateDevice(nullptr, Constants::DX12FeatureLevel, IID_PPV_ARGS(&device))); // Default adapter
       }
       catch (...)
       {
          ComPtr<IDXGIAdapter> Warp;
-         CheckHResult(factory->EnumWarpAdapter(IID_PPV_ARGS(&Warp)));
-         CheckHResult(D3D12CreateDevice(Warp.Get(), Constants::DX12FeatureLevel, IID_PPV_ARGS(&device)));
+         Check_HRESULT(factory->EnumWarpAdapter(IID_PPV_ARGS(&Warp)));
+         Check_HRESULT(D3D12CreateDevice(Warp.Get(), Constants::DX12FeatureLevel, IID_PPV_ARGS(&device)));
       }
       // Queue
       D3D12_COMMAND_QUEUE_DESC queueDesc{ D3D12_COMMAND_LIST_TYPE_DIRECT, 0, D3D12_COMMAND_QUEUE_FLAG_NONE, 0 };
-      CheckHResult(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&cmdQueue)));
+      Check_HRESULT(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&cmdQueue)));
       // Fence
       fenceSync = std::make_unique<FenceSync>(device, cmdQueue);
       // Swapchain
@@ -1203,7 +1206,7 @@ namespace
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
          uint32_t(bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
       };
-      CheckHResult(factory->CreateSwapChainForHwnd(cmdQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
+      Check_HRESULT(factory->CreateSwapChainForHwnd(cmdQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
       DXGI_RGBA color{ 0.f, 0.f, 0.f, 1.f };
       swapChain->SetBackgroundColor(&color);
       // Command Allocators & Lists
@@ -1212,7 +1215,7 @@ namespace
       for (int i = 0; i < count; i++)
       {
          ComPtr<ID3D12CommandAllocator> temp;
-         CheckHResult(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&temp)));
+         Check_HRESULT(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&temp)));
          cmdAllocators.push_back(std::move(temp));
       }
       // CreateCommandList1 closes the cmd list automatically.
@@ -1221,7 +1224,7 @@ namespace
       for (int i = 0; i < workerThreadCount; i++)
       {
          ComPtr<ICommandList> temp;
-         CheckHResult(device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&temp)));
+         Check_HRESULT(device->CreateCommandList1(0, D3D12_COMMAND_LIST_TYPE_DIRECT, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&temp)));
          _cmdLists.push_back(temp.Get());
          cmdLists.push_back(std::move(temp));
       }
@@ -1251,7 +1254,7 @@ namespace
          // So, we should associate the first buffer of the resized swapchain to the current frame array index.
          // e.g. frameIdx = 8, frameArrayIdx = 2, in this case, backbuffers[2] should refer to swapChain->GetBuffer(0).
          int32_t frameArrayIdx = (fenceSync->GetFrameIndex() + i) % Constants::SwapChainSize;
-         CheckHResult(swapChain->GetBuffer(i, IID_PPV_ARGS(&backbuffers[frameArrayIdx])));
+         Check_HRESULT(swapChain->GetBuffer(i, IID_PPV_ARGS(&backbuffers[frameArrayIdx])));
          tempRTVs[frameArrayIdx] = descriptorMgr->CreateDescirptor(device, backbuffers[frameArrayIdx], &rtvDesc, ViewType::RTV);
       }
    }
@@ -1267,7 +1270,7 @@ namespace
          backbuffers[i].Reset();
          descriptorMgr->ReleaseDescriptor(tempRTVs[i]);
       }
-      CheckHResult(swapChain->ResizeBuffers(Constants::SwapChainSize, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM,
+      Check_HRESULT(swapChain->ResizeBuffers(Constants::SwapChainSize, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM,
          bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
       CreateFrames();
    }
@@ -1339,8 +1342,8 @@ void D3D12Renderer::Worker(int32_t workerIndex)
    int32_t frameIdx = fenceSync->GetFrameArrayIdx();
    ComPtr<ICommandList>& cmdList = cmdLists[workerIndex];
    ID3D12CommandAllocator* allocator = cmdAllocators[workerIndex * Constants::SwapChainSize + frameIdx].Get();
-   CheckHResult(allocator->Reset());
-   CheckHResult(cmdList->Reset(allocator, nullptr));
+   Check_HRESULT(allocator->Reset());
+   Check_HRESULT(cmdList->Reset(allocator, nullptr));
 
    // Copy all dirty buffers to default heaps.
    if (workerIndex == 0) UnionBuffer::GPUCopy(cmdList);
@@ -1374,7 +1377,7 @@ void D3D12Renderer::Worker(int32_t workerIndex)
    {
       ApplyBarrier(cmdList, backbuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
    }
-   CheckHResult(cmdList->Close());
+   Check_HRESULT(cmdList->Close());
 }
 
 void Pillow::Graphics::D3D12Renderer::Pioneer()
@@ -1386,7 +1389,7 @@ void D3D12Renderer::Assembler()
 {
    lateReleaseMgr->GarbageCollect(); // Place it here, so it works not in the main thread.
    cmdQueue->ExecuteCommandLists(_cmdLists.size(), _cmdLists.data());
-   CheckHResult(swapChain->Present(verticalBlanks, (bDeviceSupportTearing && verticalBlanks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
+   Check_HRESULT(swapChain->Present(verticalBlanks, (bDeviceSupportTearing && verticalBlanks == 0) ? DXGI_PRESENT_ALLOW_TEARING : 0));
    fenceSync->NextFrame();
 }
 #endif
