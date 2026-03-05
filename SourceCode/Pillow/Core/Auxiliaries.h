@@ -79,7 +79,7 @@ namespace Pillow
    };
 
    // The alignment must be a power of two.
-   ForceInline int32_t GetAlignedSize(int32_t size, int32_t alignment)
+   ForceInline uint32_t GetAlignSize(uint32_t size, uint32_t alignment)
    {
       return (size + alignment - 1) & ~(alignment - 1);
    }

@@ -68,7 +68,12 @@ namespace Pillow::Graphics
 
       static TextureInfo DefineTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, bool useMip);
       static TextureInfo DefineTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip);
+      static TextureInfo DefineTextureArray(const TextureInfo& info, int32_t count);
+      // Baked textures cannot have mipmaps. They are designed for screen captures, not for pragmatic textures.
+      // Pillow Basics doesn't support GPU mipmap generation currently.
       static TextureInfo DefineBakedTexture(Format format, int32_t width, int32_t height);
+      // Baked textures cannot have mipmaps. They are designed for screen captures, not for pragmatic textures.
+      // Pillow Basics doesn't support GPU mipmap generation currently.
       static TextureInfo DefineBakedTextureArray(Format format, int32_t width, int32_t height, int32_t count);
 
    public:

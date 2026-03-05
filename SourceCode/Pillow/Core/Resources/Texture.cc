@@ -153,9 +153,16 @@ TextureInfo TextureInfo::DefineTexture(Tag tag, Format format, ZipType zip, int3
 
 TextureInfo TextureInfo::DefineTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip)
 {
+   if (count < 2) throw std::runtime_error("A texture array should have at least 2 textures.");
    CheckTextureSize(width, height, count, true);
    uint8_t mips = useMip ? CalculateMipCount(width, height) : 1;
    return TextureInfo(tag, Type::TexArray, format, zip, width, height, mips, count);
+}
+
+TextureInfo Pillow::Graphics::TextureInfo::DefineTextureArray(const TextureInfo& info, int32_t count)
+{
+   if (count < 2) throw std::runtime_error("A texture array should have at least 2 textures.");
+   return TextureInfo(info.TexTag, info.TexType, info.TexFormat, info.CompressionType, info.Width, info.Height, info.MipCount, count);
 }
 
 
@@ -167,6 +174,7 @@ TextureInfo TextureInfo::DefineBakedTexture(Format format, int32_t width, int32_
 
 TextureInfo TextureInfo::DefineBakedTextureArray(Format format, int32_t width, int32_t height, int32_t count)
 {
+   if (count < 2) throw std::runtime_error("A baked-texture array should have at least 2 textures.");
    CheckTextureSize(width, height, count, false);
    return TextureInfo(Tag::Development, Type::BakedTex, format, ZipType::None, width, height, 1, count);
 }
