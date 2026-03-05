@@ -78,8 +78,7 @@ void IRenderer::Initialize(int32_t threadCount, XMINT2 renderBufferSize, int32_t
 {
    if (rendererInstance) throw std::runtime_error("Renderer has already been initialized.");
 #if defined(_WIN64)
-   HWND hwnd = *static_cast<const HWND*>(parameter);
-   rendererInstance = std::make_unique<Graphics::D3D12Renderer>(hwnd, threadCount, renderBufferSize, refreshRate);
+   rendererInstance = std::make_unique<Graphics::D3D12Renderer>(parameter, threadCount, renderBufferSize, refreshRate);
 #elif defined(__ANDROID__)
    //RendererInstance = std::make_unique<Pillow::Vulkan12Renderer>(Hwnd, 2);
 #endif

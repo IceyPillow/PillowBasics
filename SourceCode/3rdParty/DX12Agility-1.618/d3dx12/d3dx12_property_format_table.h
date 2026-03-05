@@ -6,7 +6,7 @@
 //*********************************************************
 #ifndef __D3D12_PROPERTY_LAYOUT_FORMAT_TABLE_H__
 #define __D3D12_PROPERTY_LAYOUT_FORMAT_TABLE_H__
-#include "d3d12.h"
+#include "../d3d12.h"
 #define MAP_ALIGN_REQUIREMENT 16 // Map is required to return 16-byte aligned addresses
 
 struct D3D12_PROPERTY_LAYOUT_FORMAT_TABLE

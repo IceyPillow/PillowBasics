@@ -11,12 +11,16 @@
 #include <dxgi1_6.h>
 #include <comdef.h>
 #include <wrl.h> // Import Component Object Model Pointer
+#include "dxc_feb2026/d3d12shader.h"
+#include "dxc_feb2026/dxcapi.h"
 #undef NOMINMAX
 #include <shared_mutex>
 #include <memory>
 #include <vector>
 #include <queue>
+#include <deque>
 #include <ranges>
+#include <algorithm>
 #include <format>
 #include <span>
 #include <fstream>
@@ -26,6 +30,12 @@
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;
 
+// DirectX 12 Agility SDK 1.618.5 (618), released on 2025.05.12
+// Versions: https://devblogs.microsoft.com/directx/directx12agility
+// Tutorial: https://devblogs.microsoft.com/directx/gettingstarted-dx12agility
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 618; }
+// Avoid the mismatch between D3D12SDKLayers (the debug layer) and D3D12Core.dll.
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
 typedef uint32_t DescriptorHandle;                // Inner descriptor handle
 
@@ -40,29 +50,40 @@ typedef ID3D12Resource IResource;                // The original one is fine
 // Static variables
 namespace
 {
-   const int32_t CBAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
    // 11_0 feature level in DX12 can support GPU down to GeForce 400 series!
-   const D3D_FEATURE_LEVEL DX12FeatureLevel = D3D_FEATURE_LEVEL_11_0;
+   const D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_11_0;
+   const int32_t AlignmentTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
+   const int32_t AlignmentTextureSubres = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+   const int32_t AlignmentConstBuffer = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
    const int32_t BCBlockLength = 16; // 4 * 4
    const int32_t BC1BlockSize = 8; // C0(2B) C1(2B) Indices(16*2bits = 4B) RGB, 1:6 zip rate
    const int32_t BC4BlockSize = 8; // C0(1B) C1(1B) Indices(16*3bits = 6B) A, 1:2 zip rate
    const int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize; // RGBA, 1:4 zip rate
-   const int32_t BC5BlockSize = BC4BlockSize * 2; // AA
+   const int32_t BC5BlockSize = BC4BlockSize * 2; // AA, 1:2 zip rate
 
+   // TODO: BC7, mode 6 and mode 7
    const DXGI_FORMAT NativeTexFmt[int32_t(TextureInfo::Format::Count)]
    {
-      DXGI_FORMAT_R8G8B8A8_UNORM,
-      DXGI_FORMAT_R8G8B8A8_UNORM,
-      DXGI_FORMAT_R8G8_SNORM,
       DXGI_FORMAT_R8_UNORM,
+      DXGI_FORMAT_R8G8_SNORM,
+      DXGI_FORMAT_R8G8B8A8_UNORM,
+      DXGI_FORMAT_R8G8B8A8_UNORM,
    };
    const DXGI_FORMAT NativeBCTexFmt[int32_t(TextureInfo::Format::Count)]
    {
-      DXGI_FORMAT_BC3_UNORM,
-      DXGI_FORMAT_BC1_UNORM,
-      DXGI_FORMAT_BC5_UNORM,
       DXGI_FORMAT_BC4_UNORM,
+      DXGI_FORMAT_BC5_UNORM,
+      DXGI_FORMAT_BC1_UNORM,
+      DXGI_FORMAT_BC3_UNORM,
    };
+   constexpr uint32_t NativeBCBlockSize[int32_t(TextureInfo::Format::Count)]
+   {
+      BC4BlockSize,
+      BC5BlockSize,
+      BC1BlockSize,
+      BC3BlockSize
+   };
+
 #define DEFAULT_INPUT_LAYOUT \
 0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0
    const D3D12_INPUT_ELEMENT_DESC _BasicVertex[3]

@@ -217,7 +217,7 @@ namespace Pillow::Graphics
       DeleteDefautedMethods(D3D12Renderer)
 
    public:
-      D3D12Renderer(HWND windowHandle, int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate);
+      D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate);
       ~D3D12Renderer();
       uint64_t GetFrameIndex() override final;
 
