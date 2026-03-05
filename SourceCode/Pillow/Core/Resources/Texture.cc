@@ -244,17 +244,17 @@ void Pillow::Graphics::LoadTexture(const string& relativePath)
    lodepng::decode(imageData, w, h, state, fileData);
    if (state.info_raw.bitdepth != 8) throw std::exception("Bitdepth should be 8.");
    if (w!=h) throw std::exception("The image should be square.");
-   GenericTextureInfo texInfo;
-   if (state.info_raw.colortype == LCT_GREY)
-   {
-      texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8, w);
-   }
-   else if (state.info_raw.colortype == LCT_RGB)
-   {
-      texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
-   }
-   else if (state.info_raw.colortype == LCT_RGBA)
-   {
-      texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
-   }
+   //GenericTextureInfo texInfo;
+   //if (state.info_raw.colortype == LCT_GREY)
+   //{
+   //   texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8, w);
+   //}
+   //else if (state.info_raw.colortype == LCT_RGB)
+   //{
+   //   texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
+   //}
+   //else if (state.info_raw.colortype == LCT_RGBA)
+   //{
+   //   texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
+   //}
 }

@@ -864,9 +864,8 @@ namespace
                midTargets = std::make_unique<std::deque<uint32_t>>();
             }
          }
-         UnionBuffer* ptr = new UnionBuffer(HeapType::Upload, Data_Type, ElementRawSize,
-            ElementCount, ElementAlignSize, KeepMidBuffer, midTexInfo != nullptr ? midTexInfo.get() : TexInfo.get());
-         //midBuffer = std::make_unique<UnionBuffer>();
+         midBuffer = std::unique_ptr<UnionBuffer>(new UnionBuffer(HeapType::Upload, Data_Type, ElementRawSize,
+            ElementCount, ElementAlignSize, KeepMidBuffer, midTexInfo != nullptr ? midTexInfo.get() : TexInfo.get()));
       }
 
       void RegisterGPUCopy(uint32_t targetArrayIndex = 0)
@@ -948,7 +947,6 @@ namespace
    private:
       // Modern C++ memory management.
       std::unique_ptr<char[]> buffer;
-   };
    };
 
    class PipelineStateManager
