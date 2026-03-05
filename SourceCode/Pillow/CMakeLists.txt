@@ -32,21 +32,22 @@ add_custom_command(TARGET Pillow
    COMMAND_EXPAND_LISTS # Filter the list
    VERBATIM # Adjust the command arguments, so they can be passed precisely
    COMMENT "Copying the 3rd-party runtimes to the output dir..."
-)
+   )
 if(WIN32)
    message(STATUS "D3D12_RUNTIMES (Only On Win64) =")
    foreach(item IN LISTS D3D12_RUNTIMES)
       message(STATUS "${item}")
    endforeach()
+    # Generator Expressions in CMake
+   set(D3D12_DEPLOY_DIR "$<TARGET_FILE_DIR:Pillow>/D3D12/")
    add_custom_command(TARGET Pillow
    POST_BUILD
-   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-         ${D3D12_RUNTIMES}
-         "$<TARGET_FILE_DIR:Pillow>/D3D12/" # Generator Expressions in CMake
+   COMMAND ${CMAKE_COMMAND} -E make_directory "${D3D12_DEPLOY_DIR}"
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${D3D12_RUNTIMES} "${D3D12_DEPLOY_DIR}"
    COMMAND_EXPAND_LISTS # Filter the list
    VERBATIM # Adjust the command arguments, so they can be passed precisely
    COMMENT "Copying the DirectX 12 Agility runtimes to the output dir..."
-)
+   )
 message(STATUS "")
 endif()
 
