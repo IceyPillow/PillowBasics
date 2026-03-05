@@ -74,7 +74,7 @@ static void Pillow::Graphics::BarrierCompletionAction() noexcept
    signalCompute.store(false, std::memory_order::release);
 }
 
-void IRenderer::Initialize(int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate, const void* parameter)
+void IRenderer::Initialize(int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate, void* parameter)
 {
    if (rendererInstance) throw std::runtime_error("Renderer has already been initialized.");
 #if defined(_WIN64)

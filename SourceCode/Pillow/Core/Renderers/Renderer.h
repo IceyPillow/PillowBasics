@@ -177,7 +177,7 @@ namespace Pillow::Graphics
          ReadonlyProperty(XMINT2, RenderBufferSize)
 
    public:
-      static void Initialize(int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate, const void* parameter);
+      static void Initialize(int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate, void* parameter);
       static IRenderer* GetInstance();
       static void Terminate();
 

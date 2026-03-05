@@ -248,7 +248,7 @@ namespace
       Hidden::GlobalClock.Restart();
       Constants::SetThreadNumbers();
 #if defined(_WIN64)
-      IRenderer::Initialize(Constants::ThreadNumRenderer, clientSize, refreshRate, (void*)&hwnd);
+      IRenderer::Initialize(Constants::ThreadNumRenderer, clientSize, refreshRate, (void*)hwnd);
 #elif defined(__ANDROID__)
       //...
 #endif
