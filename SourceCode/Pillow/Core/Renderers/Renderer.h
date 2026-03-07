@@ -148,7 +148,7 @@ namespace Pillow::Graphics
       };
 
    public:
-      string ConfigName;
+      std::string ConfigName;
       std::vector<KeyValuePair> Macros;
       std::vector<string> VSTextures;
       std::vector<string> PSTextures;
@@ -172,12 +172,12 @@ namespace Pillow::Graphics
       DeleteDefautedMethods(IRenderer)
          ReadonlyProperty(string, RendererName)
          ReadonlyProperty(int32_t, ThreadCount)
+         ReadonlyProperty(XMINT2, BackBufferSize)
          ReadonlyProperty(int32_t, RefreshRate)
          ReadonlyProperty(int32_t, VSyncBlanks)
-         ReadonlyProperty(XMINT2, RenderBufferSize)
 
    public:
-      static void Initialize(int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate, void* parameter);
+      static void Initialize(int32_t threadCount, XMINT2 backBufferSize, int32_t refreshRate, void* parameter);
       static IRenderer* GetInstance();
       static void Terminate();
 
@@ -185,7 +185,7 @@ namespace Pillow::Graphics
       virtual ~IRenderer() = 0;
       virtual uint64_t GetFrameIndex() = 0;
       ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
-      inline void SetRenderBufferSize(XMINT2 size) { f_RenderBufferSize = size; }
+      inline void SetRenderBufferSize(XMINT2 size) { f_BackBufferSize = size; }
       inline void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
       inline void SetVSyncBlanks(int32_t blanks) { f_VSyncBlanks = blanks; }
       inline virtual void ResourceRegister(ResHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
@@ -199,7 +199,7 @@ namespace Pillow::Graphics
       std::vector<GenericRendererCommand>* GetIdleCmdList();
 
    protected:
-      IRenderer(int32_t threadCount, string name);
+      IRenderer(int32_t threadCount, string name, XMINT2 renderBufferSize, int32_t refreshRate);
       virtual void Worker(int32_t workerIndex) = 0;
       virtual void Pioneer() = 0;
       virtual void Assembler() = 0;
@@ -208,7 +208,8 @@ namespace Pillow::Graphics
 
    private:
       void BaseWorker(std::stop_token token, int32_t workerIndex);
-      friend static void BarrierCompletionAction() noexcept;
+      //error C2216 : 'friend' cannot be used with 'static'
+      friend void BarrierCompletionAction() noexcept;
    };
 
 #if defined(_WIN64)
@@ -217,7 +218,7 @@ namespace Pillow::Graphics
       DeleteDefautedMethods(D3D12Renderer)
 
    public:
-      D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate);
+      D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 backBufferSize, int32_t refreshRate);
       ~D3D12Renderer();
       uint64_t GetFrameIndex() override final;
 

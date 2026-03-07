@@ -103,9 +103,11 @@ void IRenderer::Terminate()
    rendererInstance.reset();
 }
 
-IRenderer::IRenderer(int32_t threadCount, std::string name) :
+IRenderer::IRenderer(int32_t threadCount, std::string name, XMINT2 backBufferSize, int32_t refreshRate) :
    f_RendererName(name),
    f_ThreadCount(threadCount),
+   f_BackBufferSize(backBufferSize),
+   f_RefreshRate(refreshRate),
    f_VSyncBlanks(1)
 {
    cmdListIdle.reserve(ReservedCommandCount);
