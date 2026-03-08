@@ -1413,11 +1413,6 @@ namespace
       EncodeBC4Alpha(blockGreen, destination + BC4BlockSize);
    }
 
-   void CheckDriverFeatures()
-   {
-      //device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &deviceFeatures, sizeof(deviceFeatures));
-   }
-
    void CreateBase()
    {
       // Factory
@@ -1530,6 +1525,19 @@ namespace
 
    }
 
+   void ValidateDriverFeatures()
+   {
+      CD3DX12FeatureSupport features;
+      features.Init(device.Get());
+
+      // Shader model level test.
+      D3D_SHADER_MODEL smSupported = features.HighestShaderModel();
+      if (smSupported < MinShaderModelLevel) throw std::runtime_error(std::format("(D3D12) Shader model {:x} must be supported. Your highest version: {:x}\n"
+         "Update your GPU driver; if not work, please contact the developers.", int32_t(MinShaderModelLevel), int32_t(smSupported)));
+
+      // ... Check other features here.
+   }
+
    void TEMP_RendererTestZone()
    {
       // footprint
@@ -1575,8 +1583,8 @@ D3D12Renderer::D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 bac
    CreateBase();
    CreateManagers();
    CreateFrames();
+   ValidateDriverFeatures();
    TEMP_RendererTestZone();
-   CheckDriverFeatures();
 }
 
 D3D12Renderer::~D3D12Renderer()
