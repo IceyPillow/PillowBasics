@@ -30,6 +30,7 @@ namespace
 
    void EngineLaunch();
    void EngineTick();
+   // Deconstruct the renderer; if it's nullptr, do nothing.
    void EngineTerminate();
 
    XMINT2 screenSize{};

@@ -5,14 +5,13 @@
 #include "Renderer.h"
 //#include <d3d12.h> // Deprecated
 #include "DX12Agility-1.618/d3d12.h" // To avoid header order issues
+#include "DX12Agility-1.618/d3dx12/d3dx12.h"
 //#include <d3dcompiler.h> // Deprecated
 #include "dxc_feb2026/d3d12shader.h"
 #include "dxc_feb2026/dxcapi.h"
 #include <dxgi1_6.h>
 #include <comdef.h>
 #include <wrl.h> // Import Component Object Model Pointer
-#include "dxc_feb2026/d3d12shader.h"
-#include "dxc_feb2026/dxcapi.h"
 #undef NOMINMAX
 #include <shared_mutex>
 #include <memory>
@@ -27,6 +26,7 @@
 #include <fstream>
 #include <filesystem>
 #include <exception>
+#include "utfcpp-4.0.6/utf8.h"
 
 using namespace Pillow;
 using Microsoft::WRL::ComPtr;
@@ -38,21 +38,27 @@ extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 618; }
 // Avoid the mismatch between D3D12SDKLayers (the debug layer) and D3D12Core.dll.
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
-typedef uint32_t DescriptorHandle;                // Inner descriptor handle
+typedef uint32_t DescriptorHandle; // Inner descriptor handle
 
-typedef IDXGIFactory5 IFactory;                  // Has CheckFeatureSupport()
-typedef IDXGISwapChain1 ISwapChain;              // Has SetBackgroundColor()
+typedef IDXGIFactory5 IFactory;     // Has CheckFeatureSupport()
+typedef IDXGISwapChain1 ISwapChain; // Has SetBackgroundColor()
 
 typedef ID3D12Device4 IDevice;                   // Has CreateCommandList1()
 typedef ID3D12GraphicsCommandList2 ICommandList; // Has WriteBufferImmediate()
 typedef ID3D12Resource IResource;                // The original one is fine
+
+typedef CD3DX12_PIPELINE_STATE_STREAM2 PIPELINE_STATE_STREAM; // Supports mesh shader.
 
 // An anonymous namespace has internal linkage (accessable in local translation unit)
 // Static variables
 namespace
 {
    // 11_0 feature level in DX12 can support GPU down to GeForce 400 series!
-   const D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_11_0;
+   // 2026.3.8
+   // Update to 11_1. Resource binding tier 3 is required; The Texture2D array is essential to a bindless design.
+   const D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_11_1;
+   // XeSS 2 requires shader model 6.4.
+   const D3D_SHADER_MODEL MinShaderModelLevel = D3D_SHADER_MODEL_6_4;
    const int32_t AlignmentTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
    const int32_t AlignmentTextureSubres = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
    const int32_t AlignmentConstBuffer = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
@@ -90,13 +96,13 @@ namespace
 
 #define DEFAULT_INPUT_LAYOUT \
 0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0
-   const D3D12_INPUT_ELEMENT_DESC _BasicVertex[3]
+   const D3D12_INPUT_ELEMENT_DESC BasicVtx[3]
    {
       { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT },
       { "texIdx", 0, DXGI_FORMAT_R8G8_UINT, DEFAULT_INPUT_LAYOUT },
       { "uv01", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_INPUT_LAYOUT }
    };
-   const D3D12_INPUT_ELEMENT_DESC _StaticVertex[5]
+   const D3D12_INPUT_ELEMENT_DESC StaticVtx[5]
    {
       { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT },
       { "texIdx", 0, DXGI_FORMAT_R8G8_UINT, DEFAULT_INPUT_LAYOUT },
@@ -104,7 +110,7 @@ namespace
       { "normal", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT },
       { "tangent", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT }
    };
-   const D3D12_INPUT_ELEMENT_DESC _SkeletalVertex[5]
+   const D3D12_INPUT_ELEMENT_DESC SkeletalVtx[5]
    {
       { "position", 0, DXGI_FORMAT_R32G32B32_FLOAT, DEFAULT_INPUT_LAYOUT },
       { "texIdx_boneIdx", 0, DXGI_FORMAT_R8G8B8A8_UINT, DEFAULT_INPUT_LAYOUT },
@@ -112,9 +118,9 @@ namespace
       { "normal_boneWeight0", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_INPUT_LAYOUT },
       { "tangent_boneWeight1", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, DEFAULT_INPUT_LAYOUT }
    };
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutBasic{ _BasicVertex , 3};
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutStatic{ _StaticVertex, 5 };
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutSkeletal{ _SkeletalVertex, 5 };
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutBasic{ BasicVtx , 3};
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutStatic{ StaticVtx, 5 };
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutSkeletal{ SkeletalVtx, 5 };
 
 #define TEX_CLAMP D3D12_TEXTURE_ADDRESS_MODE_CLAMP
 #define TEX_WRAP D3D12_TEXTURE_ADDRESS_MODE_WRAP
@@ -130,33 +136,41 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
       SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_WRAP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 3),  // Trilinear-Wrap (Post-process / UI)
       SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 4),        // Anisotropic-Clamp (Mesh)
       SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_WRAP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 5),         // Anisotropic-Wrap (Mesh)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC_LESS_EQUAL, 0, 6) // LessEqual-PCF-Comparison (Shadow)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC_GREATER_EQUAL, 0, 6) // LessEqual-PCF-Comparison (Shadow)
    };
 
    class FenceSync;
-   class DescriptorHeapMgr;
-   class LateReleaseMgr;
+   class PipelineStateManager;
+   class DescriptorHeapManeger;
+   class LateReleaseManager;
    class UnionBuffer;
- 
-   std::unique_ptr<FenceSync> fenceSync;
-   std::unique_ptr<DescriptorHeapMgr> descriptorMgr;
-   std::unique_ptr<LateReleaseMgr> lateReleaseMgr;
+
+   // DXGI
    ComPtr<IFactory> factory;
+   ComPtr<ISwapChain> swapChain;
+
+   // D3D12
    ComPtr<IDevice> device;
    ComPtr<ID3D12CommandQueue> cmdQueue;
    std::vector<ComPtr<ICommandList>> cmdLists;
    std::vector<ID3D12CommandList*> cmdListsRaw; // A copy of cmdLists, used for ExecuteCommandLists()
    std::vector<ComPtr<ID3D12CommandAllocator>> cmdAllocators;
-   ComPtr<ISwapChain> swapChain;
    ComPtr<IResource> backBuffers[Constants::SwapChainSize]{};
+
+   // Utility Wrapper
+   std::unique_ptr<FenceSync> fenceSync;
+   std::unique_ptr<PipelineStateManager> psoMgr;
+   std::unique_ptr<DescriptorHeapManeger> descriptorMgr;
+   std::unique_ptr<LateReleaseManager> lateReleaseMgr;
+
+   // Parameters
    std::array<DescriptorHandle, piplelineBufferArrayNum> piplelineRTVs;
    std::array<DescriptorHandle, piplelineBufferArrayNum> piplelineSRVs;
-
    HWND hwnd;
    D3D12Renderer* rendererInstance;
    int32_t workerThreadCount;
    bool bDeviceSupportTearing;
-   XMINT2 currentRenderBufferSize;
+   XMINT2 currentBackBufferSize;
 }
 
 // Types
@@ -228,10 +242,10 @@ namespace
       ID3D12CommandQueue* cmdQueue; // Use it, not own it.
    };
 
-   class LateReleaseMgr
+   class LateReleaseManager
    {
    public:
-      LateReleaseMgr()
+      LateReleaseManager()
       {
          SingletonCheck();
       }
@@ -267,7 +281,7 @@ namespace
       std::queue<Item> releaseQueue;
    };
 
-   class DescriptorHeapMgr
+   class DescriptorHeapManeger
    {
    public:
       enum class Type : uint8_t
@@ -284,7 +298,7 @@ namespace
       };
 
    public:
-      DescriptorHeapMgr(ComPtr<IDevice>& device) :
+      DescriptorHeapManeger(ComPtr<IDevice>& device) :
          csuSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)),
          rtvSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)),
          dsvSize(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV))
@@ -1464,15 +1478,14 @@ namespace
          cmdListsRaw.push_back(temp.Get());
          cmdLists.emplace_back(std::move(temp));
       }
-      // Others
-      lateReleaseMgr = std::make_unique<LateReleaseMgr>();
    }
 
-   void CreateHeapsAndPSOs()
+   void CreateManagers()
    {
       // Build all descriptor heaps.
-      descriptorMgr = std::make_unique<DescriptorHeapMgr>(device);
-
+      lateReleaseMgr = std::make_unique<LateReleaseManager>();
+      descriptorMgr = std::make_unique<DescriptorHeapManeger>(device);
+      psoMgr = std::make_unique<PipelineStateManager>();
       // Create constant buffer and pass cbv.
 
    }
@@ -1492,14 +1505,14 @@ namespace
          int32_t frameArrayIdx = (fenceSync->GetFrameIndex() + i) % Constants::SwapChainSize;
          Check_HRESULT(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[frameArrayIdx])));
          piplelineRTVs[GetPiplelineBufferIndex(PiplelineBuffer::Backbuffer, frameArrayIdx)] =
-            descriptorMgr->CreateDescirptor(device, backBuffers[frameArrayIdx], &rtvDesc, DescriptorHeapMgr::Type::RTV);
+            descriptorMgr->CreateDescirptor(device, backBuffers[frameArrayIdx], &rtvDesc, DescriptorHeapManeger::Type::RTV);
       }
    }
 
    void TryResizeSwapChain()
    {
-      if (currentRenderBufferSize == IRenderer::GetInstance()->GetRenderBufferSize()) return;
-      currentRenderBufferSize = IRenderer::GetInstance()->GetRenderBufferSize();
+      if (currentBackBufferSize == IRenderer::GetInstance()->GetBackBufferSize()) return;
+      currentBackBufferSize = IRenderer::GetInstance()->GetBackBufferSize();
       // Resize the swapchain.
       fenceSync->FlushQueue();
       for (int32_t i = 0; i < Constants::SwapChainSize; i++)
@@ -1551,17 +1564,16 @@ namespace
    }
 }
 
-D3D12Renderer::D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate) : IRenderer(threadCount, "D3D12Renderer")
+D3D12Renderer::D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 backBufferSize, int32_t refreshRate) :
+   IRenderer(threadCount, "D3D12Renderer", backBufferSize, refreshRate)
 {
    SingletonCheck();
    hwnd = HWND(windowHandle);
    rendererInstance = this;
    workerThreadCount = threadCount;
-   currentRenderBufferSize = renderBufferSize;
-   IRenderer::SetRenderBufferSize(renderBufferSize);
-   IRenderer::SetRefreshRate(refreshRate);
+   currentBackBufferSize = backBufferSize;
    CreateBase();
-   CreateHeapsAndPSOs();
+   CreateManagers();
    CreateFrames();
    TEMP_RendererTestZone();
    CheckDriverFeatures();
