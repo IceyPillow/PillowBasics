@@ -17,36 +17,26 @@ namespace Pillow::Graphics
       Skeletal
    };
 
-   struct alignas(XMFLOAT4A) BasicVertex
+   struct BasicVertex
    {
-      XMFLOAT3 position;
-      uint8_t texIdx[2];
-      uint16_t padding0;
-      XMFLOAT4 uv01;
+      XMFLOAT3 Position;
+      XMUINT4 TexIdx_Vertex;
+      XMFLOAT4 UV01;
    };
 
-   // C++ inheritance makes a base type be aligned to itself,
-   // which wastes a block of memory between the base type and the child type.
-   struct alignas(XMFLOAT4A) StaticVertex
+   struct StaticVertex : BasicVertex
    {
-      XMFLOAT3 position;
-      uint8_t texIdx[2];
-      uint16_t padding0;
-      XMFLOAT4 uv01;
-      XMFLOAT4 normal;
-      XMFLOAT4 tangent;
+      XMFLOAT4 Normal;
+      XMFLOAT4 Tangent;
    };
 
-   struct alignas(XMFLOAT4A) SkeletalVertex
+   struct SkeletalVertex : StaticVertex
    {
-      XMFLOAT3 position;
-      uint8_t texIdx_boneIdx[4];
-      XMFLOAT4 uv01;
-      XMFLOAT4 normal_boneWeight0;
-      XMFLOAT4 tangent_boneWeight1;
+      XMUINT4 BoneIdx;
+      XMFLOAT4 BoneWeight;
    };
 
-   const int32_t VertexSize[3]
+   constexpr int32_t VertexSize[3]
    {
       sizeof(BasicVertex),
       sizeof(StaticVertex),
