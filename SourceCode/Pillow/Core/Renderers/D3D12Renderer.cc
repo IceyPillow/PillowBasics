@@ -124,19 +124,23 @@ namespace
 
 #define TEX_CLAMP D3D12_TEXTURE_ADDRESS_MODE_CLAMP
 #define TEX_WRAP D3D12_TEXTURE_ADDRESS_MODE_WRAP
-#define MAX_MIPS 16
+#define CMP_NV D3D12_COMPARISON_FUNC_NEVER
+#define CMP_GE D3D12_COMPARISON_FUNC_GREATER_EQUAL
+
+#define MIP_MAX 16
+
 #define SMAPLER_DESC(filter, addressMode, cmpFunc, maxLOD, registerNum) \
 {filter, addressMode, addressMode, addressMode, 0, Constants::AnisotropyLevel, cmpFunc, \
 D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY_ALL}
    const D3D12_STATIC_SAMPLER_DESC StaticSamplers[7]
    {
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), 0, 0),         // Point-Clamp (Post-process)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_WRAP, D3D12_COMPARISON_FUNC(0), 0, 1),          // Point-Wrap (Retro rendering)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 2), // Trilinear-Clamp (Post-process / UI)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_WRAP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 3),  // Trilinear-Wrap (Post-process / UI)
-      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_CLAMP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 4),        // Anisotropic-Clamp (Mesh)
-      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_WRAP, D3D12_COMPARISON_FUNC(0), MAX_MIPS, 5),         // Anisotropic-Wrap (Mesh)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, D3D12_COMPARISON_FUNC_GREATER_EQUAL, 0, 6) // LessEqual-PCF-Comparison (Shadow)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_CLAMP, CMP_NV, 0, 0),         // Point-Clamp (Post-process)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_WRAP, CMP_NV, 0, 1),          // Point-Wrap (Retro rendering)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, CMP_NV, MIP_MAX, 2), // Trilinear-Clamp (Post-process / UI)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_WRAP, CMP_NV, MIP_MAX, 3),  // Trilinear-Wrap (Post-process / UI)
+      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_CLAMP, CMP_NV, MIP_MAX, 4),        // Anisotropic-Clamp (Mesh)
+      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_WRAP, CMP_NV, MIP_MAX, 5),         // Anisotropic-Wrap (Mesh)
+      SMAPLER_DESC(D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, TEX_CLAMP, CMP_GE, 0, 6) // GreaterEqual-PCF-Comparison (Shadow)
    };
 
    class FenceSync;
@@ -467,8 +471,8 @@ namespace
    private:
       const static uint32_t FlagBits = 3;
       const static uint32_t IndexBits = sizeof(DescriptorHandle) * 8 - FlagBits;
-      const static uint32_t HandleMaxNum = 1 << IndexBits;
-      const static uint32_t MaxHeapCapcity = 1 << 16;
+      const static uint32_t HandleMaxNum = (1 << IndexBits) - 1;
+      const static uint32_t MaxHeapCapcity = (1 << 16) - 1;
       static_assert(MaxHeapCapcity <= HandleMaxNum, "MaxHeapCapcity exceeds the max allowed number of handles.");
 
       mutable std::shared_mutex mutex;
