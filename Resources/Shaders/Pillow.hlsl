@@ -1,0 +1,247 @@
+// PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
+
+// Common HLSL header, all shaders should include it.
+//
+// Annotations:
+// #include only supports relative paths
+// Shader Model = 6.4
+// mtx = matrix
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
+// Static constants
+
+static const float PI = 3.141592654f;
+static const float PI2 = 6.283185307f;
+static const float PI_1DIVPI = 0.318309886f;
+static const float PI_1DIV2PI = 0.159154943f;
+static const float PI_DIV2 = 1.570796327f;
+static const float PI_DIV4 = 0.785398163f;
+
+static const float TimeLapseMax = 1000 * PI; // Seconds
+static const uint IndexFrameMax = 10000;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
+// Unified root signature
+
+// These are static samplers.
+// Some materials need the clamp and wrap variations, in this case, use "Tri" or "Ani" instead.
+// (As for programmers, a material means a pipeline state in DX12)
+SamplerState PointClamp : register(s0);
+SamplerState PointWrap : register(s1);
+SamplerState TriClamp : register(s2);
+SamplerState TriWrap : register(s3);
+SamplerState AniClamp : register(s4);
+SamplerState AniWrap : register(s5);
+SamplerComparisonState Cmp : register(s6);
+
+#ifdef SAMPLER_CLAMP_MODE
+#define Dot PointClamp
+#define Tri TriClamp
+#define Ani AniClamp
+#else
+#define Dot PointWrap
+#define Tri TriWrap
+#define Ani AniWrap
+#endif
+
+cbuffer ConstantBufferObject : register(b0, space0)
+{
+   float4x4 MatrixModel;
+   float4 ColorObject;
+   uint4 TexIdx_A;
+   uint4 TexIdx_B;
+};
+
+cbuffer ConstantBufferLight : register(b1, space0)
+{
+   // 16B
+   float3 PositionWorld;
+   uint TypeLight;
+   // 16B
+   float3 DirectionWorld;
+   float Intensity;
+   // 16B
+   float3 ColorLight;
+   float RangeMax;
+   // 16B
+   float4 ShapeLight;
+};
+
+cbuffer ConstantBufferPass : register(b2, space0)
+{
+   float4x4 MatrixView;
+   float4x4 MatrixProj;
+   float4x4 MatrixViewProjection;
+   float4x4 MatrixViewProjectionInv;
+   float4 ViewportSizeAndRecip;
+   // 16B
+   float3 CameraPositionWorld;
+   uint IndexFrame;
+   // 16B
+   float DistanceNear;
+   float DistanceFar;
+   float TimeDelta;
+   float TimeLapse;
+
+};
+
+struct BoneData
+{
+   float3x4 MatrixPalette;
+};
+
+StructuredBuffer<BoneData> MatrixBones : register(t0, space0);
+
+Texture2D Textures[] : register(t1, space0);
+
+Texture2DArray TexArrays[] : register(t0, space1);
+
+TextureCube Cubemaps[] : register(t0, space2);
+
+#define CSU_DESC_HEAP_SIZE 65535
+#define MIPS_MAX 16.f
+
+ // Value to string literal
+#define STR_HELPER(x) #x
+
+#define TEX_CLAMP(mipMax) \
+   "addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, " \
+   "mipLODBias = 0, maxAnisotropy = 4, borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK, " \
+   "minLOD = 0, maxLOD = " STR_HELPER(mipMax) ", space = 0, visibility = SHADER_VISIBILITY_ALL"
+
+#define TEX_WRAP(mipMax) \
+   "addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, " \
+   "mipLODBias = 0, maxAnisotropy = 4, borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK, " \
+   "minLOD = 0, maxLOD = " STR_HELPER(mipMax) ", space = 0, visibility = SHADER_VISIBILITY_ALL"
+
+#define CMP_NV "comparisonFunc = COMPARISON_NEVER"
+
+#define CMP_GE "comparisonFunc = COMPARISON_GREATER_EQUAL"
+
+#define ROOT_SIGN \
+   "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT), " \
+   "CBV(b0, space=0), " \
+   "CBV(b1, space=0), " \
+   "CBV(b2, space=0), " \
+   "SRV(t0, space=0), " \
+   "DescriptorTable(SRV(t1, space=0, numDescriptors = " STR_HELPER(CSU_DESC_HEAP_SIZE) ")), " \
+   "DescriptorTable(SRV(t0, space=1, numDescriptors = " STR_HELPER(CSU_DESC_HEAP_SIZE) ")), " \
+   "DescriptorTable(SRV(t0, space=2, numDescriptors = " STR_HELPER(CSU_DESC_HEAP_SIZE) ")), " \
+   "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT, " TEX_CLAMP(0) ", " CMP_NV "), " \
+   "StaticSampler(s1, filter = FILTER_MIN_MAG_MIP_POINT, " TEX_WRAP(0) ", " CMP_NV "), " \
+   "StaticSampler(s2, filter = FILTER_MIN_MAG_MIP_LINEAR, " TEX_CLAMP(MIPS_MAX) ", " CMP_NV "), " \
+   "StaticSampler(s3, filter = FILTER_MIN_MAG_MIP_LINEAR, " TEX_WRAP(MIPS_MAX) ", " CMP_NV "), " \
+   "StaticSampler(s4, filter = FILTER_ANISOTROPIC, " TEX_CLAMP(MIPS_MAX) ", " CMP_NV "), " \
+   "StaticSampler(s5, filter = FILTER_ANISOTROPIC, " TEX_WRAP(MIPS_MAX) ", " CMP_NV "), " \
+   "StaticSampler(s6, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, " TEX_WRAP(0) ", " CMP_GE ")"
+
+//cmd line: dxc -T rootsig_1_0 -E ROOT_SIGN_DUMMY -Fo PillowRS.cso -Fe errors.log ./Pillow.hlsl
+#define ROOT_SIGN_DUMMY "RootFlags(0), " \
+   "CBV(b0), " \
+   "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT, " TEX_WRAP(0) ", " CMP_NV ")"
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
+// Input layouts
+
+struct BasicVertex
+{
+   float3 Position : POSITION;
+   uint4 TexIdx_Vertex : VECTOR0;
+   float4 UV01 : VECTOR1;
+   // System values
+   uint ID_Instance : SV_InstanceID;
+   uint ID_Vertex : SV_VertexID;
+};
+
+struct StaticVertex
+{
+   float3 Position : POSITION;
+   uint4 TexIdx_Vertex : VECTOR0;
+   float4 UV01 : VECTOR1;
+   float4 Normal : VECTOR2;
+   float4 Tangent : VECTOR3;
+   // System values
+   uint ID_Instance : SV_InstanceID;
+   uint ID_Vertex : SV_VertexID;
+};
+
+struct SkeletalVertex
+{
+   float3 Position : POSITION;
+   uint4 TexIdx_Vertex : VECTOR0;
+   float4 UV01 : VECTOR1;
+   float4 Normal : VECTOR2;
+   float4 Tangent : VECTOR3;
+   uint4 BoneIdx : VECTOR4;
+   float4 BoneWeight : VECTOR5;
+   // System values
+   uint ID_Instance : SV_InstanceID;
+   uint ID_Vertex : SV_VertexID;
+};
+
+struct VertexOutBasic
+{
+   float4 PosH : SV_POSITION;
+   float3 PosW : POSITION;
+   float4 UV01 : VECTOR0;
+   nointerpolation uint ID_Instance : SCALAR0;
+};
+
+struct PixelInBasic
+{
+   float4 PosH : SV_POSITION;
+   float3 PosW : POSITION;
+   float4 UV01 : VECTOR0;
+   uint ID_Instance : SCALAR0;
+   uint ID_Primitive : SV_PrimitiveID;
+};
+
+struct VertexOutStandard
+{
+   float4 PosH : SV_POSITION;
+   float3 PosW : POSITION;
+   float3 NormalW : VECTOR0;
+   float3 TangentW : VECTOR1;
+   float4 UV01 : VECTOR2;
+   nointerpolation uint ID_Instance : SCALAR0;
+};
+
+struct PixelInStandard
+{
+   float4 PosH : SV_POSITION;
+   float3 PosW : POSITION;
+   float3 NormalW : VECTOR0;
+   float3 TangentW : VECTOR1;
+   float4 UV01 : VECTOR2;
+   uint ID_Instance : SCALAR0;
+   uint ID_Primitive : SV_PrimitiveID;
+};
+
+struct PixelOutGBuffers
+{
+   float4 backBuffer : SV_Target0; // rgb(emissive+GI) + a(?)
+   float4 gBuffer0 : SV_Target1;   // rgb(albedo)      + a(smoothness)
+   float4 gBuffer1 : SV_Target2;   // rgb(normal)      + a(metallic)
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
+// Functions
+
+float4 EncodeSRGB(float4 color)
+{
+   float4 result;
+   result.rgb = 1.055 * pow(color.rgb, 1.0 / 2.4) - 0.055;
+   result.a = color.a;
+   return result;
+}
+
+float3 GetWorldNormal(float3 value, float3 nW, float3 tW)
+{
+   nW = normalize(nW);
+   tW = normalize(tW - nW * dot(nW, tW));
+   float3x3 T2W = float3x3(tW, nW, cross(tW, nW));
+   value = 2 * value - 1;
+   value = normalize(mul(value, T2W));
+   return value;
+}
