@@ -104,16 +104,17 @@ TextureCube Cubemaps[] : register(t0, space2);
 
  // Value to string literal
 #define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
 
 #define TEX_CLAMP(mipMax) \
    "addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, " \
    "mipLODBias = 0, maxAnisotropy = 4, borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK, " \
-   "minLOD = 0, maxLOD = " STR_HELPER(mipMax) ", space = 0, visibility = SHADER_VISIBILITY_ALL"
+   "minLOD = 0, maxLOD = " STR(mipMax) ", space = 0, visibility = SHADER_VISIBILITY_ALL"
 
 #define TEX_WRAP(mipMax) \
    "addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, " \
    "mipLODBias = 0, maxAnisotropy = 4, borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK, " \
-   "minLOD = 0, maxLOD = " STR_HELPER(mipMax) ", space = 0, visibility = SHADER_VISIBILITY_ALL"
+   "minLOD = 0, maxLOD = " STR(mipMax) ", space = 0, visibility = SHADER_VISIBILITY_ALL"
 
 #define CMP_NV "comparisonFunc = COMPARISON_NEVER"
 
@@ -125,9 +126,9 @@ TextureCube Cubemaps[] : register(t0, space2);
    "CBV(b1, space=0), " \
    "CBV(b2, space=0), " \
    "SRV(t0, space=0), " \
-   "DescriptorTable(SRV(t1, space=0, numDescriptors = " STR_HELPER(CSU_DESC_HEAP_SIZE) ")), " \
-   "DescriptorTable(SRV(t0, space=1, numDescriptors = " STR_HELPER(CSU_DESC_HEAP_SIZE) ")), " \
-   "DescriptorTable(SRV(t0, space=2, numDescriptors = " STR_HELPER(CSU_DESC_HEAP_SIZE) ")), " \
+   "DescriptorTable(SRV(t1, space=0, numDescriptors = " STR(CSU_DESC_HEAP_SIZE) ")), " \
+   "DescriptorTable(SRV(t0, space=1, numDescriptors = " STR(CSU_DESC_HEAP_SIZE) ")), " \
+   "DescriptorTable(SRV(t0, space=2, numDescriptors = " STR(CSU_DESC_HEAP_SIZE) ")), " \
    "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT, " TEX_CLAMP(0) ", " CMP_NV "), " \
    "StaticSampler(s1, filter = FILTER_MIN_MAG_MIP_POINT, " TEX_WRAP(0) ", " CMP_NV "), " \
    "StaticSampler(s2, filter = FILTER_MIN_MAG_MIP_LINEAR, " TEX_CLAMP(MIPS_MAX) ", " CMP_NV "), " \
