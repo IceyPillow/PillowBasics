@@ -980,6 +980,22 @@ namespace
       std::unique_ptr<char[]> buffer;
    };
 
+   class PipelineState final : public IPipelineState
+   {
+   public:
+      PipelineState(string name, const std::vector<KeyValuePair>& macros,
+         int32_t rtNum, uint16_t activeShaders, TopologyType topology, ComPtr<ID3D12PipelineState>&& pso) :
+         IPipelineState(name, macros, rtNum, activeShaders, topology),
+         PSO(std::move(pso))
+      {
+         // Empty
+      }
+
+   public:
+      // Pipeline state object
+      ComPtr<ID3D12PipelineState> PSO;
+   };
+
    class PipelineStateManager
    {
 
