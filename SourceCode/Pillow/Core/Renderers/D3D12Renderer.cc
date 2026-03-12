@@ -54,9 +54,9 @@ typedef CD3DX12_PIPELINE_STATE_STREAM2 PIPELINE_STATE_STREAM; // Supports mesh s
 namespace
 {
    // 11_0 feature level in DX12 can support GPU down to GeForce 400 series!
-   // 2026.3.8
-   // Update to 11_1. Resource binding tier 3 is required; The Texture2D array is essential to a bindless design.
-   const D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_11_1;
+   // 2026.3.12 Update to 12_0.
+   // Given that a bindless design, the resource binding tier 2 supports a large SRV descriptor table (>128).
+   const D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_12_0;
    // XeSS 2 requires shader model 6.4.
    const D3D_SHADER_MODEL MinShaderModelLevel = D3D_SHADER_MODEL_6_4;
    const int32_t AlignmentTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
@@ -134,13 +134,20 @@ namespace
 D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY_ALL}
    const D3D12_STATIC_SAMPLER_DESC StaticSamplers[7]
    {
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_CLAMP, CMP_NV, 0, 0),         // Point-Clamp (Post-process)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_WRAP, CMP_NV, 0, 1),          // Point-Wrap (Retro rendering)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, CMP_NV, MIP_MAX, 2), // Trilinear-Clamp (Post-process / UI)
-      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_WRAP, CMP_NV, MIP_MAX, 3),  // Trilinear-Wrap (Post-process / UI)
-      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_CLAMP, CMP_NV, MIP_MAX, 4),        // Anisotropic-Clamp (Mesh)
-      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_WRAP, CMP_NV, MIP_MAX, 5),         // Anisotropic-Wrap (Mesh)
-      SMAPLER_DESC(D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, TEX_CLAMP, CMP_GE, 0, 6) // GreaterEqual-PCF-Comparison (Shadow)
+      // Point-Clamp (Post-process)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_CLAMP, CMP_NV, 0, 0),
+      // Point-Wrap (Retro rendering)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_WRAP, CMP_NV, 0, 1),
+      // Trilinear-Clamp (Post-process / UI)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_CLAMP, CMP_NV, MIP_MAX, 2),
+      // Trilinear-Wrap (Post-process / UI)
+      SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_LINEAR, TEX_WRAP, CMP_NV, MIP_MAX, 3),
+      // Anisotropic-Clamp (Mesh)
+      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_CLAMP, CMP_NV, MIP_MAX, 4),
+      // Anisotropic-Wrap (Mesh)
+      SMAPLER_DESC(D3D12_FILTER_ANISOTROPIC, TEX_WRAP, CMP_NV, MIP_MAX, 5),
+      // GreaterEqual-PCF-Comparison (Shadow)
+      SMAPLER_DESC(D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, TEX_CLAMP, CMP_GE, 0, 6)
    };
 
    class FenceSync;
@@ -181,7 +188,8 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
 namespace
 {
    void Check_HRESULT(HRESULT hResult);
-   void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+   void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource,
+      D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
    uint32_t GetAlignMipmapSize(const TextureInfo& texInfo, uint32_t mipLevel);
    uint32_t GetAlignTextureArraySliceSize(const TextureInfo& texInfo);
    uint32_t GetPiplelineBufferIndex(PiplelineBuffer type, uint32_t frameIdx);
@@ -216,7 +224,11 @@ namespace
       {
          f_FrameIndex++;
          cmdQueue->Signal(fence.Get(), f_FrameIndex);
-         uint64_t minFence = (f_FrameIndex < Constants::SwapChainSize) ? 0 : (f_FrameIndex - Constants::SwapChainSize + 1);
+         uint64_t minFence = 0 ;
+         if (f_FrameIndex >= Constants::SwapChainSize)
+         {
+            minFence = f_FrameIndex - Constants::SwapChainSize + 1;
+         }
          Synchronize(minFence);
       }
 
@@ -795,7 +807,8 @@ namespace
       uint64_t pointerGPU{};
       uint8_t* pointerCPU{};
 
-      UnionBuffer(HeapType heapType, DataType dataType, int32_t eleRawSize, int32_t eleNum, int32_t eleAlignSize, bool keepMid = false, const TextureInfo* texInfo = nullptr) :
+      UnionBuffer(HeapType heapType, DataType dataType, int32_t eleRawSize, int32_t eleNum, int32_t eleAlignSize,
+         bool keepMid = false, const TextureInfo* texInfo = nullptr) :
          Heap_Type(heapType),
          Data_Type(dataType),
          KeepMidBuffer(keepMid),
@@ -986,7 +999,8 @@ namespace
       throw std::runtime_error(msg);
    }
 
-   void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+   void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource,
+      D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
    {
       D3D12_RESOURCE_BARRIER barrier
       {
