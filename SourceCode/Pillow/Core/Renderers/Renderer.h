@@ -138,32 +138,61 @@ namespace Pillow::Graphics
    };
    static_assert(std::is_trivially_copyable_v<GenericRendererCommand>); //POD test
 
-   class GenericPipelineConfig
+   // Utilize a unified root signature to achieve a modern bindless architecture.
+   class IPipelineState
    {
    public:
+      // To draw a mass of grass, GPU instance(triangle input) is better than geometry shader(point input).
+      // Hence, the point topology is removed.
       enum class TopologyType : uint8_t
       {
          TriangleList, // vertex buffer + index buffer
          TriangleStrip // only vertex buffer
       };
 
+      enum class ShaderType : uint16_t
+      {
+         // Generic computation
+         ComputeShader = 0x01,
+         // Mesh shading pipeline (not supported currently)
+         AmplificationShader = 0x02,
+         MeshShader = 0x04,
+         // Geometry pipeline
+         VertexShader = 0x08,
+         HullShader = 0x10,
+         DomainShader = 0x20,
+         GeometryShader = 0x40,
+         PixelShader = 0x80,
+         Count
+      };
+
+      // C++20 doesn't have reflections.
+      static inline const std::string EntryPoints[uint32_t(ShaderType::Count)] =
+      {
+         "ComputeShader",
+         "AmplificationShader",
+         "MeshShader",
+         "VertexShader",
+         "HullShader",
+         "DomainShader",
+         "GeometryShader",
+         "PixelShader"
+      };
+
    public:
-      std::string ConfigName;
-      std::vector<KeyValuePair> Macros;
-      std::vector<string> VSTextures;
-      std::vector<string> PSTextures;
-      std::vector<string> ConstantBuffers;
-      int32_t RenderTargetCount;
-      TopologyType Topology;
+      // Example: NameID = "HelloWorld_0088@ASSERT_ON@Quality=2"
+      const std::string NameID;
+      const std::unique_ptr<std::vector<KeyValuePair>> Macros;
+      
+      const int32_t RenderTargetNum;
+      // VS+PS = 0x08 | 0x80 = 0x0088; CS = 0x0001, etc. (bit flags)
+      const uint16_t FlagActiveShaders;
+      const TopologyType Topology;
 
-      inline GenericPipelineConfig() : ConfigName("NullConfig") {/*dumb*/};
-
-      // Example
-      // ConfigName: SimpleShader@CheckOn@Quality=2
-      GenericPipelineConfig(string name, const std::vector<KeyValuePair>& macros,
-         const std::vector<string>& cbv, const std::vector<string>& vsTex, const std::vector<string>& psTex, int32_t rtNum, TopologyType topology);
-
-      bool EqualTo(const GenericPipelineConfig& right) const;
+      IPipelineState() = delete;
+      IPipelineState(string originalName, const std::vector<KeyValuePair>& macros,
+         int32_t renderTargetNum, uint16_t activeShaders, TopologyType topology);
+      bool EqualTo(const IPipelineState& right) const;
    };
 
    // Generic renderer, abstract class (resembles an interface in C#).
@@ -252,7 +281,8 @@ namespace Pillow::Graphics
    // Clear 1~8 built-in pipeline buffers. 
    // depth, stencil: When clearing depth or stencil, they must be specified, otherwise they will be ignored.
    ForceInline void CmdClearPiplelineBuffers(PiplelineBuffer builtinBuffers[], int32_t count,
-      const XMFLOAT4& color = Constants::CleanColor, float depth = Constants::FloatInfinity, uint8_t stencil = UINT8_MAX)
+      const XMFLOAT4& color = Constants::CleanColor, float depth = Constants::FloatInfinity,
+      uint8_t stencil = UINT8_MAX)
    {
       if (count > 8) throw std::runtime_error("Too many pipeline buffers to clear. Max is 8.");
       GenericRendererCommand cmd;

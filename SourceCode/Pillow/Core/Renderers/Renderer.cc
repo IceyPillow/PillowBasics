@@ -17,55 +17,39 @@ namespace
    std::atomic<bool> signalCompute;
    std::stop_source signalTerminate;
 
-   ForceInline std::vector<KeyValuePair> Sort(const std::vector<KeyValuePair>& macros)
+
+   std::string MakeID(string originalName, uint16_t activeShaders, const std::vector<KeyValuePair>& macros)
    {
-      std::vector<KeyValuePair> result = macros;
-      std::sort(result.begin(), result.end());
-      return result;
+      string name = originalName;
+      name += std::format("_{:04x}", activeShaders);
+      const char prefixMacro = '@';
+      const char prefixValue = '=';
+      for (const auto& pair : macros)
+      {
+         name += prefixMacro + pair.GetKey();
+         if (!pair.IsKeyOnly())
+         {
+            name += prefixValue + pair.GetValueRaw();
+         }
+      }
+      return name;
    }
 }
 
-GenericPipelineConfig::GenericPipelineConfig(string name, const std::vector<KeyValuePair>& macros,
-   const std::vector<string>& cbv, const std::vector<string>& vsTex, const std::vector<string>& psTex, int32_t rtNum, TopologyType topology) :
-   Macros(Sort(macros)),
-   VSTextures(vsTex),
-   PSTextures(psTex),
-   ConstantBuffers(cbv),
-   RenderTargetCount(rtNum),
+IPipelineState::IPipelineState(string originalName, const std::vector<KeyValuePair>& macros,
+   int32_t renderTargetNum, uint16_t activeShaders, TopologyType topology) :
+   NameID(MakeID(originalName, activeShaders, macros)),
+   Macros(macros.empty() ? nullptr : std::make_unique<std::vector<KeyValuePair>>(macros)),
+   RenderTargetNum(renderTargetNum),
+   FlagActiveShaders(activeShaders),
    Topology(topology)
 {
-   const char prefixMacro = '@';
-   const char prefixValue = '=';
-   for (const auto& pair : Macros)
-   {
-      name += "@" + pair.GetKey();
-      if (!pair.IsKeyOnly())
-      {
-         name += "=" + pair.GetValueRaw();
-      }
-   }
-   ConfigName = name;
-   //auto view = std::ranges::split_view(name, _char0) | std::ranges::views::drop(1);
-   //_Macros.reserve(std::ranges::distance(view));
-   //for (auto&& _macro : view)
-   //{
-   //   // Uses std::string_view to avoid a string copy.
-   //   auto subView = std::ranges::split_view(std::string_view(_macro.begin(), _macro.end()), _char1);
-   //   auto iterator = subView.begin();
-   //   ShaderMacro macro;
-   //   macro.Name = string((*iterator).begin(), (*iterator).end());
-   //   iterator++;
-   //   if (iterator != subView.end())
-   //   {
-   //      macro.Value = string((*iterator).begin(), (*iterator).end());
-   //   }
-   //   _Macros.push_back(std::move(macro));
-   //}
+   // Empty body
 }
 
-bool GenericPipelineConfig::EqualTo(const GenericPipelineConfig& right) const
+bool IPipelineState::EqualTo(const IPipelineState& right) const
 {
-   return this->ConfigName == right.ConfigName;
+   return this->NameID == right.NameID;
 }
 
 static void Pillow::Graphics::BarrierCompletionAction() noexcept
@@ -94,7 +78,7 @@ IRenderer* IRenderer::GetInstance()
 
 void IRenderer::Terminate()
 {
-   if (!rendererInstance) throw std::runtime_error("Renderer instance is not initialized.");
+   if (!rendererInstance) return;
    signalTerminate.request_stop();
    for (auto& thread : workers)
    {
