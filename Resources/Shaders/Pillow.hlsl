@@ -19,14 +19,13 @@ static const float PI_DIV2 = 1.570796327f;
 static const float PI_DIV4 = 0.785398163f;
 
 static const float TimeLapseMax = 1000 * PI; // Seconds
-static const uint IndexFrameMax = 10000;
+static const uint FrameIdxMax = 10000;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
 // Unified root signature
 
 // These are static samplers.
-// Some materials need the clamp and wrap variations, in this case, use "Tri" or "Ani" instead.
-// (As for programmers, a material means a pipeline state in DX12)
+// Use the uniform branches to select them in shaders (see the func SampleTexSmart).
 SamplerState PointClamp : register(s0);
 SamplerState PointWrap : register(s1);
 SamplerState TriClamp : register(s2);
@@ -35,22 +34,16 @@ SamplerState AniClamp : register(s4);
 SamplerState AniWrap : register(s5);
 SamplerComparisonState Cmp : register(s6);
 
-#ifdef SAMPLER_CLAMP_MODE
-#define Dot PointClamp
-#define Tri TriClamp
-#define Ani AniClamp
-#else
-#define Dot PointWrap
-#define Tri TriWrap
-#define Ani AniWrap
-#endif
-
 cbuffer ConstantBufferObject : register(b0, space0)
 {
    float4x4 MatrixModel;
    float4 ColorObject;
    uint4 TexIdx_A;
    uint4 TexIdx_B;
+   // 16B
+   uint SamplerIdx;
+   uint InstanceNum;
+   float2 Padding;
 };
 
 cbuffer ConstantBufferLight : register(b1, space0)
@@ -77,13 +70,12 @@ cbuffer ConstantBufferPass : register(b2, space0)
    float4 ViewportSizeAndRecip;
    // 16B
    float3 CameraPositionWorld;
-   uint IndexFrame;
+   uint FrameIdx;
    // 16B
    float DistanceNear;
    float DistanceFar;
    float TimeDelta;
    float TimeLapse;
-
 };
 
 struct BoneData
@@ -228,6 +220,35 @@ struct PixelOutGBuffers
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
 // Functions
+
+float4 SampleTexSmart(Texture2D tex, float2 uv, uint samplerIdx)
+{
+   [branch] // Uniform branches, the instruction flow is consistent in a warp (32Threads).
+   if (samplerIdx == 0)
+   {
+      return tex.Sample(PointClamp, uv);
+   }
+   else if (samplerIdx == 1)
+   {
+      return tex.Sample(PointWrap, uv);
+   }
+   else if (samplerIdx == 2)
+   {
+      return tex.Sample(TriClamp, uv);
+   }
+   else if (samplerIdx == 3)
+   {
+      return tex.Sample(TriWrap, uv);
+   }
+   else if (samplerIdx == 4)
+   {
+      return tex.Sample(AniClamp, uv);
+   }
+   else if (samplerIdx >= 5)
+   {
+      return tex.Sample(AniWrap, uv);
+   }
+}
 
 float4 EncodeSRGB(float4 color)
 {
