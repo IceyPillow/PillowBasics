@@ -992,6 +992,9 @@ namespace
       }
 
    public:
+      // A unified root signature.
+      inline static ComPtr<ID3D12RootSignature> UnifiedRootSign = nullptr;
+
       // Pipeline state object
       ComPtr<ID3D12PipelineState> PSO;
    };
