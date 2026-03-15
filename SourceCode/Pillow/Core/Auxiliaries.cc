@@ -11,35 +11,51 @@ namespace Pillow::Hidden
    GameClock GlobalClock{};
 }
 
+namespace
+{
+   KeyValuePair::Type GetValueType(const string& value, bool isStringValue)
+   {
+      KeyValuePair::Type type;
+      if (value.empty() || isStringValue)
+      {
+         type = KeyValuePair::Type::String;
+      }
+      else if (std::regex_match(value, std::regex(R"(^\-?\d+$)")))
+      {
+         type = KeyValuePair::Type::Integer;
+      }
+      else if (std::regex_match(value, std::regex(R"(^\-?\d+\.\d+$)")))
+      {
+         type = KeyValuePair::Type::Float;
+      }
+      else if (std::regex_match(value, std::regex(R"(^\-?\d+\.\d+(,\-?\d+\.\d+){1,3}$)")))
+      {
+         type = KeyValuePair::Type::Float4;
+      }
+      else
+      {
+         type = KeyValuePair::Type::String;
+      }
+      return type;
+   }
+}
+
 KeyValuePair::KeyValuePair(string key, string value, bool isStringValue) :
    f_Key(std::regex_replace(key, std::regex("\\s"), "")),
    f_ValueRaw(std::regex_replace(value, std::regex("\\s"), ""))
 {
-   if (value.empty() || isStringValue)
-   {
-      f_Type = ValueType::String;
-   }
-   else if (std::regex_match(value, std::regex(R"(^\-?\d+$)")))
-   {
-      f_Type = ValueType::Integer;
-   }
-   else if (std::regex_match(value, std::regex(R"(^\-?\d+\.\d+$)")))
-   {
-      f_Type = ValueType::Float;
-   }
-   else if (std::regex_match(value, std::regex(R"(^\-?\d+\.\d+(,\-?\d+\.\d+){1,3}$)")))
-   {
-      f_Type = ValueType::Float4;
-   }
-   else
-   {
-      f_Type = ValueType::String;
-   }
+   f_Type = GetValueType(f_ValueRaw, isStringValue);
 }
 
-XMFLOAT4A KeyValuePair::GetFloat4Aligned()
+void Pillow::KeyValuePair::SetValue(string value, bool bPureString)
 {
+   f_ValueRaw = std::regex_replace(value, std::regex("\\s"), "");
+   f_Type = GetValueType(f_ValueRaw, bPureString);
+}
 
+XMFLOAT4A KeyValuePair::GetFloat4Aligned() const
+{
+   if (f_Type != Type::Float4) throw std::runtime_error("Value type is not Float4.");
    auto view = std::ranges::split_view(f_ValueRaw, ',');
    XMFLOAT4A result{};
    int32_t i = 0;
@@ -51,35 +67,22 @@ XMFLOAT4A KeyValuePair::GetFloat4Aligned()
    return result;
 }
 
+std::strong_ordering KeyValuePair::operator<=>(const KeyValuePair& right) const
+{
+   if (this->f_Type == Type::Integer && right.f_Type == Type::Integer)
+   {
+      return this->GetInteger() <=> right.GetInteger();
+   }
+   if (this->f_Type == Type::Float && right.f_Type == Type::Float)
+   {
+      return std::strong_order(this->GetFloat(), right.GetFloat());
+   }
+   return this->f_ValueRaw <=> right.f_ValueRaw;
+}
+
 bool KeyValuePair::operator==(const KeyValuePair& right) const
 {
-   if (this->f_Type == ValueType::Integer)
-   {
-      return this->GetInteger() == right.GetInteger();
-   }
-   if (this->f_Type == ValueType::Float)
-   {
-      return this->GetFloat() == right.GetFloat();
-   }
-   return this->f_Key == right.f_Key && this->f_ValueRaw == right.f_ValueRaw;
-}
-
-bool KeyValuePair::operator>(const KeyValuePair& right) const
-{
-   if (this->f_Type == ValueType::Integer)
-   {
-      return this->GetInteger() > right.GetInteger();
-   }
-   if (this->f_Type == ValueType::Float)
-   {
-      return this->GetFloat() > right.GetFloat();
-   }
-   return this->f_Key > right.f_Key;
-}
-
-bool KeyValuePair::operator<(const KeyValuePair& right) const
-{
-   return this->operator>(right);
+   return f_ValueRaw == right.f_ValueRaw;
 }
 
 string Pillow::GetResourcePath(const string& name)
@@ -115,8 +118,8 @@ void Pillow::LogSystem(const string& text)
 #if defined(_WIN64)
    std::wstring _text;
    utf8::utf8to16(text.begin(), text.end(), std::back_inserter(_text));
-   OutputDebugString(_text.c_str());
-   OutputDebugString(L"\n");
+   //OutputDebugString(_text.c_str());
+   //OutputDebugString(L"\n");
 #elif defined(__ANDROID__)
 #endif
 }

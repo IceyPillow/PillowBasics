@@ -10,11 +10,6 @@
 #include <filesystem>
 #include <locale>
 #include <chrono>
-#if defined(_WIN64)
-#define NOMINMAX
-#include <Windows.h>
-#elif defined(__ANDROID__)
-#endif
 #include "utfcpp-4.0.6/utf8.h"
 #include "DirectXMath-apr2025/DirectXMath.h"
 #include "Constants.h"
@@ -87,7 +82,7 @@ namespace Pillow
    class KeyValuePair
    {
    public:
-      enum struct ValueType : uint8_t
+      enum struct Type : uint8_t
       {
          String,
          Integer,
@@ -97,25 +92,24 @@ namespace Pillow
 
       ReadonlyProperty(string, Key)
          ReadonlyProperty(string, ValueRaw)
-         ReadonlyProperty(ValueType, Type)
+         ReadonlyProperty(Type, Type)
 
    public:
-      // isStringValue: True if using quick initializing route.
-      KeyValuePair(string key, string value, bool isStringValue = false);
+      // bPureString: True if using quick initialization.
+      KeyValuePair(string key, string value, bool bPureString = false);
+      void SetValue(string value, bool bPureString = false);
+      
+      bool EmptyValue() const { return f_ValueRaw.empty(); }
+      
+      int32_t GetInteger() const { return std::stoi(f_ValueRaw); }
+      
+      float GetFloat() const { return std::stof(f_ValueRaw); }
+      
+      XMFLOAT4A GetFloat4Aligned() const;
 
-      ForceInline bool IsKeyOnly() const { return f_ValueRaw.empty(); }
-
-      ForceInline int32_t GetInteger() const { return std::stoi(f_ValueRaw); }
-
-      ForceInline float GetFloat() const { return std::stof(f_ValueRaw); }
-
-      XMFLOAT4A GetFloat4Aligned();
-
+      // Three-way comparison, C++20
+      std::strong_ordering operator<=>(const KeyValuePair& right) const;
       bool operator==(const KeyValuePair& right) const;
-
-      bool operator>(const KeyValuePair& right) const;
-
-      bool operator<(const KeyValuePair& right) const;
    };
 
    ForceInline bool CheckUTF8(const string& str)

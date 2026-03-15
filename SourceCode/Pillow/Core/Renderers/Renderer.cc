@@ -27,7 +27,7 @@ namespace
       for (const auto& pair : macros)
       {
          name += prefixMacro + pair.GetKey();
-         if (!pair.IsKeyOnly())
+         if (!pair.EmptyValue())
          {
             name += prefixValue + pair.GetValueRaw();
          }
