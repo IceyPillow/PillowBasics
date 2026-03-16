@@ -2,6 +2,8 @@
 #pragma once
 #include "DirectXMath-apr2025/DirectXMath.h"
 
+using namespace DirectX;
+
 namespace Pillow::Input
 {
    // Not all keys are valid on a specific platform.
@@ -39,9 +41,11 @@ namespace Pillow::Input
 
    void InputInitialize(const void* params);
    void InputClose();
-   inline void InputCallback(const void* messages) {/*dumb*/};
+   // Update once per frame; invoke it before processing any message!
+   void InputTick();
+   // Process a single message.
+   void InputCallback(const void* messages);
 
-   using DirectX::XMFLOAT2;
 
 #if defined(_WIN64)
    XMFLOAT2 GetMicePos();

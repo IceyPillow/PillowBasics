@@ -1,6 +1,7 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 #include <iostream>
 #include <thread>
+#include <string_view>
 #include "DirectXMath-apr2025/DirectXMath.h"
 #include "Core/Constants.h"
 #include "Core/Renderers/Renderer.h"
@@ -98,24 +99,28 @@ namespace
 #ifdef PILLOW_DEBUG
          TempCode();
 #endif
-         MSG message{};
-         while (message.message != WM_QUIT)
+         while (true)
          {
-            if (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
+            // 1 Input subsystem tick updates.
+            Input::InputTick();
+            // 2 Process pending messages.
+            MSG message{};
+            while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
             {
+               if (message.message == WM_QUIT) throw std::exception("user exit");
+               // Generate WM_CHAR messages.
                TranslateMessage(&message);
                DispatchMessage(&message);
             }
-            else
-            {
-               EngineTick();
-            }
+            // 3 Update the engine ticks.
+            EngineTick();
          }
-         EngineTerminate();
       }
       catch (std::exception& e)
       {
          EngineTerminate();
+         std::string_view errorMessage = e.what();
+         if (errorMessage == "user exit") exit(EXIT_SUCCESS);
          MessageBoxA(hwnd, e.what(), 0, MB_OK);
          exit(EXIT_FAILURE);
       }
