@@ -102,7 +102,7 @@ namespace
          while (true)
          {
             // 1 Input subsystem tick updates.
-            Input::InputTick();
+            Input::InputPreTick();
             // 2 Process pending messages.
             MSG message{};
             while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
