@@ -46,6 +46,7 @@ namespace
    XMINT2 clientSize = minClientSize;
    XMINT2 minWindowSize; // The border makes the window size bigger than the client size.
 
+   void Disable_DPI_AutoScale();
    void CreateGameWindow(HINSTANCE hInstance, int show);
    void GameMessageLoop();
    LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -54,6 +55,11 @@ namespace
    void GetMinWindowSize();
    void GetClientSize();
    void SetWindowMode(bool fullScreen, bool allowResizing = true);
+
+   void Disable_DPI_AutoScale()
+   {
+      SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+   }
 
    void CreateGameWindow(HINSTANCE hInstance, int nShowCmd)
    {
@@ -99,6 +105,7 @@ namespace
 #ifdef PILLOW_DEBUG
          TempCode();
 #endif
+         // Frame-based message loop.
          while (true)
          {
             // 1 Input subsystem tick updates.
@@ -107,10 +114,10 @@ namespace
             MSG message{};
             while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
             {
-               if (message.message == WM_QUIT) throw std::exception("user exit");
                // Generate WM_CHAR messages.
                TranslateMessage(&message);
                DispatchMessage(&message);
+               if (message.message == WM_QUIT) throw std::exception("user exit");
             }
             // 3 Update the engine ticks.
             EngineTick();
@@ -238,6 +245,7 @@ namespace
 // Program Entry Point
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
+   Disable_DPI_AutoScale();
    CreateGameWindow(hInstance, nShowCmd);
    GameMessageLoop();
    return EXIT_SUCCESS;
