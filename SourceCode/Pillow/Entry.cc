@@ -3,6 +3,7 @@
 #include <thread>
 #include <string_view>
 #include "DirectXMath-apr2025/DirectXMath.h"
+#include "utfcpp-4.0.6/utf8.h"
 #include "Core/Constants.h"
 #include "Core/Renderers/Renderer.h"
 #include "Core/Input.h"
@@ -26,7 +27,9 @@ namespace Pillow::Hidden
 namespace
 {
    using namespace Pillow;
+   using namespace Pillow::Input;
    using namespace Pillow::Graphics;
+   using namespace Pillow::Constants;
    using namespace DirectX; // DXMath
 
    void EngineLaunch();
@@ -143,6 +146,22 @@ namespace
          Pillow::Input::InputCallback((const void*)lParam);
          return 0;
          break;
+      case WM_CHAR:
+      {
+         char16_t CharU16 = static_cast<char16_t>(wParam);
+         u16string += CharU16;
+         if (CheckUTF16_SingleUnit(CharU16) || CheckUTF16_LowSurrogate(CharU16))
+         {
+            utf8::utf16to8(u16string.begin(), u16string.end(), std::back_inserter(u8string));
+            utf8::utf8to32(u8string.begin(), u8string.end(), std::back_inserter(u32string));
+            //if (u32string.length() > 1) throw std::runtime_error("Only can one UTF-32 char one time!");
+            AddChar32(u32string.at(0));
+            u8string.clear();
+            u16string.clear();
+            u32string.clear();
+         }
+         break;
+      }
       case WM_GETMINMAXINFO:
       {
          auto& info = *(MINMAXINFO*)lParam;
@@ -150,13 +169,8 @@ namespace
          info.ptMinTrackSize.y = minWindowSize.y;
          break;
       }
-      case WM_KEYDOWN:
-         if (wParam == VK_F11)
-         {
-            SetWindowMode(!isFullscreen, true); // Toggle fullscreen mode
-         }
-         break;
       case WM_ENTERSIZEMOVE:
+      {
          // 1. When users resize or move the form, the program will be trapped in a modal loop,
          // which will stop our message loop and causing the engine not to run.
          // So create a timer to run the engine.
@@ -164,16 +178,21 @@ namespace
          // which provides a much higher framerate.
          timerHandle = SetTimer(hwnd, 1, USER_TIMER_MINIMUM, TimerEvent);
          break;
+      }
       case WM_EXITSIZEMOVE:
+      {
          if (timerHandle != 0)
          {
             KillTimer(hwnd, timerHandle); // Stop the timer
             timerHandle = 0;
          }
          break;
+      }
       case WM_DESTROY:// End message loop
+      {
          PostQuitMessage(0);
          return 0;
+      }
       }
       // Default procedure
       return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -259,22 +278,27 @@ namespace
 
    void EngineLaunch()
    {
-      Hidden::GlobalClock.Restart();
-      Constants::SetThreadNumbers();
+      SetThreadNumbers();
+      InputInitialize(hwnd);
 #if defined(_WIN64)
       IRenderer::Initialize(Constants::ThreadNumRenderer, clientSize, refreshRate, (void*)hwnd);
 #elif defined(__ANDROID__)
       //...
 #endif
       IRenderer::GetInstance()->Launch();
+      Hidden::GlobalClock.Restart();
       return;
    }
 
    void EngineTick()
    {
+      InputTick();
       Hidden::GlobalClock.Tick();
       auto renderer = IRenderer::GetInstance();
-
+      if (GetKey(GenricKey::F11))
+      {
+         SetWindowMode(!isFullscreen);
+      }
 #ifdef _WIN64
       static GameClock localClock;
       // To trigger the swap-chain resizing.
@@ -285,7 +309,7 @@ namespace
          renderer->SetRenderBufferSize(clientSize);
          //renderer->SetRefreshRate(refreshRate);
       }
-#endif _WIN64
+#endif
       GameTick();
       renderer->CommitOrWait();
       //Pillow::Input::Update();
@@ -294,6 +318,7 @@ namespace
    void EngineTerminate()
    {
       IRenderer::Terminate();
+      InputClose();
    }
 
    // Game logic goes here.
