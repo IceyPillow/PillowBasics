@@ -109,28 +109,23 @@ namespace
          TempCode();
 #endif
          // Frame-based message loop.
-         while (true)
+         MSG message{};
+         while (message.message != WM_QUIT)
          {
-            // 1 Input subsystem tick updates.
-            Input::InputPreTick();
-            // 2 Process pending messages.
-            MSG message{};
+            // 1 Process pending messages.
             while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
             {
                // Generate WM_CHAR messages.
                TranslateMessage(&message);
                DispatchMessage(&message);
-               if (message.message == WM_QUIT) throw std::exception("user exit");
             }
-            // 3 Update the engine ticks.
+            // 2 Update the engine ticks.
             EngineTick();
          }
       }
       catch (std::exception& e)
       {
          EngineTerminate();
-         std::string_view errorMessage = e.what();
-         if (errorMessage == "user exit") exit(EXIT_SUCCESS);
          MessageBoxA(hwnd, e.what(), 0, MB_OK);
          exit(EXIT_FAILURE);
       }
@@ -139,13 +134,22 @@ namespace
    // Recieve message （callback from system）
    LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
    {
+      static std::u8string u8string;
+      static std::u16string u16string;
+      static std::u32string u32string;
       switch (msg)
       {
-      case WM_INPUT:
-         // Process raw input here if needed
-         Pillow::Input::InputCallback((const void*)lParam);
+      case WM_INPUT: //Use GetRawInputBuffer instead.
+      {
          return 0;
+      }
+      case WM_KEYDOWN: // Use RawInput to process keyboard input.
+      case WM_SYSKEYDOWN:
+      case WM_KEYUP:
+      case WM_SYSKEYUP:
+      {
          break;
+      }
       case WM_CHAR:
       {
          char16_t CharU16 = static_cast<char16_t>(wParam);
