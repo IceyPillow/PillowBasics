@@ -1,8 +1,10 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 // TODO: bundle cmd lists
 #if defined(_WIN64)
-#define NOMINMAX
 #include "Renderer.h"
+#define NOMINMAX
+#include <Windows.h>
+#undef NOMINMAX
 //#include <d3d12.h> // Deprecated
 #include "DX12Agility-1.618/d3d12.h" // To avoid header order issues
 #include "DX12Agility-1.618/d3dx12/d3dx12.h"
@@ -12,7 +14,6 @@
 #include <dxgi1_6.h>
 #include <comdef.h>
 #include <wrl.h> // Import Component Object Model Pointer
-#undef NOMINMAX
 #include <shared_mutex>
 #include <memory>
 #include <vector>

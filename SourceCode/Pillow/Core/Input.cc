@@ -3,11 +3,11 @@
 #include "Renderers/Renderer.h"
 #include "utfcpp-4.0.6/utf8.h"
 #include<map>
+#include<array>
 #if defined(_WIN64)
 #define NOMINMAX
 #include <Windows.h>
 #undef NOMINMAX
-#include <winuser.h>
 #include <hidusage.h>
 #include <xinput.h>
 #include <imm.h>
