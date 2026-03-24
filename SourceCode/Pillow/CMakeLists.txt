@@ -15,7 +15,7 @@ target_include_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 # Link static libraries.
 # DirectX 12 is decoupled from Windows SDK now (DirectX12 Agility SDK + DirectX Shader Compiler).
 # target_link_libraries(Pillow PRIVATE dxgi.lib D3D12.lib d3dcompiler.lib)
-target_link_libraries(Pillow PRIVATE dxgi.lib D3D12.lib imm32.lib)
+target_link_libraries(Pillow PRIVATE dxgi.lib D3D12.lib imm32.lib Xinput.lib)
 
 #Copy the 3rd-party runtimes.
 message(STATUS "")
