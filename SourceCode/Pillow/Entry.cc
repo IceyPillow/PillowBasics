@@ -298,7 +298,7 @@ namespace
       InputTick();
       Hidden::GlobalClock.Tick();
       auto renderer = IRenderer::GetInstance();
-      if (GetKey(GenricKey::F11))
+      if (GetKeyDown(GenericKey::F11))
       {
          SetWindowMode(!isFullscreen);
       }
