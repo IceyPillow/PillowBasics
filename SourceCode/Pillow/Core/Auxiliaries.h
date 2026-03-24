@@ -112,9 +112,24 @@ namespace Pillow
       bool operator==(const KeyValuePair& right) const;
    };
 
-   ForceInline bool CheckUTF8(const string& str)
+   inline bool CheckUTF8(const string& str)
    {
       return utf8::is_valid(str.begin(), str.end());
+   }
+
+   inline bool CheckUTF16_HighSurrogate(char16_t uc)
+   {
+      return (uc >= 0xD800 && uc <= 0xDBFF);
+   }
+
+   inline bool CheckUTF16_LowSurrogate(char16_t uc)
+   {
+      return (uc >= 0xDC00 && uc <= 0xDFFF);
+   }
+
+   inline bool CheckUTF16_SingleUnit(char16_t uc)
+   {
+      return (uc & 0xF800) != 0xD800;
    }
 
    string GetResourcePath(const string& name);
