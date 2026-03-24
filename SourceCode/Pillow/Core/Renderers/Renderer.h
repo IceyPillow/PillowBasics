@@ -1,5 +1,6 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 #pragma once
+#include <cmath>
 #include <ranges>
 #include <thread>
 #include <barrier>
@@ -212,13 +213,32 @@ namespace Pillow::Graphics
 
    public:
       virtual ~IRenderer() = 0;
+
       virtual uint64_t GetFrameIndex() = 0;
-      ForceInline int32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
-      inline void SetRenderBufferSize(XMINT2 size) { f_BackBufferSize = size; }
-      inline void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
-      inline void SetVSyncBlanks(int32_t blanks) { f_VSyncBlanks = blanks; }
-      inline virtual void ResourceRegister(ResHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
-      inline virtual void ResourceRelease(ResHandle handle) {/*dumb*/};
+
+      int32_t GetFrameArrayIdx()
+      {
+         return GetFrameIndex() % Constants::SwapChainSize;
+      }
+
+      float GetEstimatedMaxFrameRate()
+      {
+         if (f_VSyncBlanks != 0)
+         {
+            return std::ceilf(float(f_RefreshRate) / float(f_VSyncBlanks));
+         }
+         else
+         {
+            return 1e6f; // Represents an uncapped frame rate.
+         }
+      }
+
+      void SetRenderBufferSize(XMINT2 size) { f_BackBufferSize = size; }
+      void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
+      void SetVSyncBlanks(int32_t blanks) { f_VSyncBlanks = blanks; }
+
+      virtual void ResourceRegister(ResHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
+      virtual void ResourceRelease(ResHandle handle) {/*dumb*/};
       void Launch();
       // ***CORE WORKLOAD***
       // Commit a frame, or wait for the last CPU renderer frame.
