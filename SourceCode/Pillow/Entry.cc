@@ -20,6 +20,7 @@ extern void TempCode();
 namespace Pillow::Hidden
 {
    extern Pillow::GameClock GlobalClock;
+   extern float WheelAccumulation;
 }
 
 // Static definitions. External code cannot access those contents.
@@ -112,9 +113,14 @@ namespace
          while (message.message != WM_QUIT)
          {
             // 1 Process pending messages.
-            while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
+            while (PeekMessage(&message, 0, 0, WM_INPUT - 1, PM_REMOVE))
+            {
+               DispatchMessage(&message);
+            }
+            while (PeekMessage(&message, 0, WM_INPUT + 1, 0xFFFF, PM_REMOVE))
             {
                // Generate WM_CHAR messages.
+               // (WM_INPUT = 0x00FF, WM_CHAR = 0x0102)
                TranslateMessage(&message);
                DispatchMessage(&message);
             }
@@ -138,9 +144,11 @@ namespace
       static std::u32string u32string;
       switch (msg)
       {
-      case WM_INPUT: //Use GetRawInputBuffer instead.
+      case WM_MOUSEWHEEL:
       {
-         return 0;
+         // (scroll up = positive)
+         Pillow::Hidden::WheelAccumulation = GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA;
+         break;
       }
       case WM_KEYDOWN: // Use RawInput to process keyboard input.
       case WM_SYSKEYDOWN:
@@ -301,6 +309,15 @@ namespace
       if (GetKeyDown(GenericKey::F11))
       {
          SetWindowMode(!isFullscreen);
+         //// Hide the cursor.
+         //if (isFullscreen)
+         //{
+         //   SetCursorMode(true);
+         //}
+         //else
+         //{
+         //   SetCursorMode(false);
+         //}
       }
 #ifdef _WIN64
       static GameClock localClock;

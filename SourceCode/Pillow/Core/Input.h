@@ -9,7 +9,7 @@ namespace Pillow::Input
 {
    // Not all keys are valid on a specific platform.
    // e.g. A mice is not intended to be supported on Android.
-   enum class GenricKey : char
+   enum class GenericKey : char
    {
       // Screen touch
       Touch0, Touch1, Touch2, Touch3, Touch4, Touch5,
@@ -60,18 +60,26 @@ namespace Pillow::Input
    void InputInitialize(void* params);
    void InputClose();
    // Update once per frame; invoke it before processing any message!
-   void InputPreTick();
-   // Process a single message.
-   void InputCallback(const void* messages);
-   
-   void ToggleInputMethod(bool bEnable);
+   // 
+   // RawInput (GetRawInputBuffer) on Win creates too many messages (especially a 8kHz mice)
+   // This either costs too much (kernel mode switch) or makes the input subsys more complicated (multi-thread).
+   void InputTick();
+   // If true, the mice behaviour is FPS/TPS style.
+   void SetCursorMode(bool bHidden);
+   void SetVibration(uint16_t leftMotor, uint16_t rightMotor);
+   void SetInputMethod(bool bEnable);
    void SetInputMethodPosition(XMINT2 position);
-   void AddChar16(char16_t character);
+   void AddChar32(char32_t character);
 
-   bool GetKey(GenricKey key);
-   bool GetKeyDown(GenricKey key);
-   bool GetKeyUp(GenricKey key);
-   std::u32string GetInputStringAndClear();
+   // Check if a key is pressed.
+   // WARNING: If you want to trigger an action, use GetKeyDown/Up() instead!
+   // Otherwise, the action is triggered every frame.
+   bool GetKey(GenericKey key);
+   bool GetKeyDown(GenericKey key);
+   bool GetKeyUp(GenericKey key);
+   XMFLOAT4A GetNormalizedSticks();
+   // Get the buffered input string and clear the buffer.
+   std::u32string ConsumeInputString();
 
 #if defined(_WIN64)
    XMFLOAT2 GetMicePos();
