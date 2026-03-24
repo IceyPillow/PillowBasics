@@ -55,7 +55,7 @@ namespace
    void CALLBACK TimerEvent(HWND hwnd, UINT arg1, UINT_PTR arg2, DWORD arg3);
    void GetMonitorParams();
    void GetMinWindowSize();
-   void GetClientSize();
+   void UpdateClientSize();
    void SetWindowMode(bool fullScreen, bool allowResizing = true);
 
    void Disable_DPI_AutoScale()
@@ -234,7 +234,7 @@ namespace
       minWindowSize = XMINT2{ rect.right - rect.left, rect.bottom - rect.top };
    }
 
-  void GetClientSize()
+  void UpdateClientSize()
   {
      RECT rect{};
      GetClientRect(hwnd, &rect);
@@ -308,7 +308,7 @@ namespace
       if (localClock.CheckSlice(Constants::FrameTime60FPS))
       {
          // Refresh rate is acquired only once when the game startsm because GetMonitorParams() costs a lot.
-         GetClientSize();
+         UpdateClientSize();
          renderer->SetRenderBufferSize(clientSize);
          //renderer->SetRefreshRate(refreshRate);
       }
