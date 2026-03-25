@@ -222,12 +222,11 @@ namespace
    }
 
    // Weighted moving average (SIMD).
-   XMFLOAT4A InputFilter(const XMFLOAT4A& newValue, const XMFLOAT4A& prevValue)
+   XMFLOAT4A XM_CALLCONV InputFilter(FXMVECTOR newVec, const XMFLOAT4A& prevValue)
    {
       XMFLOAT4A result;
       const float tau = Constants::FrameTime60FPS;
       float aplha = 1 - std::exp(GetFrameDeltaTime() / -tau);
-      XMVECTOR newVec = XMLoadFloat4A(&newValue);
       XMVECTOR prevVec = XMLoadFloat4A(&prevValue);
       XMVECTOR resVec = XMVectorAdd(XMVectorScale(newVec, aplha), XMVectorScale(prevVec, 1 - aplha));
       XMStoreFloat4A(&result, resVec);
@@ -456,9 +455,7 @@ namespace Pillow::Input
          len = XMVectorSubtract(len, XMVectorSet(deadL, deadL, deadR, deadR));
          len = XMVectorMultiply(len, XMVectorSet(denL, denL, denR, denR));
          len = XMVectorSaturate(len);
-         XMVECTOR stickV = XMVectorMultiply(dir, len);
-         XMFLOAT4A newGameStick;
-         XMStoreFloat4A(&newGameStick, stickV);
+         XMVECTOR newGameStick = XMVectorMultiply(dir, len);
          gameStick = InputFilter(newGameStick, gameStick);
       }
       else // Gamepad is not connected
