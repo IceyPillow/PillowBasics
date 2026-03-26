@@ -1003,6 +1003,19 @@ namespace
    class PipelineStateManager
    {
 
+   private:
+      // Feature level 12.0 supports at least shader model 5.1.
+      const wchar_t* const Targets[uint32_t(IPipelineState::ShaderType::Count)] =
+      {
+         L"cs_5_1",
+         L"as_x_x", // Unsupported now.
+         L"ms_x_x", // Unsupported now.
+         L"vs_5_1",
+         L"hs_5_1",
+         L"ds_5_1",
+         L"gs_5_1",
+         L"ps_5_1"
+      };
    };
 }
 

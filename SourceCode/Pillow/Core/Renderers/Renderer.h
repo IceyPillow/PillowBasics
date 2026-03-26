@@ -151,19 +151,19 @@ namespace Pillow::Graphics
          TriangleStrip // only vertex buffer
       };
 
-      enum class ShaderType : uint16_t
+      enum class ShaderType : uint8_t
       {
          // Generic computation
-         ComputeShader = 0x01,
+         ComputeShader,
          // Mesh shading pipeline (not supported currently)
-         AmplificationShader = 0x02,
-         MeshShader = 0x04,
+         AmplificationShader,
+         MeshShader,
          // Geometry pipeline
-         VertexShader = 0x08,
-         HullShader = 0x10,
-         DomainShader = 0x20,
-         GeometryShader = 0x40,
-         PixelShader = 0x80,
+         VertexShader,
+         HullShader,
+         DomainShader,
+         GeometryShader,
+         PixelShader,
          Count
       };
 
