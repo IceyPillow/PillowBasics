@@ -1027,6 +1027,48 @@ namespace
             signBlob->GetBufferSize(), IID_PPV_ARGS(UnifiedRootSign.GetAddressOf())));
       }
 
+      void CompileShader(ComPtr<ID3DBlob>& byteCode, path filePath,
+         IPipelineState::ShaderType shaderType, const std::vector<KeyValuePair>& macros)
+      {
+         // Set constants.
+         const uint32_t typeNum = uint32_t(shaderType);
+         std::vector<const wchar_t*> flags =
+         {
+            DXC_ARG_PACK_MATRIX_ROW_MAJOR,
+#ifdef PILLOW_DEBUG
+            DXC_ARG_DEBUG,
+            DXC_ARG_SKIP_OPTIMIZATIONS,
+#else
+            DXC_ARG_OPTIMIZATION_LEVEL3
+#endif
+         };
+         std::vector<DxcDefine> defines;
+         std::vector<std::u16string> stringHolder;
+         defines.reserve(macros.size());
+         stringHolder.reserve(2 * macros.size());
+         for (int32_t i = 0; i < macros.size(); i++)
+         {
+            const KeyValuePair& item = macros[i];
+            stringHolder.emplace_back(utf8::utf8to16(item.GetKey()));
+            stringHolder.emplace_back(utf8::utf8to16(item.GetValueRaw()));
+            defines.emplace_back(reinterpret_cast<const wchar_t*>(stringHolder[2 * i].c_str()),
+               reinterpret_cast<const wchar_t*>(stringHolder[2 * i + 1].c_str()));
+         }
+         // Build arguments.
+         ComPtr<IDxcCompilerArgs> argsCooked;
+         std::u16string entry = utf8::utf8to16(IPipelineState::EntryPoints[typeNum]);
+         Check_HRESULT(utils->BuildArguments(filePath.c_str(), reinterpret_cast<const wchar_t*>(entry.c_str()), Targets[typeNum],
+            flags.data(), flags.size(), defines.data(), defines.size(), argsCooked.GetAddressOf()));
+         // Compile.
+         ComPtr<IDxcBlob> shaderCooked;
+         ComPtr<IDxcResult> dxcResult;
+         ComPtr<IDxcBlobEncoding> shaderRaw;
+         Check_HRESULT(utils->LoadFile(filePath.c_str(), NULL, shaderRaw.GetAddressOf()));
+         DxcBuffer buffer = { shaderRaw->GetBufferPointer(), shaderRaw->GetBufferSize(), 0 };
+         Check_HRESULT(compiler->Compile(&buffer, argsCooked->GetArguments(), argsCooked->GetCount(),
+            includeHandler.Get(), IID_PPV_ARGS(&dxcResult)));
+         Check_HRESULT(dxcResult->GetResult(&shaderCooked));
+      }
    };
 }
 
