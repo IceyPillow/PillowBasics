@@ -85,32 +85,25 @@ bool KeyValuePair::operator==(const KeyValuePair& right) const
    return f_ValueRaw == right.f_ValueRaw;
 }
 
-string Pillow::GetResourcePath(const string& name)
+path Pillow::GetResourcePath(const path& name)
 {
-   using namespace std::filesystem;
-   static std::filesystem::path resourceRootPath;
+   static path resourceRootPath;
    if (resourceRootPath.empty())
    {
-      path currentPath = current_path();
+      path searchPath = std::filesystem::current_path();
       do
       {
-         path searchPath = currentPath / path("Resources");
-         if (exists(searchPath))
+         path candidatePath = searchPath / path("Resources");
+         if (exists(candidatePath))
          {
-            resourceRootPath = searchPath;
+            resourceRootPath = candidatePath;
             break;
          }
-         currentPath = currentPath.parent_path();
-      } while (currentPath != currentPath.root_path());
-      if (resourceRootPath.empty()) throw std::exception("\"Resources\" folder does not exist.");
+         searchPath = searchPath.parent_path();
+      } while (searchPath != searchPath.root_path());
+      if (resourceRootPath.empty()) throw std::exception("Resources folder does not exist.");
    }
-   string result;
-#if defined(_WIN64)
-   std::wstring _result = resourceRootPath / name;
-   utf8::utf16to8(_result.begin(), _result.end(), std::back_inserter(result));
-#elif defined(__ANDROID__)
-#endif
-   return result;
+   return resourceRootPath / name;
 }
 
 void Pillow::LogSystem(const string& text)

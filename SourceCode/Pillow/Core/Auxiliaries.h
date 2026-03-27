@@ -66,6 +66,7 @@ namespace Pillow
    // IV. The String Convention of Pillow Basics
    // Only use UTF-8 strings in Pillow Basics for coherence.
    using std::string;
+   using std::filesystem::path;
    using namespace DirectX;
 
    struct alignas(64) CacheLine
@@ -132,7 +133,7 @@ namespace Pillow
       return (uc & 0xF800) != 0xD800;
    }
 
-   string GetResourcePath(const string& name);
+   path GetResourcePath(const path& name);
    void LogSystem(const string& text);
    void LogGame(const string& text);
 
