@@ -947,15 +947,22 @@ namespace
       }
 
    public:
-      // A unified root signature.
-      inline static ComPtr<ID3D12RootSignature> UnifiedRootSign = nullptr;
-
-      // Pipeline state object
+      // Pipeline state object.
       ComPtr<ID3D12PipelineState> PSO;
    };
 
    class PipelineStateManager
    {
+   public:
+      PipelineStateManager()
+      {
+         SingletonCheck();
+         DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&library));
+         DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler));
+         DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils));
+         CreateUnifiedSignature();
+         utils->CreateDefaultIncludeHandler(&includeHandler);
+      }
 
    private:
       // Feature level 12.0 supports at least shader model 5.1.
@@ -970,6 +977,56 @@ namespace
          L"gs_5_1",
          L"ps_5_1"
       };
+
+   private:
+      // A unified root signature.
+      inline static ComPtr<ID3D12RootSignature> UnifiedRootSign;
+      std::vector<PipelineState> configs;
+
+      ComPtr<IDxcLibrary> library;
+      ComPtr<IDxcCompiler3> compiler;
+      ComPtr<IDxcUtils> utils;
+      ComPtr<IDxcIncludeHandler> includeHandler;
+
+   private:
+      void CreateUnifiedSignature()
+      {
+         path filePath = GetResourcePath(L"Shaders\\Pillow.hlsl");
+         // Build arguments.
+         ComPtr<IDxcCompilerArgs> argsCooked;
+         Check_HRESULT(utils->BuildArguments(filePath.c_str(), L"ROOT_SIGN",
+            L"rootsig_1_0", NULL, 0, NULL, 0, argsCooked.GetAddressOf()));
+         // Compile signature blob.
+         ComPtr<IDxcBlob> signBlob;
+         ComPtr<IDxcResult> dxcResult;
+         ComPtr<IDxcBlobEncoding> signRaw;
+         Check_HRESULT(utils->LoadFile(filePath.c_str(), NULL, signRaw.GetAddressOf()));
+         DxcBuffer buffer = { signRaw->GetBufferPointer(), signRaw->GetBufferSize(), 0 };
+         Check_HRESULT(compiler->Compile(&buffer, argsCooked->GetArguments(), argsCooked->GetCount(),
+            includeHandler.Get(), IID_PPV_ARGS(&dxcResult)));
+         HRESULT compileStatus;
+         Check_HRESULT(dxcResult->GetStatus(&compileStatus));
+         if(FAILED(compileStatus))
+         {
+            ComPtr<IDxcBlobUtf8> error;
+            Check_HRESULT(dxcResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&error), nullptr));
+            string errorMsg = "CreateUnifiedSignature error: ";
+            if (error && error->GetStringLength() > 0)
+            {
+               errorMsg += error->GetStringPointer();
+            }
+            else
+            {
+               errorMsg += "Unclear";
+            }
+            throw std::runtime_error(errorMsg.c_str());
+         }
+         Check_HRESULT(dxcResult->GetResult(&signBlob));
+         // Create signature.
+         Check_HRESULT(device->CreateRootSignature(0, signBlob->GetBufferPointer(),
+            signBlob->GetBufferSize(), IID_PPV_ARGS(UnifiedRootSign.GetAddressOf())));
+      }
+
    };
 }
 
