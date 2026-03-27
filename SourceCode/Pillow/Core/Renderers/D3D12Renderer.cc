@@ -935,52 +935,6 @@ namespace
       }
    };
 
-   class HLSLInclude : public ID3DInclude
-   {
-      ReadonlyProperty(std::filesystem::path, LocalPath)
-
-   public:
-      HLSLInclude(std::filesystem::path location)
-      {
-         f_LocalPath = location.parent_path();
-      }
-
-      HRESULT Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
-      {
-         std::filesystem::path location = GetResourcePath("Shaders");
-         location = location / pFileName;
-         // If the root dir doesn't own the file, use the local dir.
-         // Ignore D3D_INCLUDE_TYPE, which makes things complicated.
-         if (!std::filesystem::exists(location))
-         {
-            location = f_LocalPath;
-            location /= pFileName;
-            if (!std::filesystem::exists(location)) return E_FAIL;
-         }
-         std::ifstream file(location, std::ios::binary | std::ios::ate);
-         if (!file.is_open()) return E_FAIL;
-         uint32_t size = uint32_t(file.tellg());
-         file.seekg(0, std::ios::beg);
-         buffer = std::make_unique<char[]>(size);
-         if (!file.read(buffer.get(), size)) return E_FAIL;
-         file.close();
-         *ppData = buffer.get();
-         *pBytes = size;
-         return S_OK;
-      }
-
-      HRESULT Close(LPCVOID pData)
-      {
-         if (pData != buffer.get()) throw std::runtime_error("HLSLInclude cannot be closed safely.");
-         buffer.reset();
-         return S_OK;
-      }
-
-   private:
-      // Modern C++ memory management.
-      std::unique_ptr<char[]> buffer;
-   };
-
    class PipelineState final : public IPipelineState
    {
    public:
