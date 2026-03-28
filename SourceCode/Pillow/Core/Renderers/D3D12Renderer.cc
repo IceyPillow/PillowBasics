@@ -1032,8 +1032,11 @@ namespace
       {
          // Set constants.
          const uint32_t typeNum = uint32_t(shaderType);
+         path shaderDir = GetResourcePath(path(L"Shaders"));
          std::vector<const wchar_t*> flags =
          {
+            L"-I",
+            shaderDir.c_str(),
             DXC_ARG_PACK_MATRIX_ROW_MAJOR,
 #ifdef PILLOW_DEBUG
             DXC_ARG_DEBUG,

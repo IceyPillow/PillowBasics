@@ -1,12 +1,15 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 
 // Common HLSL header, all shaders should include it.
+// To avoid importing unwanted shader entries, this header will not include any shader entries.
+// If you plan to use standard shader entries, please include other independent headers.
 //
 // Annotations:
-// #include only supports relative paths
+// #include search paths: The current folder of a file, the root shader folder.
 // Shader Model = 6.4
 // mtx = matrix
 
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
 // Static constants
@@ -134,7 +137,7 @@ TextureCube Cubemaps[] : register(t0, space2);
    "CBV(b0), " \
    "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT, " TEX_WRAP(0) ", " CMP_NV ")"
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////120-Slashes
 // Input layouts
 
 struct BasicVertex
@@ -218,7 +221,7 @@ struct PixelOutGBuffers
    float4 gBuffer1 : SV_Target2;   // rgb(normal)      + a(metallic)
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////120-Slashes
 // Functions
 
 float4 SampleTexSmart(Texture2D tex, float2 uv, uint samplerIdx)
