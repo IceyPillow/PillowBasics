@@ -6,7 +6,7 @@
 # This fact reflects one significant belief of Pillow Basics —— useless things ain't used.
 # We will never pursue "advanced techs" unless they are better or needed.
 
-set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib cgltf stb_truetype)
+set(LIBRARIES DirectXMath UTF8cc LodePNG PhysX HashLib cgltf stb_truetype JSONcc)
 if(WIN32)
     list(APPEND LIBRARIES DirectX12Agility DXCompiler XeSS)
 endif()
@@ -114,6 +114,13 @@ file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_library(stb_truetype INTERFACE ${SOURCES})
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/stb_truetype" FILES ${SOURCES})
+
+# JSONcc
+file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+   "${CMAKE_CURRENT_SOURCE_DIR}/json-3.12.0/*.h"
+)
+add_library(JSONcc INTERFACE ${SOURCES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/json-3.12.0" FILES ${SOURCES})
 
 if(WIN32)
    # DirectX12Agility
