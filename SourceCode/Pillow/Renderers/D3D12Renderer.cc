@@ -79,6 +79,9 @@ namespace
       DXGI_FORMAT_R8G8_SNORM,
       DXGI_FORMAT_R8G8B8A8_UNORM,
       DXGI_FORMAT_R8G8B8A8_UNORM,
+      DXGI_FORMAT_R16_FLOAT,
+      DXGI_FORMAT_R16G16_FLOAT,
+      DXGI_FORMAT_R16G16B16A16_FLOAT
    };
    const DXGI_FORMAT NativeBCTexFmt[int32_t(TextureInfo::Format::Count)]
    {
@@ -86,6 +89,9 @@ namespace
       DXGI_FORMAT_BC5_UNORM,
       DXGI_FORMAT_BC1_UNORM,
       DXGI_FORMAT_BC3_UNORM,
+      DXGI_FORMAT_UNKNOWN,
+      DXGI_FORMAT_UNKNOWN,
+      DXGI_FORMAT_UNKNOWN
    };
    constexpr uint32_t NativeBCBlockSize[int32_t(TextureInfo::Format::Count)]
    {

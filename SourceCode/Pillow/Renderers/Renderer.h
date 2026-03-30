@@ -167,7 +167,7 @@ namespace Pillow::Graphics
       enum class BlendMode : uint8_t
       {
          OverWrite, // (Aka. Opaque) No blending, write to render targets forcely.
-         Accumulation, // (Aka. additive) Accumulate color values.
+         Accumulation, // (Aka. Additive) Accumulate color values.
          AlphaBlend, // (Aka. Straight Alpha) Blend based on the alpha channel.
       };
 
@@ -220,7 +220,8 @@ namespace Pillow::Graphics
          VertexType Vertex;
          DepthMode Depth;
          BlendMode Blend;
-         uint16_t RTNum;
+         uint8_t RTNum;
+         TextureInfo::Format RT_Formats[8];
       };
 
    public:

@@ -51,6 +51,9 @@ namespace Pillow::Graphics
          UnsignedNormalized_R8G8,
          UnsignedNormalized_R8G8B8,
          UnsignedNormalized_R8G8B8A8,
+         Float_R16,
+         Float_R16G16,
+         Float_R16G16B16A16,
          Count
       };
 
