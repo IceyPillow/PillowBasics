@@ -24,10 +24,12 @@ namespace Pillow::Graphics
 
    class IRenderer;
 
-   typedef uint32_t ResHandle; // 28 bits for index, 4 bits for type
+   // Resource handle. 4-bit type + 28-bit index
+   typedef uint32_t ResHandle;
 
-   constexpr ResHandle NullResHandle = 0;
-   constexpr uint32_t ResourceTypeMask = 0xF << 28;
+   const ResHandle ResHandleNULL = 0;
+   const uint32_t ResIndexBits = 28;
+   const uint32_t ResourceTypeMask = 0xF0000000;
 
    enum class LightType : uint8_t
    {
@@ -49,14 +51,15 @@ namespace Pillow::Graphics
    enum class ResourceType : uint32_t
    {
       None = 0,
-      Mesh = 0X1 << 28,
-      PiplelineState = 0X2 << 28,
-      RenderTargetView = 0X3 << 28,
-      DepthStencilVIew = 0X4 << 28,
-      ShaderResourceView = 0X5 << 28,
-      ConstantBufferView = 0X6 << 28,
-      UnorderedAccessView = 0X7 << 28,
-      ReadbackBuffer = 0X8U << 28,
+      Mesh = 1 << ResIndexBits,
+      PiplelineState = 2 << ResIndexBits,
+      RenderTargetView = 3 << ResIndexBits,
+      DepthStencilVIew = 4 << ResIndexBits,
+      ShaderResourceView = 5 << ResIndexBits,
+      ConstantBufferView = 6 << ResIndexBits,
+      UnorderedAccessView = 7 << ResIndexBits,
+      ReadbackBuffer = 8 << ResIndexBits,
+      Count = 8
    };
 
    // Those resources have no handles, client should refer to them by this enum type.
@@ -139,11 +142,12 @@ namespace Pillow::Graphics
    };
    static_assert(std::is_trivially_copyable_v<GenericRendererCommand>); //POD test
 
-   // Utilize a unified root signature to achieve a modern bindless architecture.
+   // Programmers call it pipeline state, and artists call it material. They are essentially the same thing.
+   // * Utilize a unified root signature to achieve a modern bindless architecture.
    class IPipelineState
    {
    public:
-      // To draw a mass of grass, GPU instance(triangle input) is better than geometry shader(point input).
+      // To draw a mass of grass, GPU instancing (with triangle input) is better than using geometry shader (with point input).
       // Hence, the point topology is removed.
       enum class TopologyType : uint8_t
       {
@@ -151,20 +155,21 @@ namespace Pillow::Graphics
          TriangleStrip // only vertex buffer
       };
 
-      enum class ShaderType : uint8_t
+      enum class ShaderType : uint16_t
       {
          // Generic computation
-         ComputeShader,
+         ComputeShader = 0x001,
          // Mesh shading pipeline (not supported currently)
-         AmplificationShader,
-         MeshShader,
+         AmplificationShader = 0x002,
+         MeshShader = 0x004,
          // Geometry pipeline
-         VertexShader,
-         HullShader,
-         DomainShader,
-         GeometryShader,
-         PixelShader,
-         Count
+         VertexShader = 0x008,
+         HullShader = 0x010,
+         DomainShader = 0x020,
+         GeometryShader = 0x040,
+         PixelShader = 0x080,
+         Count = 8
+      };
       };
 
       // C++20 doesn't have reflections.
@@ -367,7 +372,7 @@ namespace Pillow::Graphics
    }
 
    //  Set 1~7 render targets and 1 depth buffer.
-   ForceInline void CmdSetRenderTargets(ResHandle handles[], int32_t count, ResHandle depthHandle = NullResHandle)
+   ForceInline void CmdSetRenderTargets(ResHandle handles[], int32_t count, ResHandle depthHandle = ResHandleNULL)
    {
       if (count > 7) throw std::runtime_error("Too many render targets to set. Max is 7.");
       GenericRendererCommand cmd;
