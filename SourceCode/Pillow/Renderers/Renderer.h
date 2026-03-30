@@ -199,6 +199,21 @@ namespace Pillow::Graphics
       IPipelineState(string originalName, const std::vector<KeyValuePair>& macros,
          int32_t renderTargetNum, uint16_t activeShaders, TopologyType topology);
       bool EqualTo(const IPipelineState& right) const;
+
+      inline static uint16_t CreateShaderMask(std::initializer_list<ShaderType> shaderTypes)
+      {
+         uint16_t mask = 0;
+         for (ShaderType type : shaderTypes)
+         {
+            mask |= uint16_t(type);
+         }
+         return mask;
+      }
+
+      inline static bool CheckShaderMask(uint16_t shaderMask, ShaderType type)
+      {
+         return (shaderMask & uint16_t(type)) != 0;
+      }
    };
 
    // Generic renderer, abstract class (resembles an interface in C#).
@@ -291,9 +306,12 @@ namespace Pillow::Graphics
    //};
 #endif
 
-   ForceInline ResourceType GetResourceType(ResHandle handle) { return ResourceType(handle & ResourceTypeMask); }
+   inline ResourceType GetResourceType(ResHandle handle) { return ResourceType(handle & ResourceTypeMask); }
 
-   ForceInline bool CheckHandle(ResHandle handle) { return handle != 0; }
+   inline uint32_t GetResourceIndex(ResHandle handle) { return handle & ~ResourceTypeMask; }
+
+   inline bool CheckHandle(ResHandle handle) { return GetResourceIndex(handle) != 0; }
+
 
    // Create an empty command.
    ForceInline void CmdNone()
