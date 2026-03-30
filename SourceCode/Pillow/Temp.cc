@@ -1,8 +1,8 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
-#include "Core/Resources/Mesh.h"
+#include "Resources/Mesh.h"
 #include "DirectXMath-apr2025/DirectXMath.h"
-#include "Core/Auxiliaries.h"
-#include "Core/Resources/Texture.h"
+#include "Auxiliaries.h"
+#include "Resources/Texture.h"
 
 #include "PhysX-4.1/PxPhysicsAPI.h"
 #include <iostream>

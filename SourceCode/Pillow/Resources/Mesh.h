@@ -1,8 +1,8 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
 #pragma once
 #include <vector>
-#include "Core/Auxiliaries.h"
-#include "Core/Constants.h"
+#include "Auxiliaries.h"
+#include "Constants.h"
 #include "Texture.h"
 
 using namespace Pillow::Graphics;
