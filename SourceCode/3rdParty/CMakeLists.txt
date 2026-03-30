@@ -143,7 +143,7 @@ if(WIN32)
    add_library(DXCompiler INTERFACE ${SOURCES})
    source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026" FILES ${SOURCES})
    SET(LIBS
-      general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxil.lib"
+      # dxil.lib is conflicted with dxcompiler.lib, cannot link it.
       general "${CMAKE_CURRENT_SOURCE_DIR}/dxc_feb2026/binary/dxcompiler.lib"
    )
    target_link_libraries(DXCompiler INTERFACE ${LIBS})
