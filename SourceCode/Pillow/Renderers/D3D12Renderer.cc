@@ -956,11 +956,10 @@ namespace
       PipelineStateManager()
       {
          SingletonCheck();
-         DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&library));
-         DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler));
-         DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils));
+         Check_HRESULT(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler)));
+         Check_HRESULT(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)));
+         Check_HRESULT(utils->CreateDefaultIncludeHandler(&includeHandler));
          CreateUnifiedSignature();
-         utils->CreateDefaultIncludeHandler(&includeHandler);
       }
 
    private:
@@ -977,15 +976,13 @@ namespace
          L"ps_5_1"
       };
 
-   private:
-      // A unified root signature.
-      inline static ComPtr<ID3D12RootSignature> UnifiedRootSign;
-      std::vector<PipelineState> configs;
-
-      ComPtr<IDxcLibrary> library;
       ComPtr<IDxcCompiler3> compiler;
       ComPtr<IDxcUtils> utils;
       ComPtr<IDxcIncludeHandler> includeHandler;
+
+      // A unified root signature.
+      ComPtr<ID3D12RootSignature> UnifiedRootSign{};
+      std::vector<PipelineState> PipelineStates{};
 
    private:
       void CreateUnifiedSignature()
