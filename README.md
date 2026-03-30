@@ -16,6 +16,6 @@ Folders and files must obey UpperCamelCase.<br><br>
 ### Official Getting-Started Document
 [GETTING_STARTED.md](GETTING_STARTED.md)<br><br>
 ### Licenses
-1. PillowBasics is under the BSD 2-Clause license.<br/>
+1. PillowBasics is under the 3-Clause BSD License.<br/>
 2. Under ***"/SourceCode/3rdParty"***, each sub-folder contains 3rd-party licenses.<br>
 3. Under ***"/SourceCode/3rdParty/EmbeddedCodeLicenses"***, licenses for internal reference code are provided; usage clarifications are provided as well.
