@@ -155,6 +155,22 @@ namespace Pillow::Graphics
          TriangleStrip // only vertex buffer
       };
 
+      // How to handle the depth buffer.
+      enum class DepthMode : uint8_t
+      {
+         ZTest_and_ZWrite, // Perform z-tests and write to the z-buffer.
+         ZTest, // Only perform z-tests, don't modify the z-buffer.
+         Disabled // Disable z-buffer, write to render targets forcely.
+      };
+
+      // How to blend and write colors in a render target.
+      enum class BlendMode : uint8_t
+      {
+         OverWrite, // (Aka. Opaque) No blending, write to render targets forcely.
+         Accumulation, // (Aka. additive) Accumulate color values.
+         AlphaBlend, // (Aka. Straight Alpha) Blend based on the alpha channel.
+      };
+
       enum class ShaderType : uint16_t
       {
          // Generic computation
@@ -170,6 +186,17 @@ namespace Pillow::Graphics
          PixelShader = 0x080,
          Count = 8
       };
+
+      static inline const std::string ShaderAcronyms[uint32_t(ShaderType::Count)] =
+      {
+         "CS",
+         "AS",
+         "MS",
+         "VS",
+         "HS",
+         "DS",
+         "GS",
+         "PS"
       };
 
       // C++20 doesn't have reflections.
@@ -185,19 +212,25 @@ namespace Pillow::Graphics
          "PixelShader"
       };
 
+      struct Description
+      {
+         // VS+PS = 0x08 | 0x80 = 0x0088; CS = 0x0001, etc. (bit flags)
+         uint16_t ShaderMask;
+         TopologyType Topology;
+         VertexType Vertex;
+         DepthMode Depth;
+         BlendMode Blend;
+         uint16_t RTNum;
+      };
+
    public:
-      // Example: NameID = "HelloWorld_0088@ASSERT_ON@Quality=2"
+      // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
       const std::string NameID;
       const std::unique_ptr<std::vector<KeyValuePair>> Macros;
-      
-      const int32_t RenderTargetNum;
-      // VS+PS = 0x08 | 0x80 = 0x0088; CS = 0x0001, etc. (bit flags)
-      const uint16_t FlagActiveShaders;
-      const TopologyType Topology;
+      const Description Desc;
 
       IPipelineState() = delete;
-      IPipelineState(string originalName, const std::vector<KeyValuePair>& macros,
-         int32_t renderTargetNum, uint16_t activeShaders, TopologyType topology);
+      IPipelineState(string originalName, std::vector<KeyValuePair>& macros, Description& desc);
       bool EqualTo(const IPipelineState& right) const;
 
       inline static uint16_t CreateShaderMask(std::initializer_list<ShaderType> shaderTypes)

@@ -938,9 +938,8 @@ namespace
    class PipelineState final : public IPipelineState
    {
    public:
-      PipelineState(string name, const std::vector<KeyValuePair>& macros,
-         int32_t rtNum, uint16_t activeShaders, TopologyType topology, ComPtr<ID3D12PipelineState>&& pso) :
-         IPipelineState(name, macros, rtNum, activeShaders, topology),
+      PipelineState(string name, std::vector<KeyValuePair>& macros, Description& desc, ComPtr<ID3D12PipelineState>&& pso) :
+         IPipelineState(name, macros, desc),
          PSO(std::move(pso))
       {
          // Empty

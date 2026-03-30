@@ -18,12 +18,27 @@ namespace
    std::stop_source signalTerminate;
 
 
-   std::string MakeID(string originalName, uint16_t activeShaders, const std::vector<KeyValuePair>& macros)
+   // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
+   std::string MakePipelineStateID(const string& originalName, const std::vector<KeyValuePair>& macros, const IPipelineState::Description& desc)
    {
-      string name = originalName;
-      name += std::format("_{:04x}", activeShaders);
+      const char separator = ',';
       const char prefixMacro = '@';
       const char prefixValue = '=';
+      string name = originalName;
+      name += "@Stages=";
+      using ShaderType = IPipelineState::ShaderType;
+      for (uint16_t i = 1; i <= uint16_t(ShaderType::Count); i++)
+      {
+         if (i != 1)
+         {
+            name += separator;
+         }
+         if (IPipelineState::CheckShaderMask(desc.ShaderMask, ShaderType(i)))
+         {
+            name += IPipelineState::ShaderAcronyms[i];
+         }
+      }
+      name += std::format("@Depth={}@Blend={}", int32_t(desc.Depth), int32_t(desc.Blend));
       for (const auto& pair : macros)
       {
          name += prefixMacro + pair.GetKey();
@@ -36,13 +51,10 @@ namespace
    }
 }
 
-IPipelineState::IPipelineState(string originalName, const std::vector<KeyValuePair>& macros,
-   int32_t renderTargetNum, uint16_t activeShaders, TopologyType topology) :
-   NameID(MakeID(originalName, activeShaders, macros)),
+IPipelineState::IPipelineState(string originalName, std::vector<KeyValuePair>& macros, Description& desc) :
+   NameID(MakePipelineStateID(originalName, macros, desc)),
    Macros(macros.empty() ? nullptr : std::make_unique<std::vector<KeyValuePair>>(macros)),
-   RenderTargetNum(renderTargetNum),
-   FlagActiveShaders(activeShaders),
-   Topology(topology)
+   Desc(desc)
 {
    // Empty body
 }
