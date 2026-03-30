@@ -10,7 +10,7 @@ using namespace DirectX;
 
 namespace Pillow::Graphics
 {
-   enum class VertexType
+   enum class VertexType : uint8_t
    {
       Basic,
       Static,

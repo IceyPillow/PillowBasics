@@ -150,11 +150,21 @@ namespace
          Pillow::Hidden::WheelAccumulation = GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA;
          break;
       }
-      case WM_KEYDOWN: // Use RawInput to process keyboard input.
+      // Use RawInput to process keyboard input.
+      case WM_KEYDOWN:
       case WM_SYSKEYDOWN:
-      case WM_KEYUP:
-      case WM_SYSKEYUP:
       {
+         //if (wParam == VK_F4)
+         //{
+         //   // Disable mouse acceleration.
+         //   int32_t mouseParams[3];
+         //   SystemParametersInfo(SPI_GETMOUSE, 0, mouseParams, 0);
+         //   if(mouseParams[2] == 1)
+         //   {
+         //      mouseParams[2] = 0;
+         //      SystemParametersInfo(SPI_SETMOUSE, 0, mouseParams, SPIF_SENDCHANGE);
+         //   }
+         //}
          break;
       }
       case WM_CHAR:

@@ -227,8 +227,8 @@ int32_t Pillow::Graphics::GetPixelSize(const TextureInfo& info)
 void Pillow::Graphics::LoadTexture(const string& relativePath)
 {
    // Read the binary file.
-   string path = GetResourcePath(relativePath);
-   std::ifstream file(path, std::ios::binary | std::ios::ate);
+   path filePath = GetResourcePath(path(relativePath));
+   std::ifstream file(filePath, std::ios::binary | std::ios::ate);
    if (!file.is_open()) throw std::runtime_error("Unable to open file");
    std::streamsize size = file.tellg();
    file.seekg(0, std::ios::beg);
@@ -244,17 +244,17 @@ void Pillow::Graphics::LoadTexture(const string& relativePath)
    lodepng::decode(imageData, w, h, state, fileData);
    if (state.info_raw.bitdepth != 8) throw std::exception("Bitdepth should be 8.");
    if (w!=h) throw std::exception("The image should be square.");
-   //GenericTextureInfo texInfo;
+   //TextureInfo texInfo;
    //if (state.info_raw.colortype == LCT_GREY)
    //{
-   //   texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8, w);
+   //   texInfo = TextureInfo(GenericTexFmt::UnsignedNormalized_R8, w);
    //}
    //else if (state.info_raw.colortype == LCT_RGB)
    //{
-   //   texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
+   //   texInfo = TextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    //}
    //else if (state.info_raw.colortype == LCT_RGBA)
    //{
-   //   texInfo = GenericTextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
+   //   texInfo = TextureInfo(GenericTexFmt::UnsignedNormalized_R8G8B8A8, w);
    //}
 }
