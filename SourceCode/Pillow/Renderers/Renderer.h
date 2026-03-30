@@ -155,6 +155,12 @@ namespace Pillow::Graphics
          TriangleStrip // only vertex buffer
       };
 
+      enum class CullMode : uint8_t
+      {
+         KeepFrontPrimitives,
+         KeepAllPrimitives
+      };
+
       // How to handle the depth buffer.
       enum class DepthMode : uint8_t
       {
@@ -217,6 +223,7 @@ namespace Pillow::Graphics
          // VS+PS = 0x08 | 0x80 = 0x0088; CS = 0x0001, etc. (bit flags)
          uint16_t ShaderMask;
          TopologyType Topology;
+         CullMode Cull;
          VertexType Vertex;
          DepthMode Depth;
          BlendMode Blend;
