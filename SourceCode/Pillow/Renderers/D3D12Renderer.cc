@@ -17,8 +17,8 @@
 #include <shared_mutex>
 #include <memory>
 #include <vector>
+#include <set>
 #include <queue>
-#include <deque>
 #include <array>
 #include <ranges>
 #include <algorithm>
@@ -60,6 +60,7 @@ namespace
    const D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_12_0;
    // XeSS 2 requires shader model 6.4.
    const D3D_SHADER_MODEL MinShaderModelLevel = D3D_SHADER_MODEL_6_4;
+   const int32_t AlphaToCoverageSampleNum = 4;
    const int32_t AlignmentTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
    const int32_t AlignmentTextureSubres = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
    const int32_t AlignmentConstBuffer = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
@@ -961,11 +962,92 @@ namespace
    public:
       PipelineStateManager()
       {
+         const int32_t PSOReservedNum = 600;
          SingletonCheck();
          Check_HRESULT(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler)));
          Check_HRESULT(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)));
          Check_HRESULT(utils->CreateDefaultIncludeHandler(&includeHandler));
          CreateUnifiedSignature();
+         PipelineStates.reserve(PSOReservedNum);
+      }
+
+      ResHandle Add(string name, std::vector<KeyValuePair>& macros, IPipelineState::Description& desc, path filePath)
+      {
+         using enum IPipelineState::ShaderType;
+         const uint32_t shaderMask = desc.ShaderMask;
+         std::vector<ComPtr<IDxcBlob>> shaders;
+         shaders.reserve(int32_t(Count));
+         ComPtr<ID3D12PipelineState> pso;
+         if (IPipelineState::CheckShaderMask(shaderMask, ComputeShader))
+         {
+            shaders.emplace_back(CompileShader(filePath, ComputeShader, macros));
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, AmplificationShader))
+         {
+            shaders.emplace_back(CompileShader(filePath, AmplificationShader, macros));
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, MeshShader))
+         {
+            shaders.emplace_back(CompileShader(filePath, MeshShader, macros));
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, VertexShader))
+         {
+            shaders.emplace_back(CompileShader(filePath, VertexShader, macros));
+            if (desc.Vertex == VertexType::Unknown)
+            {
+               desc.Vertex = ReflectVertexType(shaders.back());
+            }
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, HullShader))
+         {
+            shaders.emplace_back(CompileShader(filePath, HullShader, macros));
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, DomainShader))
+         {
+            shaders.emplace_back(CompileShader(filePath, DomainShader, macros));
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, GeometryShader))
+         {
+            shaders.emplace_back(CompileShader(filePath, GeometryShader, macros));
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, PixelShader))
+         {
+            shaders.emplace_back(CompileShader(filePath, PixelShader, macros));
+            if (desc.RTNum == 0)
+            {
+               desc.RTNum = ReflectRenderTargetNum(shaders.back());
+            }
+         }
+         pso = CreatePSO(shaders, desc);
+         // Create PipelineState and return a handle.
+         ResHandle handle;
+         if (freeSlots.empty())
+         {
+            PipelineStates.emplace_back(std::make_unique<PipelineState>(name, macros, desc, std::move(pso)));
+            handle = uint32_t(PipelineStates.size()) | uint32_t(ResourceType::PiplelineState);
+         }
+         else
+         {
+            auto node = freeSlots.extract(freeSlots.begin());
+            uint32_t idx = node.value();
+            PipelineStates[idx] = std::make_unique<PipelineState>(name, macros, desc, std::move(pso));
+            handle = (idx + 1) | uint32_t(ResourceType::PiplelineState);
+         }
+         return handle;
+      }
+
+      void Release(ResHandle& handle)
+      {
+         uint32_t idx = CheckExternalHandleAndGetIdx(handle);
+         PipelineStates[idx].reset();
+         freeSlots.insert(idx);
+         handle = ResHandleNULL;
+      }
+
+      PipelineState& Get(ResHandle handle)
+      {
+         uint32_t idx = CheckExternalHandleAndGetIdx(handle);
+         return *PipelineStates[idx];
       }
 
    private:
@@ -988,9 +1070,19 @@ namespace
 
       // A unified root signature.
       ComPtr<ID3D12RootSignature> UnifiedRootSign{};
-      std::vector<PipelineState> PipelineStates{};
+      std::vector<std::unique_ptr<PipelineState>> PipelineStates{};
+      std::set<uint32_t> freeSlots;
 
    private:
+      uint32_t CheckExternalHandleAndGetIdx(ResHandle handle)
+      {
+         CheckHandle(handle);
+         if (GetResourceType(handle) != ResourceType::PiplelineState) throw std::runtime_error("Invalid handle type.");
+         uint32_t idx = GetResourceIndex(handle) - 1;
+         if (idx >= PipelineStates.size()) throw std::runtime_error("Invalid handle index.");
+         if (freeSlots.contains(idx)) throw std::runtime_error("The handle has been deleted.");
+         return idx;
+      }
       void CreateUnifiedSignature()
       {
          path filePath = GetResourcePath(L"Shaders\\Pillow.hlsl");
@@ -1029,11 +1121,10 @@ namespace
             signBlob->GetBufferSize(), IID_PPV_ARGS(UnifiedRootSign.GetAddressOf())));
       }
 
-      void CompileShader(ComPtr<ID3DBlob>& byteCode, path filePath,
-         IPipelineState::ShaderType shaderType, const std::vector<KeyValuePair>& macros)
+      ComPtr<IDxcBlob> CompileShader(path filePath, IPipelineState::ShaderType type, std::vector<KeyValuePair>& macros)
       {
          // Set constants.
-         const uint32_t typeNum = uint32_t(shaderType);
+         const uint32_t typeNum = uint32_t(type);
          path shaderDir = GetResourcePath(path(L"Shaders"));
          std::vector<const wchar_t*> flags =
          {
@@ -1073,6 +1164,206 @@ namespace
          Check_HRESULT(compiler->Compile(&buffer, argsCooked->GetArguments(), argsCooked->GetCount(),
             includeHandler.Get(), IID_PPV_ARGS(&dxcResult)));
          Check_HRESULT(dxcResult->GetResult(&shaderCooked));
+         return shaderCooked;
+      }
+
+      VertexType ReflectVertexType(ComPtr<IDxcBlob>& vertexShader)
+      {
+         DxcBuffer buffer = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize(), 0 };
+         ComPtr<ID3D12ShaderReflection> reflection;
+         Check_HRESULT(utils->CreateReflection(&buffer, IID_PPV_ARGS(&reflection)));
+         D3D12_SHADER_DESC shaderDesc;
+         reflection->GetDesc(&shaderDesc);
+         if(shaderDesc.InputParameters == 3)
+         {
+            return VertexType::Basic;
+         }
+         else if(shaderDesc.InputParameters == 5)
+         {
+            return VertexType::Static;
+         }
+         else
+         {
+            return VertexType::Skeletal;
+         }
+      }
+
+      uint8_t ReflectRenderTargetNum(ComPtr<IDxcBlob>& pixelShader)
+      {
+         DxcBuffer buffer = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize(), 0 };
+         ComPtr<ID3D12ShaderReflection> reflection;
+         Check_HRESULT(utils->CreateReflection(&buffer, IID_PPV_ARGS(&reflection)));
+         D3D12_SHADER_DESC shaderDesc;
+         reflection->GetDesc(&shaderDesc);
+         return static_cast<uint8_t>(shaderDesc.OutputParameters);
+      }
+
+      ComPtr<ID3D12PipelineState> CreatePSO(std::vector<ComPtr<IDxcBlob>>& shaders, const IPipelineState::Description& desc)
+      {
+         using enum IPipelineState::TopologyType;
+         using enum IPipelineState::CullMode;
+         using enum IPipelineState::DepthMode;
+         using enum IPipelineState::BlendMode;
+         using enum IPipelineState::ShaderType;
+         PIPELINE_STATE_STREAM stream{};
+         const uint16_t shaderMask = desc.ShaderMask;
+         int32_t idx = 0;
+         if (IPipelineState::CheckShaderMask(shaderMask, ComputeShader))
+         {
+            stream.CS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
+            idx++;
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, AmplificationShader))
+         {
+            stream.AS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
+            idx++;
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, MeshShader))
+         {
+            stream.MS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
+            idx++;
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, VertexShader))
+         {
+            stream.VS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
+            idx++;
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, HullShader))
+         {
+            stream.HS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
+            idx++;
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, DomainShader))
+         {
+            stream.DS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
+            idx++;
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, GeometryShader))
+         {
+            stream.GS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
+            idx++;
+         }
+         if (IPipelineState::CheckShaderMask(shaderMask, PixelShader))
+         {
+            stream.PS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
+            idx++;
+         }
+
+         stream.pRootSignature = UnifiedRootSign.Get();
+         
+         if(desc.Vertex == VertexType::Basic)
+         {
+            stream.InputLayout = InputLayoutBasic;
+         }
+         else if(desc.Vertex == VertexType::Static)
+         {
+            stream.InputLayout = InputLayoutStatic;
+         }
+         else
+         {
+            stream.InputLayout = InputLayoutSkeletal;
+         }
+
+         stream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+         auto rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+         if (desc.Cull == KeepFrontPrimitives)
+         {
+            rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+         }
+         else
+         {
+            rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+         }
+         stream.RasterizerState = rasterizerDesc;
+
+         D3D12_RT_FORMAT_ARRAY fmtArray{ {}, desc.RTNum };
+         for(int32_t i = 0; i < desc.RTNum; i++)
+         {
+            fmtArray.RTFormats[i] = NativeTexFmt[int32_t(desc.RT_Formats[i])];
+         }
+         stream.RTVFormats = fmtArray;
+
+         auto sampleDesc = DXGI_SAMPLE_DESC{ 1, 0 };
+         if (desc.Blend == AlphaToCoverage)
+         {
+            sampleDesc.Count = AlphaToCoverageSampleNum;
+         }
+         stream.SampleDesc = sampleDesc;
+         stream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+
+         auto dsDesc = CD3DX12_DEPTH_STENCIL_DESC1(D3D12_DEFAULT);
+         dsDesc.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL; // Reverse-Z [1, 0]
+         //dsDesc.DepthBoundsTestEnable = true;
+         if (desc.Depth == ZTest_and_ZWrite)
+         {
+            dsDesc.DepthEnable = true;
+            dsDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+         }
+         else if (desc.Depth == ZTest)
+         {
+            dsDesc.DepthEnable = true;
+            dsDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+         }
+         else
+         {
+            dsDesc.DepthEnable = false;
+            dsDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+         }
+         stream.DepthStencilState = dsDesc;
+
+         auto blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+         if (desc.Blend == OverWrite)
+         {
+            blendDesc.RenderTarget[0] =
+            {
+               false, false,
+               D3D12_BLEND_ZERO, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
+               D3D12_BLEND_ZERO, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
+               D3D12_LOGIC_OP_NOOP,
+               D3D12_COLOR_WRITE_ENABLE_ALL
+            };
+         }
+         else if (desc.Blend == Accumulation)
+         {
+            blendDesc.RenderTarget[0] =
+            {
+               true, false,
+               D3D12_BLEND_ONE, D3D12_BLEND_ONE, D3D12_BLEND_OP_ADD,
+               D3D12_BLEND_ONE, D3D12_BLEND_ONE, D3D12_BLEND_OP_ADD,
+               D3D12_LOGIC_OP_NOOP,
+               D3D12_COLOR_WRITE_ENABLE_ALL
+            };
+         }
+         else if (desc.Blend == AlphaBlend)
+         {
+            blendDesc.RenderTarget[0] =
+            {
+               true, false,
+               D3D12_BLEND_SRC_ALPHA, D3D12_BLEND_INV_SRC_ALPHA, D3D12_BLEND_OP_ADD,
+               D3D12_BLEND_ZERO, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
+               D3D12_LOGIC_OP_NOOP,
+               D3D12_COLOR_WRITE_ENABLE_ALL & ~D3D12_COLOR_WRITE_ENABLE_ALPHA
+            };
+         }
+         else
+         {
+            blendDesc.AlphaToCoverageEnable = true;
+            blendDesc.RenderTarget[0] =
+            {
+               false, false,
+               D3D12_BLEND_ZERO, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
+               D3D12_BLEND_ZERO, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
+               D3D12_LOGIC_OP_NOOP,
+               D3D12_COLOR_WRITE_ENABLE_ALL
+            };
+         }
+         stream.BlendState = blendDesc;
+
+         ComPtr<ID3D12PipelineState> pso;
+         D3D12_PIPELINE_STATE_STREAM_DESC streamDesc = {sizeof(stream), &stream};
+         Check_HRESULT(device->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso)));
+         return pso;
       }
    };
 }

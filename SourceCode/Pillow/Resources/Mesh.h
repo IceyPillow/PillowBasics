@@ -12,6 +12,7 @@ namespace Pillow::Graphics
 {
    enum class VertexType : uint8_t
    {
+      Unknown,
       Basic,
       Static,
       Skeletal

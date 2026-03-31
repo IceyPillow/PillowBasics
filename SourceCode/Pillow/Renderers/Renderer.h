@@ -176,6 +176,7 @@ namespace Pillow::Graphics
          OverWrite, // (Aka. Opaque) No blending, write to render targets forcely.
          Accumulation, // (Aka. Additive) Accumulate color values.
          AlphaBlend, // (Aka. Straight Alpha) Blend based on the alpha channel.
+         AlphaToCoverage, // Use alpha channel as coverage for multisampling.
       };
 
       enum class ShaderType : uint16_t
