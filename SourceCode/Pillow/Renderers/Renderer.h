@@ -24,10 +24,11 @@ namespace Pillow::Graphics
 
    class IRenderer;
 
-   // Resource handle. 4-bit type + 28-bit index
+   // Resource handle, index starts at 1.
+   // 4-bit type + 28-bit index
    typedef uint32_t ResHandle;
 
-   const ResHandle ResHandleNULL = 0;
+   const uint32_t ResHandleNULL = 0;
    const uint32_t ResIndexBits = 28;
    const uint32_t ResourceTypeMask = 0xF0000000;
 
@@ -58,7 +59,7 @@ namespace Pillow::Graphics
       ShaderResourceView = 5 << ResIndexBits,
       ConstantBufferView = 6 << ResIndexBits,
       UnorderedAccessView = 7 << ResIndexBits,
-      ReadbackBuffer = 8 << ResIndexBits,
+      ReadbackBuffer = 8u << ResIndexBits,
       Count = 8
    };
 
@@ -298,7 +299,7 @@ namespace Pillow::Graphics
       void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
       void SetVSyncBlanks(int32_t blanks) { f_VSyncBlanks = blanks; }
 
-      virtual void ResourceRegister(ResHandle& handle, ResourceType type, const void* desc) {/*dumb*/};
+      virtual void ResourceRegister(ResHandle handle, ResourceType type, const void* desc) {/*dumb*/};
       virtual void ResourceRelease(ResHandle handle) {/*dumb*/};
       void Launch();
       // ***CORE WORKLOAD***
@@ -349,6 +350,7 @@ namespace Pillow::Graphics
 
    inline ResourceType GetResourceType(ResHandle handle) { return ResourceType(handle & ResourceTypeMask); }
 
+   // ResourceIndex starts at 1.
    inline uint32_t GetResourceIndex(ResHandle handle) { return handle & ~ResourceTypeMask; }
 
    inline bool CheckHandle(ResHandle handle) { return GetResourceIndex(handle) != 0; }
