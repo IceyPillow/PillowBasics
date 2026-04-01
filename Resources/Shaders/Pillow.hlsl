@@ -176,7 +176,7 @@ struct SkeletalVertex
    uint ID_Vertex : SV_VertexID;
 };
 
-struct VertexOutBasic
+struct BasicVertexOut
 {
    float4 PosH : SV_POSITION;
    float3 PosW : POSITION;
@@ -214,7 +214,12 @@ struct PixelInStandard
    uint ID_Primitive : SV_PrimitiveID;
 };
 
-struct PixelOutGBuffers
+struct SinglePixelOut
+{
+   float4 output : SV_Target;
+};
+
+struct GBufferPixelOut
 {
    float4 backBuffer : SV_Target0; // rgb(emissive+GI) + a(?)
    float4 gBuffer0 : SV_Target1;   // rgb(albedo)      + a(smoothness)
