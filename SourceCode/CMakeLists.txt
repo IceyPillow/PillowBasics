@@ -25,5 +25,12 @@ endif()
 project(PillowBasics LANGUAGES CXX C)
 add_subdirectory(3rdParty)
 add_subdirectory(Pillow)
-
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Pillow)
+
+# Enumerate shaders in Visual Studio
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
+# RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/../Resources/Shaders"
+   "${CMAKE_CURRENT_SOURCE_DIR}/../Resources/Shaders/*.hlsl"
+)
+set_source_files_properties(${SOURCES} PROPERTIES VS_SETTINGS "ExcludedFromBuild=true")
+add_library(Shaders INTERFACE ${SOURCES})

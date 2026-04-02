@@ -1,7 +1,7 @@
 # Resursively searches, auto refreshes when building.
 # Notes: In this command, "${WHAT_DIR}/*.h" means find all .h files in WHAT_DIR and its sub folders.
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
-   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+#   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
    "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
    "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
 )
