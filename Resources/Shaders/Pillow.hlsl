@@ -21,8 +21,8 @@ static const float PI_1DIV2PI = 0.159154943f;
 static const float PI_DIV2 = 1.570796327f;
 static const float PI_DIV4 = 0.785398163f;
 
-static const float TimeLapseMax = 1000 * PI; // Seconds
-static const uint FrameIdxMax = 10000;
+static const float TimeLapseMax = 3600 * PI2; // Seconds
+static const uint FrameIdxMax = 1000000;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
 // Unified root signature
@@ -37,7 +37,7 @@ SamplerState AniClamp : register(s4);
 SamplerState AniWrap : register(s5);
 SamplerComparisonState Cmp : register(s6);
 
-cbuffer ConstantBufferObject : register(b0, space0)
+struct ObjectStruct
 {
    float4x4 MatrixModel;
    float4 ColorObject;
@@ -49,7 +49,7 @@ cbuffer ConstantBufferObject : register(b0, space0)
    float2 Padding;
 };
 
-cbuffer ConstantBufferLight : register(b1, space0)
+struct LightStruct
 {
    // 16B
    float3 PositionWorld;
@@ -64,7 +64,7 @@ cbuffer ConstantBufferLight : register(b1, space0)
    float4 ShapeLight;
 };
 
-cbuffer ConstantBufferPass : register(b2, space0)
+struct PassStruct
 {
    float4x4 MatrixView;
    float4x4 MatrixProj;
@@ -80,6 +80,11 @@ cbuffer ConstantBufferPass : register(b2, space0)
    float TimeDelta;
    float TimeLapse;
 };
+
+ConstantBuffer<ObjectStruct> ObjectCB : register(b0, space0);
+ConstantBuffer<LightStruct> LightCB : register(b1, space0);
+ConstantBuffer<PassStruct> PassCB : register(b2, space0);
+
 
 struct BoneData
 {
