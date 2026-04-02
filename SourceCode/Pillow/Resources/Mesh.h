@@ -44,6 +44,8 @@ namespace Pillow::Graphics
       sizeof(SkeletalVertex)
    };
 
+   constexpr int32_t VertexElementNum[3]{ 3, 5, 7 };
+
    struct BoneData
    {
       XMVECTOR quaternion;
