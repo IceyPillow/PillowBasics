@@ -1,4 +1,4 @@
-// PillowBasics Copyright (c) 2025, Icey Pillow. BSD 2-Clause License. Do not remove, obscure, or alter this notice.
+// PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 
 // Common HLSL header, all shaders should include it.
 // To avoid importing unwanted shader entries, this header will not include any shader entries.
@@ -40,13 +40,14 @@ SamplerComparisonState Cmp : register(s6);
 struct ObjectStruct
 {
    float4x4 MatrixModel;
+   float3x4 MatrixModelInvTrans;
    float4 ColorObject;
-   uint4 TexIdx_A;
-   uint4 TexIdx_B;
+   uint4 TexIdx;
    // 16B
    uint SamplerIdx;
    uint InstanceNum;
-   float2 Padding;
+   float Metallic;
+   float Smoothness;
 };
 
 struct LightStruct
@@ -148,8 +149,9 @@ TextureCube Cubemaps[] : register(t0, space2);
 struct BasicVertex
 {
    float3 Position : POSITION;
-   uint4 TexIdx_Vertex : VECTOR0;
-   float4 UV01 : VECTOR1;
+   uint4 TexIdxA : VECTOR0;
+   uint4 TexIdxB : VECTOR1;
+   float4 UV01 : VECTOR2;
    // System values
    uint ID_Instance : SV_InstanceID;
    uint ID_Vertex : SV_VertexID;
@@ -158,10 +160,11 @@ struct BasicVertex
 struct StaticVertex
 {
    float3 Position : POSITION;
-   uint4 TexIdx_Vertex : VECTOR0;
-   float4 UV01 : VECTOR1;
-   float4 Normal : VECTOR2;
-   float4 Tangent : VECTOR3;
+   uint4 TexIdxA : VECTOR0;
+   uint4 TexIdxB : VECTOR1;
+   float4 UV01 : VECTOR2;
+   float3 Normal : VECTOR3;
+   float4 Tangent : VECTOR4;
    // System values
    uint ID_Instance : SV_InstanceID;
    uint ID_Vertex : SV_VertexID;
@@ -170,65 +173,53 @@ struct StaticVertex
 struct SkeletalVertex
 {
    float3 Position : POSITION;
-   uint4 TexIdx_Vertex : VECTOR0;
-   float4 UV01 : VECTOR1;
-   float4 Normal : VECTOR2;
-   float4 Tangent : VECTOR3;
-   uint4 BoneIdx : VECTOR4;
-   float4 BoneWeight : VECTOR5;
+   uint4 TexIdxA : VECTOR0;
+   uint4 TexIdxB : VECTOR1;
+   float4 UV01 : VECTOR2;
+   float3 Normal : VECTOR3;
+   float4 Tangent : VECTOR4;
+   uint4 BoneIdx : VECTOR5;
+   float4 BoneWeight : VECTOR6;
    // System values
    uint ID_Instance : SV_InstanceID;
    uint ID_Vertex : SV_VertexID;
 };
 
-struct BasicVertexOut
+struct Basic_Vertex2Pixel
 {
-   float4 PosH : SV_POSITION;
-   float3 PosW : POSITION;
-   float4 UV01 : VECTOR0;
-   nointerpolation uint ID_Instance : SCALAR0;
-};
-
-struct PixelInBasic
-{
-   float4 PosH : SV_POSITION;
-   float3 PosW : POSITION;
-   float4 UV01 : VECTOR0;
-   uint ID_Instance : SCALAR0;
-   uint ID_Primitive : SV_PrimitiveID;
-};
-
-struct VertexOutStandard
-{
-   float4 PosH : SV_POSITION;
-   float3 PosW : POSITION;
-   float3 NormalW : VECTOR0;
-   float3 TangentW : VECTOR1;
+   float4 PositionH : SV_POSITION;
+   float4 PositionW : POSITION;
+   nointerpolation uint4 TexIdxA : VECTOR0;
+   nointerpolation uint4 TexIdxB : VECTOR1;
    float4 UV01 : VECTOR2;
+   // Pass system values to the pixel shader
    nointerpolation uint ID_Instance : SCALAR0;
+   nointerpolation uint ID_Vertex : SCALAR1;
 };
 
-struct PixelInStandard
+struct Standard_Vertex2Pixel
 {
-   float4 PosH : SV_POSITION;
-   float3 PosW : POSITION;
-   float3 NormalW : VECTOR0;
-   float3 TangentW : VECTOR1;
+   float4 PositionH : SV_POSITION;
+   float4 PositionW : POSITION;
+   nointerpolation uint4 TexIdxA : VECTOR0;
+   nointerpolation uint4 TexIdxB : VECTOR1;
    float4 UV01 : VECTOR2;
-   uint ID_Instance : SCALAR0;
-   uint ID_Primitive : SV_PrimitiveID;
+   float3 NormalW : VECTOR3;
+   float4 TangentW : VECTOR4;
+   // Pass system values to the pixel shader
+   nointerpolation uint ID_Instance : SCALAR0;
+   nointerpolation uint ID_Vertex : SCALAR1;
 };
 
-struct SinglePixelOut
+struct SinglePixelOutput
 {
    float4 output : SV_Target;
 };
 
-struct GBufferPixelOut
+struct CompactGBufferPixelOutput
 {
-   float4 backBuffer : SV_Target0; // rgb(emissive+GI) + a(?)
-   float4 gBuffer0 : SV_Target1;   // rgb(albedo)      + a(smoothness)
-   float4 gBuffer1 : SV_Target2;   // rgb(normal)      + a(metallic)
+   float4 gBuffer0 : SV_Target1; // rgb(albedo) + a(smoothness)
+   float4 gBuffer1 : SV_Target2; // rgb(normal) + a(metallic)
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////120-Slashes
@@ -261,6 +252,7 @@ float4 SampleTexSmart(Texture2D tex, float2 uv, uint samplerIdx)
    {
       return tex.Sample(AniWrap, uv);
    }
+   return (float4)0;
 }
 
 float4 EncodeSRGB(float4 color)
