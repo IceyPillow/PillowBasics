@@ -4,7 +4,7 @@
 ![Static Badge](https://img.shields.io/badge/Android-On%20Hold-silver)<br><br>
 <!-- ## Pillow Basics -->
 ### Description
-A C++20 game engine focusing on low-cost-abstraction, bloat-free, and modern designs.<br>
+A C++20 game engine focusing on low-cost abstraction, bloat-free, and modern designs.<br>
 Some takeaways to open your mind:
 - One unified root signature; a true bindless renderer design
 - **nit** is the unified luminance unit
@@ -12,9 +12,10 @@ Some takeaways to open your mind:
 - Smart pointers, no new-delete
 <br><br>
 ### Name Convention
-Aligned with the standard C# notation. Classes, methods, and properties must be UpperCamelCase, while auto variables and class fields must be lowerCamelCase.<br>
-Folders and files must obey UpperCamelCase.
-The inner name of this engine is called **PillowBasics**.<br><br>
+- Aligned with the standard C# notation. Classes, methods, and properties must be UpperCamelCase, while auto variables and class fields must be lowerCamelCase.
+- Folders and files must obey UpperCamelCase.
+- The inner solution name is **PillowBasics**.
+<br><br>
 ### Official Getting-Started Document
 [GETTING_STARTED.md](GETTING_STARTED.md)<br><br>
 ### Licenses
