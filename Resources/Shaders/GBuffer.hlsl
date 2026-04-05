@@ -1,23 +1,40 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 #include "Pillow.hlsl"
 
-#ifndef SKELETAL_VERTEX
-Standard_Vertex2Pixel VertexShader(StaticVertex vertex)
-#else
-Standard_Vertex2Pixel VertexShader(SkeletalVertex vertex)
-#endif
+//#define SKELETON
+
+Standard_Vertex2Pixel VertexShader(StandardVertex vertex)
+
 {
    Standard_Vertex2Pixel output;
-  // Transform to homogeneous clip space.
-   output.PositionW = mul(ObjectCB.MatrixModel, float4(vertex.Position, 1.0f));
+   // Transform coordinates.
+#ifdef SKELETON
+   // Double-stage Quadratic Bezier Skinning (DQBS), an optimized version of Linear Blend Skinning (LBS).
+   float w = vertex.BoneWeights.x;
+   float4 posM_1 = mul(MatrixBones[vertex.BoneIdx.x].MatrixPalette, vertex.Position);
+   float4 posM_2 = mul(MatrixBones[vertex.BoneIdx.y].MatrixPalette, vertex.Position);
+   float4 posM_3 = mul(MatrixBones[vertex.BoneIdx.z].MatrixPalette, vertex.Position);
+   float4 posM = w * w * posM_1 + 2 * w * (1 - w) * posM_2 + (1 - w) * (1 - w) * posM_3;
+   output.PositionW = mul(ObjectCB.MatrixModel, posM);
+   float3 normalL_1 = mul((float3x3) MatrixBones[vertex.BoneIdx.x].MatrixPalette, (float3) vertex.Normal);
+   float3 normalL_2 = mul((float3x3) MatrixBones[vertex.BoneIdx.y].MatrixPalette, (float3) vertex.Normal);
+   float3 normalL = Slerp(normalL_2, normalL_1, w);
+   output.NormalW = mul((float3x3) ObjectCB.MatrixModelInvTrans, normalL);
+   float3 tangentL_1 = mul((float3x3) MatrixBones[vertex.BoneIdx.x].MatrixPalette, (float3) vertex.Tangent);
+   float3 tangentL_2 = mul((float3x3) MatrixBones[vertex.BoneIdx.y].MatrixPalette, (float3) vertex.Tangent);
+   float3 tangentL = Slerp(tangentL_2, tangentL_1, w);
+   output.TangentW = mul((float3x3) ObjectCB.MatrixModel, tangentL);
+#else
+   output.PositionW = mul(ObjectCB.MatrixModel, vertex.Position);
+   output.NormalW = mul((float3x3) ObjectCB.MatrixModelInvTrans, (float3)vertex.Normal);
+   output.TangentW = mul((float3x3) ObjectCB.MatrixModel, (float3)vertex.Tangent);
+#endif
    output.PositionH = mul(PassCB.MatrixViewProjection, output.PositionW);
+   output.TangentW.w = vertex.Tangent.w;
+   // Transfer other data.
    output.TexIdxA = vertex.TexIdxA;
    output.TexIdxB = vertex.TexIdxB;
    output.UV01 = vertex.UV01;
-   output.NormalW = mul((float3x3)ObjectCB.MatrixModelInvTrans, vertex.Normal);
-   
-   output.TangentW.xyz = mul((float3x3)ObjectCB.MatrixModel, vertex.Tangent.xyz);
-   output.TangentW.w = vertex.Tangent.w;
    output.ID_Instance = vertex.ID_Instance;
    output.ID_Vertex = vertex.ID_Vertex;
    return output;
@@ -27,31 +44,28 @@ Standard_Vertex2Pixel VertexShader(SkeletalVertex vertex)
  CompactGBufferPixelOutput PixelShader(Standard_Vertex2Pixel pixelMetadata)
 {
    CompactGBufferPixelOutput output;
-
    // gBuffer0 = rgb(albedo) + a(metallic)
-   // gBuffer1 = rgb(normal) + a(smoothness)
-   float3 texCoordinates = float3(pixelMetadata.UV01.xy, pixelMetadata.TexIdxA[1]);
-   float texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxA[0]);
-   output.gBuffer0.rgb = TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoordinates).rgb;
-
-   texCoordinates.b = pixelMetadata.TexIdxA[3];
-   texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxA[2]);
-   float2 metallic_smoothness = TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoordinates).rg;
-   output.gBuffer0.a = metallic_smoothness.r * ObjectCB.Metallic;
-   output.gBuffer1.a = metallic_smoothness.g * ObjectCB.Smoothness;
-
-   texCoordinates.b = pixelMetadata.TexIdxB[1];
-   texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxB[0]);
-   float3 normalTBN = TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoordinates);
-   normalTBN = normalTBN * 2.0f - 1.0f;
-   normalTBN.z = sqrt(saturate(1.0f - dot(normalTBN.xy, normalTBN.xy)));
-   
-   float3 normal = normalize(pixelMetadata.NormalW);
+   // gBuffer1 = rg(normal) + b(smoothness)
+   // Albedo
+   float3 texCoords = float3(pixelMetadata.UV01.xy, pixelMetadata.TexIdxA.y);
+   float texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxA.x);
+   output.gBuffer0.rgb = TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoords).rgb;
+   // Metallic + smoothness
+   texCoords.z = pixelMetadata.TexIdxA.w;
+   texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxA.z);
+   float2 metallic_smoothness = TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoords).rg;
+   output.gBuffer0.a = metallic_smoothness.x * ObjectCB.Metallic;
+   output.gBuffer1.b = metallic_smoothness.y * ObjectCB.Smoothness;
+   // World Normal
+   texCoords.z = pixelMetadata.TexIdxB.y;
+   texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxB.x);
+   float3 normalTBN = UnpackNormal((float2)TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoords));
+   float3 normal = normalize(pixelMetadata.NormalW.xyz);
    float3 tangent = normalize(pixelMetadata.TangentW.xyz);
    tangent = normalize(tangent - dot(tangent, normal) * normal);
    float3 bitangent = cross(normal, tangent) * pixelMetadata.TangentW.w;
    float3x3 MatrixTBN = float3x3(tangent, bitangent, normal);
-   output.gBuffer1.xyz = normalize(mul(normalTBN, MatrixTBN));
-
+   float3 normalW = normalize(mul(MatrixTBN, normalTBN));
+   output.gBuffer1.rg = EncodeOctahedron(normalW);
    return output;
 }
