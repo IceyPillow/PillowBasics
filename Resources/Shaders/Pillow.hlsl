@@ -148,7 +148,7 @@ TextureCube Cubemaps[] : register(t0, space2);
 
 struct BasicVertex
 {
-   float3 Position : POSITION;
+   float4 Position : POSITION;
    uint4 TexIdxA : VECTOR0;
    uint4 TexIdxB : VECTOR1;
    float4 UV01 : VECTOR2;
@@ -157,29 +157,16 @@ struct BasicVertex
    uint ID_Vertex : SV_VertexID;
 };
 
-struct StaticVertex
+struct StandardVertex
 {
-   float3 Position : POSITION;
+   float4 Position : POSITION;
    uint4 TexIdxA : VECTOR0;
    uint4 TexIdxB : VECTOR1;
    float4 UV01 : VECTOR2;
-   float3 Normal : VECTOR3;
-   float4 Tangent : VECTOR4;
-   // System values
-   uint ID_Instance : SV_InstanceID;
-   uint ID_Vertex : SV_VertexID;
-};
-
-struct SkeletalVertex
-{
-   float3 Position : POSITION;
-   uint4 TexIdxA : VECTOR0;
-   uint4 TexIdxB : VECTOR1;
-   float4 UV01 : VECTOR2;
-   float3 Normal : VECTOR3;
+   float4 Normal : VECTOR3;
    float4 Tangent : VECTOR4;
    uint4 BoneIdx : VECTOR5;
-   float4 BoneWeight : VECTOR6;
+   float4 BoneWeights : VECTOR6;
    // System values
    uint ID_Instance : SV_InstanceID;
    uint ID_Vertex : SV_VertexID;
@@ -204,7 +191,7 @@ struct Standard_Vertex2Pixel
    nointerpolation uint4 TexIdxA : VECTOR0;
    nointerpolation uint4 TexIdxB : VECTOR1;
    float4 UV01 : VECTOR2;
-   float3 NormalW : VECTOR3;
+   float4 NormalW : VECTOR3;
    float4 TangentW : VECTOR4;
    // Pass system values to the pixel shader
    nointerpolation uint ID_Instance : SCALAR0;

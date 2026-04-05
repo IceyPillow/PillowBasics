@@ -102,41 +102,34 @@ namespace
       BC3BlockSize
    };
 
-const DXGI_FORMAT VtxDataFloat3 = DXGI_FORMAT_R32G32B32_FLOAT;
-const DXGI_FORMAT VtxDataFloat4 = DXGI_FORMAT_R32G32B32A32_FLOAT;
-const DXGI_FORMAT VtxDataUInt4 = DXGI_FORMAT_R32G32B32A32_UINT;
+const DXGI_FORMAT VtxFloat3 = DXGI_FORMAT_R32G32B32_FLOAT;
+const DXGI_FORMAT VtxFloat4 = DXGI_FORMAT_R32G32B32A32_FLOAT;
+const DXGI_FORMAT VtxUInt4 = DXGI_FORMAT_R32G32B32A32_UINT;
 
 #define DEFAULT_INPUT_LAYOUT \
-0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, sizeof(float)
+0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 
    const D3D12_INPUT_ELEMENT_DESC BasicVtx[]
    {
-      { "POSITION", 0, VtxDataFloat3, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 0, VtxDataUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 1, VtxDataFloat4, DEFAULT_INPUT_LAYOUT }
+      { "POSITION", 0, VtxFloat4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 0, VtxUInt4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 1, VtxUInt4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 2, VtxFloat4, DEFAULT_INPUT_LAYOUT }
    };
-   const D3D12_INPUT_ELEMENT_DESC StaticVtx[]
+   const D3D12_INPUT_ELEMENT_DESC StandardVtx[]
    {
-      { "POSITION", 0, VtxDataFloat3, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 0, VtxDataUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 1, VtxDataFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 2, VtxDataFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 3, VtxDataFloat4, DEFAULT_INPUT_LAYOUT }
-   };
-   const D3D12_INPUT_ELEMENT_DESC SkeletalVtx[]
-   {
-      { "POSITION", 0, VtxDataFloat3, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 0, VtxDataUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 1, VtxDataFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 2, VtxDataFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 3, VtxDataFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 4, VtxDataUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 5, VtxDataFloat4, DEFAULT_INPUT_LAYOUT }
+      { "POSITION", 0, VtxFloat4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 0, VtxUInt4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 1, VtxUInt4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 2, VtxFloat4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 3, VtxFloat4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 4, VtxFloat4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 5, VtxUInt4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 6, VtxFloat4, DEFAULT_INPUT_LAYOUT }
    };
 
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutBasic{ BasicVtx , VertexElementNum[0]};
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutStatic{ StaticVtx, VertexElementNum[1]};
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutSkeletal{ SkeletalVtx, VertexElementNum[2]};
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutBasic{ BasicVtx , VtxMemberNum[0] };
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutStandard{ StandardVtx, VtxMemberNum[1] };
 
 #define TEX_CLAMP D3D12_TEXTURE_ADDRESS_MODE_CLAMP
 #define TEX_WRAP D3D12_TEXTURE_ADDRESS_MODE_WRAP
@@ -1182,17 +1175,13 @@ namespace
          Check_HRESULT(utils->CreateReflection(&buffer, IID_PPV_ARGS(&reflection)));
          D3D12_SHADER_DESC shaderDesc;
          reflection->GetDesc(&shaderDesc);
-         if(shaderDesc.InputParameters == 3)
+         if(shaderDesc.InputParameters == VtxMemberNum[0])
          {
             return VertexType::Basic;
          }
-         else if(shaderDesc.InputParameters == 5)
-         {
-            return VertexType::Static;
-         }
          else
          {
-            return VertexType::Skeletal;
+            return VertexType::Standard;
          }
       }
 
@@ -1263,13 +1252,9 @@ namespace
          {
             stream.InputLayout = InputLayoutBasic;
          }
-         else if(desc.Vertex == VertexType::Static)
-         {
-            stream.InputLayout = InputLayoutStatic;
-         }
          else
          {
-            stream.InputLayout = InputLayoutSkeletal;
+            stream.InputLayout = InputLayoutStandard;
          }
 
          stream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;

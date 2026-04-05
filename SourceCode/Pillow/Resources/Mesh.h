@@ -14,42 +14,36 @@ namespace Pillow::Graphics
    {
       Unknown,
       Basic,
-      Static,
-      Skeletal
+      Standard
    };
 
-   struct BasicVertex
+   struct alignas(64) BasicVertex
    {
-      XMFLOAT3 Position;
-      XMUINT4 TexIdx_Vertex;
-      XMFLOAT4 UV01;
+      XMFLOAT4A Position;
+      XMUINT4 TexIdxA;
+      XMUINT4 TexIdxB;
+      XMFLOAT4A UV01;
    };
 
-   struct StaticVertex : BasicVertex
+   struct alignas(64) StandardVertex : BasicVertex
    {
-      XMFLOAT4 Normal;
-      XMFLOAT4 Tangent;
-   };
-
-   struct SkeletalVertex : StaticVertex
-   {
+      XMFLOAT4A Normal;
+      XMFLOAT4A Tangent;
       XMUINT4 BoneIdx;
-      XMFLOAT4 BoneWeight;
+      XMFLOAT4A BoneWeights;
    };
 
-   constexpr int32_t VertexSize[3]
+   constexpr int32_t VertexSize[2]
    {
       sizeof(BasicVertex),
-      sizeof(StaticVertex),
-      sizeof(SkeletalVertex)
+      sizeof(StandardVertex),
    };
 
-   constexpr int32_t VertexElementNum[3]{ 3, 5, 7 };
+   const uint32_t VtxMemberNum[2]{ 4, 8 };
 
-   struct BoneData
+   struct alignas(16) BoneData
    {
-      XMVECTOR quaternion;
-      XMVECTOR translation;
+      XMFLOAT3X4A MatrixPalette;
    };
 
    class BasicMesh
@@ -57,12 +51,7 @@ namespace Pillow::Graphics
 
    };
 
-   class StaticMesh
-   {
-
-   };
-
-   class SkeletalMesh
+   class StandardMesh : BasicMesh
    {
 
    };
@@ -72,6 +61,6 @@ namespace Pillow::Graphics
 
    };
 
-   std::unique_ptr<StaticMesh> CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);
-   std::unique_ptr<StaticMesh> CreateSphere(float radius = 0.5f);
+   std::unique_ptr<StandardMesh> CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);
+   std::unique_ptr<StandardMesh> CreateSphere(float radius = 0.5f);
 }
