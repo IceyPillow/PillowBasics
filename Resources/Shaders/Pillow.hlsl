@@ -205,8 +205,8 @@ struct SinglePixelOutput
 
 struct CompactGBufferPixelOutput
 {
-   float4 gBuffer0 : SV_Target1; // rgb(albedo) + a(smoothness)
-   float4 gBuffer1 : SV_Target2; // rgb(normal) + a(metallic)
+   float4 gBuffer0 : SV_Target1; // rgb(albedo) + a(metallic)
+   float4 gBuffer1 : SV_Target2; // rg(normal) + b(smoothness)
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////120-Slashes
@@ -258,4 +258,51 @@ float3 GetWorldNormal(float3 value, float3 nW, float3 tW)
    value = 2 * value - 1;
    value = normalize(mul(value, T2W));
    return value;
+}
+
+// A safe version of spherical linear interpolation (slerp).
+float3 Slerp(float3 xNormalized, float3 yNormalized, float t)
+{
+   // lerp
+   float3 lerp = lerp(xNormalized, yNormalized, t);
+   // slerp
+   float dot = dot(xNormalized, yNormalized);
+   float theta = acos(clamp(dot, -1.f, 1.f));
+   float t_theta = t * theta;
+   float3 sphereLerp = sin(theta - t_theta) * xNormalized;
+   sphereLerp += sin(t_theta) * yNormalized;
+   sphereLerp /= sin(theta);
+   // select one safely.
+   float3 result = (abs(dot) < 0.99f) ? sphereLerp : lerp;
+   result = normalize(result);
+   return result;
+}
+
+float3 UnpackNormal(float2 rg)
+{
+   float3 normal;
+   normal.xy = rg * 2.0f - 1.0f;
+   normal.z = sqrt(saturate(1.0f - dot(normal.xy, normal.xy)));
+   return normal;
+}
+
+
+float2 EncodeOctahedron(float3 nNormalized)
+{
+   float3 n = nNormalized /= abs(nNormalized.x) + abs(nNormalized.y) + abs(nNormalized.z);
+   // Symmetry axis: y = 1-x.
+   float2 folded = (1.0f - abs(n.yx)) * (n.xy >= 0.0f ? 1.0f : -1.0f);
+   float2 uv = (n.z >= 0.0f) ? n.xy : folded;
+   uv = uv * 0.5f + 0.5f;
+   return uv;
+}
+
+float3 DecodeOctahedron(float2 uv)
+{
+   uv = uv * 2.0f - 1.0f;
+   float3 n = float3(uv.xy, 1.0f - abs(uv.x) - abs(uv.y));
+   float t = saturate(-n.z);
+   n.xy += (n.xy >= 0.0f ? -t : t);
+   float3 nNormalized = normalize(n);
+   return nNormalized;
 }
