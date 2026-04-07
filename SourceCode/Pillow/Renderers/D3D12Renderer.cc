@@ -102,34 +102,53 @@ namespace
       BC3BlockSize
    };
 
+const DXGI_FORMAT VtxFloat = DXGI_FORMAT_R32_FLOAT;
+const DXGI_FORMAT VtxFloat2 = DXGI_FORMAT_R32G32_FLOAT;
 const DXGI_FORMAT VtxFloat3 = DXGI_FORMAT_R32G32B32_FLOAT;
 const DXGI_FORMAT VtxFloat4 = DXGI_FORMAT_R32G32B32A32_FLOAT;
+const DXGI_FORMAT VtxHalf = DXGI_FORMAT_R16_FLOAT;
+const DXGI_FORMAT VtxHalf2 = DXGI_FORMAT_R16G16_FLOAT;
+const DXGI_FORMAT VtxHalf4 = DXGI_FORMAT_R16G16B16A16_FLOAT;
+const DXGI_FORMAT VtxUInt = DXGI_FORMAT_R32_UINT;
+const DXGI_FORMAT VtxUInt2 = DXGI_FORMAT_R32G32_UINT;
+const DXGI_FORMAT VtxUInt3 = DXGI_FORMAT_R32G32B32_UINT;
 const DXGI_FORMAT VtxUInt4 = DXGI_FORMAT_R32G32B32A32_UINT;
+const DXGI_FORMAT VtxUShort = DXGI_FORMAT_R16_UINT;
+const DXGI_FORMAT VtxUShort2 = DXGI_FORMAT_R16G16_UINT;
+const DXGI_FORMAT VtxUShort4 = DXGI_FORMAT_R16G16B16A16_UINT;
+const DXGI_FORMAT VtxUInt4C = DXGI_FORMAT_R10G10B10A2_UINT;
 
 #define DEFAULT_INPUT_LAYOUT \
 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 
-   const D3D12_INPUT_ELEMENT_DESC BasicVtx[]
+   const D3D12_INPUT_ELEMENT_DESC UIVtx[]
    {
-      { "POSITION", 0, VtxFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 0, VtxUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 1, VtxUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 2, VtxFloat4, DEFAULT_INPUT_LAYOUT }
+      // 16B
+      { "POSITION", 0, VtxFloat3, DEFAULT_INPUT_LAYOUT },
+      { "SCALAR", 0, VtxUInt, DEFAULT_INPUT_LAYOUT },
+      // 16B
+      { "VECTOR", 0, VtxUShort4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 1, VtxHalf4, DEFAULT_INPUT_LAYOUT }
    };
-   const D3D12_INPUT_ELEMENT_DESC StandardVtx[]
+   const D3D12_INPUT_ELEMENT_DESC StdVtx[]
    {
-      { "POSITION", 0, VtxFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 0, VtxUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 1, VtxUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 2, VtxFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 3, VtxFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 4, VtxFloat4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 5, VtxUInt4, DEFAULT_INPUT_LAYOUT },
-      { "VECTOR", 6, VtxFloat4, DEFAULT_INPUT_LAYOUT }
+      // 16B
+      { "POSITION", 0, VtxFloat3, DEFAULT_INPUT_LAYOUT },
+      { "SCALAR", 0, VtxUShort, DEFAULT_INPUT_LAYOUT },
+      { "SCALAR", 1, VtxUShort, DEFAULT_INPUT_LAYOUT },
+      // 16B
+      { "VECTOR", 0, VtxUShort4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 1, VtxUShort4, DEFAULT_INPUT_LAYOUT },
+      // 16B
+      { "VECTOR", 2, VtxHalf4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 3, VtxUShort4, DEFAULT_INPUT_LAYOUT },
+      // 16B
+      { "VECTOR", 4, VtxHalf4, DEFAULT_INPUT_LAYOUT },
+      { "VECTOR", 5, VtxHalf4, DEFAULT_INPUT_LAYOUT },
    };
 
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutBasic{ BasicVtx , VtxMemberNum[0] };
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutStandard{ StandardVtx, VtxMemberNum[1] };
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutUI{ UIVtx , VtxMemberNum[0] };
+   const D3D12_INPUT_LAYOUT_DESC InputLayoutStd{ StdVtx, VtxMemberNum[1] };
 
 #define TEX_CLAMP D3D12_TEXTURE_ADDRESS_MODE_CLAMP
 #define TEX_WRAP D3D12_TEXTURE_ADDRESS_MODE_WRAP
@@ -994,10 +1013,6 @@ namespace
          if (IPipelineState::CheckShaderMask(shaderMask, VertexShader))
          {
             shaders.emplace_back(CompileShader(filePath, VertexShader, macros));
-            if (desc.Vertex == VertexType::Unknown)
-            {
-               desc.Vertex = ReflectVertexType(shaders.back());
-            }
          }
          if (IPipelineState::CheckShaderMask(shaderMask, HullShader))
          {
@@ -1168,23 +1183,6 @@ namespace
          return shaderCooked;
       }
 
-      VertexType ReflectVertexType(ComPtr<IDxcBlob>& vertexShader)
-      {
-         DxcBuffer buffer = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize(), 0 };
-         ComPtr<ID3D12ShaderReflection> reflection;
-         Check_HRESULT(utils->CreateReflection(&buffer, IID_PPV_ARGS(&reflection)));
-         D3D12_SHADER_DESC shaderDesc;
-         reflection->GetDesc(&shaderDesc);
-         if(shaderDesc.InputParameters == VtxMemberNum[0])
-         {
-            return VertexType::Basic;
-         }
-         else
-         {
-            return VertexType::Standard;
-         }
-      }
-
       uint8_t ReflectRenderTargetNum(ComPtr<IDxcBlob>& pixelShader)
       {
          DxcBuffer buffer = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize(), 0 };
@@ -1248,13 +1246,13 @@ namespace
 
          stream.pRootSignature = UnifiedRootSign.Get();
          
-         if(desc.Vertex == VertexType::Basic)
+         if(desc.Vertex == VertexType::UI)
          {
-            stream.InputLayout = InputLayoutBasic;
+            stream.InputLayout = InputLayoutUI;
          }
          else
          {
-            stream.InputLayout = InputLayoutStandard;
+            stream.InputLayout = InputLayoutStd;
          }
 
          stream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;

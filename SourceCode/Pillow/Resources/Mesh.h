@@ -4,42 +4,71 @@
 #include "Auxiliaries.h"
 #include "Constants.h"
 #include "Texture.h"
+#include "DirectXMath-apr2025/DirectXPackedVector.h"
 
 using namespace Pillow::Graphics;
 using namespace DirectX;
+using namespace DirectX::PackedVector;
 
 namespace Pillow::Graphics
 {
    enum class VertexType : uint8_t
    {
-      Unknown,
-      Basic,
-      Standard
+      UI,
+      Standard,
+      Count
    };
 
-   struct alignas(64) BasicVertex
+   struct alignas(32) UIVertex
    {
-      XMFLOAT4A Position;
-      XMUINT4 TexIdxA;
-      XMUINT4 TexIdxB;
-      XMFLOAT4A UV01;
+      union
+      {
+         XMFLOAT4A Position;
+         struct
+         {
+            XMFLOAT3 padding;
+            uint32_t Unknown;
+         };
+      };
+      uint16_t TexIdx[4];
+      XMHALF4 UV01;
    };
 
-   struct alignas(64) StandardVertex : BasicVertex
+   struct alignas(CacheLine) StandardVertex
    {
-      XMFLOAT4A Normal;
-      XMFLOAT4A Tangent;
-      XMUINT4 BoneIdx;
-      XMFLOAT4A BoneWeights;
+      // 16B
+      union
+      {
+         XMFLOAT4A Position;
+         struct
+         {
+            XMFLOAT3 padding1;
+            uint16_t Bone1;
+            uint16_t Bone2;
+         };
+      };
+      // 16B
+      uint16_t TexIdxA[4];
+      uint16_t TexIdxB[4];
+      // 16B
+      XMHALF4 UV01;
+      uint16_t BoneWeight_Bone3[4];
+      // 16B
+      XMHALF4 Normal;
+      XMHALF4 Tangent;
    };
 
-   constexpr int32_t VertexSize[2]
+   constexpr int32_t VertexSize[uint32_t(VertexType::Count)]
    {
-      sizeof(BasicVertex),
+      sizeof(UIVertex),
       sizeof(StandardVertex),
    };
 
-   const uint32_t VtxMemberNum[2]{ 4, 8 };
+   const uint32_t VtxMemberNum[uint32_t(VertexType::Count)]
+   {
+      4,
+      9
+   };
 
    struct alignas(16) BoneData
    {
