@@ -1,8 +1,7 @@
-# PetaByte Game Engine
-<!-- <img src=".github/Logo.png" alt="Repository Icon" width="256" height="256"></img><br> -->
+<img src=".github/Logo.png" alt="Repository Icon" width="256" height="256"></img><br>
 ![Platform0](https://img.shields.io/badge/Win64(Win10%202004%2B)-In%20Progress-yellow)
 ![Static Badge](https://img.shields.io/badge/Android-On%20Hold-silver)<br><br>
-<!-- ## Pillow Basics -->
+## Pillow Basics
 ### Description
 A C++20 game engine focusing on low-cost abstraction, bloat-free, and modern designs.<br>
 Some takeaways to open your mind:
@@ -12,9 +11,10 @@ Some takeaways to open your mind:
 - Smart pointers, no new-delete
 <br><br>
 ### Name Convention
-- Aligned with the standard C# notation. Classes, methods, and properties must be UpperCamelCase, while auto variables and class fields must be lowerCamelCase.
-- Folders and files must obey UpperCamelCase.
-- The inner solution name is **PillowBasics**.
+- Aligned with the standard C# notation.
+- Classes, methods, and properties must be UpperCamelCase
+- Auto variables and class fields must be lowerCamelCase.
+- Directories and files must use UpperCamelCase.
 <br><br>
 ### Official Getting-Started Document
 [GETTING_STARTED.md](GETTING_STARTED.md)<br><br>
