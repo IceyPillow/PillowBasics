@@ -146,12 +146,12 @@ TextureCube Cubemaps[] : register(t0, space2);
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////120-Slashes
 // Input layouts
 
-struct BasicVertex
+struct UIVertex
 {
-   float4 Position : POSITION;
-   uint4 TexIdxA : VECTOR0;
-   uint4 TexIdxB : VECTOR1;
-   float4 UV01 : VECTOR2;
+   float3 Position : POSITION;
+   uint Unknown : SCALAR0;
+   uint4 TexIdx : VECTOR0;
+   float4 UV01 : VECTOR1;
    // System values
    uint ID_Instance : SV_InstanceID;
    uint ID_Vertex : SV_VertexID;
@@ -159,14 +159,15 @@ struct BasicVertex
 
 struct StandardVertex
 {
-   float4 Position : POSITION;
+   float3 Position : POSITION;
+   uint Bone1 : SCALAR0;
+   uint Bone2 : SCALAR1;
    uint4 TexIdxA : VECTOR0;
    uint4 TexIdxB : VECTOR1;
    float4 UV01 : VECTOR2;
-   float4 Normal : VECTOR3;
-   float4 Tangent : VECTOR4;
-   uint4 BoneIdx : VECTOR5;
-   float4 BoneWeights : VECTOR6;
+   uint4 BoneWeight_Bone3 : VECTOR3;
+   float4 Normal : VECTOR4;
+   float4 Tangent : VECTOR5;
    // System values
    uint ID_Instance : SV_InstanceID;
    uint ID_Vertex : SV_VertexID;

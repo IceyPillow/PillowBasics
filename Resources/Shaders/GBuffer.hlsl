@@ -10,22 +10,22 @@ Standard_Vertex2Pixel VertexShader(StandardVertex vertex)
    // Transform coordinates.
 #ifdef SKELETON
    // Double-stage Quadratic Bezier Skinning (DQBS), an optimized version of Linear Blend Skinning (LBS).
-   float w = vertex.BoneWeights.x;
-   float4 posM_1 = mul(MatrixBones[vertex.BoneIdx.x].MatrixPalette, vertex.Position);
-   float4 posM_2 = mul(MatrixBones[vertex.BoneIdx.y].MatrixPalette, vertex.Position);
-   float4 posM_3 = mul(MatrixBones[vertex.BoneIdx.z].MatrixPalette, vertex.Position);
-   float4 posM = w * w * posM_1 + 2 * w * (1 - w) * posM_2 + (1 - w) * (1 - w) * posM_3;
-   output.PositionW = mul(ObjectCB.MatrixModel, posM);
-   float3 normalL_1 = mul((float3x3) MatrixBones[vertex.BoneIdx.x].MatrixPalette, (float3) vertex.Normal);
-   float3 normalL_2 = mul((float3x3) MatrixBones[vertex.BoneIdx.y].MatrixPalette, (float3) vertex.Normal);
+   float w = vertex.BoneWeight_Bone3.x;
+   float3 posM_1 = mul(MatrixBones[vertex.Bone1].MatrixPalette, float4(vertex.Position, 1.f));
+   float3 posM_2 = mul(MatrixBones[vertex.Bone2].MatrixPalette, float4(vertex.Position, 1.f));
+   float3 posM_3 = mul(MatrixBones[vertex.BoneWeight_Bone3.w].MatrixPalette, float4(vertex.Position, 1.f));
+   float3 posM = w * w * posM_1 + 2 * w * (1 - w) * posM_2 + (1 - w) * (1 - w) * posM_3;
+   output.PositionW = mul(ObjectCB.MatrixModel, float4(posM, 1));
+   float3 normalL_1 = mul((float3x3) MatrixBones[vertex.Bone1].MatrixPalette, (float3) vertex.Normal);
+   float3 normalL_2 = mul((float3x3) MatrixBones[vertex.Bone2].MatrixPalette, (float3) vertex.Normal);
    float3 normalL = Slerp(normalL_2, normalL_1, w);
    output.NormalW = mul((float3x3) ObjectCB.MatrixModelInvTrans, normalL);
-   float3 tangentL_1 = mul((float3x3) MatrixBones[vertex.BoneIdx.x].MatrixPalette, (float3) vertex.Tangent);
-   float3 tangentL_2 = mul((float3x3) MatrixBones[vertex.BoneIdx.y].MatrixPalette, (float3) vertex.Tangent);
+   float3 tangentL_1 = mul((float3x3) MatrixBones[vertex.Bone1].MatrixPalette, (float3) vertex.Tangent);
+   float3 tangentL_2 = mul((float3x3) MatrixBones[vertex.Bone2].MatrixPalette, (float3) vertex.Tangent);
    float3 tangentL = Slerp(tangentL_2, tangentL_1, w);
    output.TangentW = mul((float3x3) ObjectCB.MatrixModel, tangentL);
 #else
-   output.PositionW = mul(ObjectCB.MatrixModel, vertex.Position);
+   output.PositionW = mul(ObjectCB.MatrixModel, float4(vertex.Position, 1));
    output.NormalW = mul((float3x3) ObjectCB.MatrixModelInvTrans, (float3)vertex.Normal);
    output.TangentW = mul((float3x3) ObjectCB.MatrixModel, (float3)vertex.Tangent);
 #endif
