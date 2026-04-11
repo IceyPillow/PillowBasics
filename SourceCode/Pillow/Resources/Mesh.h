@@ -6,7 +6,6 @@
 #include "Texture.h"
 #include "DirectXMath-apr2025/DirectXPackedVector.h"
 
-using namespace Pillow::Graphics;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 
@@ -75,14 +74,37 @@ namespace Pillow::Graphics
       XMFLOAT3X4A MatrixPalette;
    };
 
-   class BasicMesh
+   class StandardMesh
    {
+   public:
+      const uint32_t VtxNum;
+      const VertexType VtxType;
+      const bool SkeletonEnabled;
 
-   };
+      StandardMesh(VertexType vtxType, uint32_t vtxNum, bool skeletonEnabled = false) :
+         VtxType(vtxType),
+         VtxNum(vtxNum),
+         SkeletonEnabled(skeletonEnabled)
+      {
+         if (vtxNum < 1) throw std::runtime_error("Vertex number must be at least 1.");
+         uint32_t num = (vtxNum * VertexSize[uint32_t(vtxType)] + 32) / sizeof(CacheLine);
+         vtx = std::make_unique<CacheLine[]>(num);
+      }
 
-   class StandardMesh : BasicMesh
-   {
+      UIVertex* GetUIVertices()
+      {
+         if (VtxType != VertexType::UI) throw std::runtime_error("Vertex type mismatch.");
+         return reinterpret_cast<UIVertex*>(vtx.get());
+      }
 
+      StandardVertex* GetStandardVertices()
+      {
+         if (VtxType != VertexType::Standard) throw std::runtime_error("Vertex type mismatch.");
+         return reinterpret_cast<StandardVertex*>(vtx.get());
+      }
+
+   private:
+      std::unique_ptr<CacheLine[]> vtx;
    };
 
    class GenericMeshInfo
