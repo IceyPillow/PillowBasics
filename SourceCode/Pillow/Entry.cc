@@ -7,6 +7,7 @@
 #include "Constants.h"
 #include "Renderers/Renderer.h"
 #include "Input.h"
+#include "UI.h"
 #include "Auxiliaries.h"
 #if defined(_WIN64)
 #define NOMINMAX
@@ -340,6 +341,7 @@ namespace
          //renderer->SetRefreshRate(refreshRate);
       }
 #endif
+      TempUISubSystem_April2025::UITick();
       GameTick();
       renderer->CommitOrWait();
       //Pillow::Input::Update();
