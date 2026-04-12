@@ -7,9 +7,17 @@ using namespace DirectX;
 
 namespace Pillow::Input
 {
+   enum class KeyState : uint8_t
+   {
+      Released,
+      Pressed,
+      Down,
+      Up
+   };
+
    // Not all keys are valid on a specific platform.
    // e.g. A mice is not intended to be supported on Android.
-   enum class GenericKey : char
+   enum class GenericKey : uint8_t
    {
       // Screen touch
       Touch0, Touch1, Touch2, Touch3, Touch4, Touch5,
@@ -71,19 +79,26 @@ namespace Pillow::Input
    void SetInputMethodPosition(XMINT2 position);
    void AddChar32(char32_t character);
 
+   // Return ture if the cursor is hidden (FPS/TPS style), false otherwise.
+   bool GetCursorMode();
    // Check if a key is pressed.
    // WARNING: If you want to trigger an action, use GetKeyDown/Up() instead!
    // Otherwise, the action is triggered every frame.
    bool GetKey(GenericKey key);
    bool GetKeyDown(GenericKey key);
    bool GetKeyUp(GenericKey key);
+   // WARNING: For ordinary cases, use GetKey() instead.
+   // This method is for advanced users.
+   KeyState GetKeyState(GenericKey key);
    XMFLOAT4A GetNormalizedSticks();
    // Get the buffered input string and clear the buffer.
    std::u32string ConsumeInputString();
 
 #if defined(_WIN64)
-   XMFLOAT2 GetMicePos();
-   XMFLOAT2 GetMiceOffset();
+   // x-axis: to right; y-axis: to top.
+   XMFLOAT2A GetMicePos();
+   // x-axis: to right; y-axis: to top.
+   XMFLOAT2A GetMiceOffset();
    float GetWheelOffset();
 #elif defined(__ANDROID__)
    XMFLOAT2 GetTouchPos(uint32_t index);

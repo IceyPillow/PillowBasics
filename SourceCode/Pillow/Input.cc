@@ -28,14 +28,6 @@ namespace
 {
    const int32_t StringBufferMaxSize = 128;
 
-   enum class State : char
-   {
-      Released,
-      Pressed,
-      Down,
-      Up
-   };
-
 #if defined(_WIN64)
    const int32_t RawInputBufferMinNum = 128;
 
@@ -205,15 +197,15 @@ namespace
    HWND hwnd{};
    std::vector<RAWINPUT> rawMessages;
    // In screen coordiantes.
-   XMFLOAT2 cursorPos{};
-   XMFLOAT2 cursorOffset{};
+   XMFLOAT2A cursorPos{};
+   XMFLOAT2A cursorOffset{};
    float wheelOffset{};
    bool bCursorHidden = false;
 
    // Weighted moving average.
-   XMFLOAT2 InputFilter(const XMFLOAT2& newValue, const XMFLOAT2& prevValue)
+   XMFLOAT2A InputFilter(const XMFLOAT2A& newValue, const XMFLOAT2A& prevValue)
    {
-      XMFLOAT2 result;
+      XMFLOAT2A result;
       const float tau = Constants::FrameTime60FPS;
       float aplha = 1 - std::exp(GetFrameDeltaTime() / -tau);
       result.x = newValue.x * aplha + prevValue.x * (1 - aplha);
@@ -236,31 +228,31 @@ namespace
    void UpdateCursor()
    {
       static GameClock localClock;
+      RECT clientRect{};
+      GetClientRect(hwnd, &clientRect);
       // Get cursor screen position.
       POINT point{};
       GetCursorPos(&point);
-      XMFLOAT2 newPos{};
+      XMFLOAT2A newPos{};
       newPos.x = static_cast<float>(point.x);
-      newPos.y = static_cast<float>(point.y);
-      XMFLOAT2 newCursorOffset{};
+      newPos.y = static_cast<float>(clientRect.bottom - point.y);
+      XMFLOAT2A newCursorOffset{};
       newCursorOffset.x = newPos.x - cursorPos.x;
-      newCursorOffset.y = cursorPos.y - newPos.y;
+      newCursorOffset.y = newPos.y - cursorPos.y;
       cursorPos = newPos;
       cursorOffset = InputFilter(newCursorOffset, cursorOffset);
       if (bCursorHidden == false) return;
       // Reposition the cursor.
-      RECT rect{};
-      GetClientRect(hwnd, &rect);
-      POINT center = { rect.right / 2, rect.bottom / 2 };
+      POINT center = { clientRect.right / 2, clientRect.bottom / 2 };
       ClientToScreen(hwnd, &center);
       SetCursorPos(center.x, center.y);
-      cursorPos = { float(center.x), float(center.y) };
+      cursorPos = { float(center.x), float(clientRect.bottom - center.y) };
       // Constrain the cursor in the client area when the form is ACTIVE, and release it otherwise.
       if (localClock.CheckSlice(Constants::FrameTime30FPS) == false) return;
       if (GetForegroundWindow() == hwnd && IsIconic(hwnd) == false)
       {
-         MapWindowPoints(hwnd, nullptr, reinterpret_cast<POINT*>(&rect), 2);
-         ClipCursor(&rect);
+         MapWindowPoints(hwnd, nullptr, reinterpret_cast<POINT*>(&clientRect), 2);
+         ClipCursor(&clientRect);
       }
       else
       {
@@ -280,7 +272,7 @@ namespace
 #endif
 
    std::u32string stringBuffer{};
-   std::map<GenericKey, State> genericKeyStates{};
+   std::map<GenericKey, KeyState> genericKeyStates{};
    XMFLOAT4A gameStick{};
 }
 
@@ -292,7 +284,7 @@ namespace Pillow::Input
       rawMessages.reserve(RawInputBufferMinNum);
       for (int32_t i = 0; i < (int32_t)GenericKey::Count; i++)
       {
-         genericKeyStates.emplace((GenericKey)i, State::Released);
+         genericKeyStates.emplace((GenericKey)i, KeyState::Released);
       }
 #if defined(_WIN64)
       POINT point{};
@@ -332,13 +324,13 @@ namespace Pillow::Input
       // 1. Update key states.
       for (auto& keyState : genericKeyStates)
       {
-         if (keyState.second == State::Up)
+         if (keyState.second == KeyState::Up)
          {
-            keyState.second = State::Released;
+            keyState.second = KeyState::Released;
          }
-         else if (keyState.second == State::Down)
+         else if (keyState.second == KeyState::Down)
          {
-            keyState.second = State::Pressed;
+            keyState.second = KeyState::Pressed;
          }
       }
 
@@ -353,13 +345,13 @@ namespace Pillow::Input
          uint16_t vKey = MiceKeys[i];
          GenericKey Key = MiceGKeys[i];
          bool bPressed = GetAsyncKeyState(vKey) & 0x8000;
-         if (bPressed && genericKeyStates[Key] != State::Pressed)
+         if (bPressed && genericKeyStates[Key] != KeyState::Pressed)
          {
-            genericKeyStates[Key] = State::Down;
+            genericKeyStates[Key] = KeyState::Down;
          }
-         else if (!bPressed && genericKeyStates[Key] != State::Released)
+         else if (!bPressed && genericKeyStates[Key] != KeyState::Released)
          {
-            genericKeyStates[Key] = State::Up;
+            genericKeyStates[Key] = KeyState::Up;
          }
       }
       // 2.2 Keyboard
@@ -394,13 +386,13 @@ namespace Pillow::Input
             if (KeyMap.contains(vKey) == false) continue;
             GenericKey key = KeyMap.at(vKey);
             // Add an extra condition to avoid repeating the KEYDOWN event.
-            if (msg == WM_KEYDOWN && genericKeyStates[key] != State::Pressed)
+            if (msg == WM_KEYDOWN && genericKeyStates[key] != KeyState::Pressed)
             {
-               genericKeyStates[key] = State::Down;
+               genericKeyStates[key] = KeyState::Down;
             }
-            else if (msg == WM_KEYUP && genericKeyStates[key] != State::Released)
+            else if (msg == WM_KEYUP && genericKeyStates[key] != KeyState::Released)
             {
-               genericKeyStates[key] = State::Up;
+               genericKeyStates[key] = KeyState::Up;
             }
          }
       }
@@ -415,32 +407,32 @@ namespace Pillow::Input
             uint16_t vKey = GamepadKeys[i];
             GenericKey key = GamepadGKeys[i];
             bool bPressed = (gamepad.wButtons & vKey);
-            if (bPressed && genericKeyStates[key] != State::Pressed)
+            if (bPressed && genericKeyStates[key] != KeyState::Pressed)
             {
-               genericKeyStates[key] = State::Down;
+               genericKeyStates[key] = KeyState::Down;
             }
-            else if (!bPressed && genericKeyStates[key] != State::Released)
+            else if (!bPressed && genericKeyStates[key] != KeyState::Released)
             {
-               genericKeyStates[key] = State::Up;
+               genericKeyStates[key] = KeyState::Up;
             }
          }
          bool bLeftTrigger = gamepad.bLeftTrigger >= XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
-         if (bLeftTrigger && genericKeyStates[GenericKey::PadLT] != State::Pressed)
+         if (bLeftTrigger && genericKeyStates[GenericKey::PadLT] != KeyState::Pressed)
          {
-            genericKeyStates[GenericKey::PadLT] = State::Down;
+            genericKeyStates[GenericKey::PadLT] = KeyState::Down;
          }
-         else if (!bLeftTrigger && genericKeyStates[GenericKey::PadLT] != State::Released)
+         else if (!bLeftTrigger && genericKeyStates[GenericKey::PadLT] != KeyState::Released)
          {
-            genericKeyStates[GenericKey::PadLT] = State::Up;
+            genericKeyStates[GenericKey::PadLT] = KeyState::Up;
          }
          bool bRightTrigger = gamepad.bRightTrigger >= XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
-         if (bRightTrigger && genericKeyStates[GenericKey::PadRT] != State::Pressed)
+         if (bRightTrigger && genericKeyStates[GenericKey::PadRT] != KeyState::Pressed)
          {
-            genericKeyStates[GenericKey::PadRT] = State::Down;
+            genericKeyStates[GenericKey::PadRT] = KeyState::Down;
          }
-         else if (!bRightTrigger && genericKeyStates[GenericKey::PadRT] != State::Released)
+         else if (!bRightTrigger && genericKeyStates[GenericKey::PadRT] != KeyState::Released)
          {
-            genericKeyStates[GenericKey::PadRT] = State::Up;
+            genericKeyStates[GenericKey::PadRT] = KeyState::Up;
          }
          // Dead zone.
          constexpr float maxOffset = -float(INT16_MIN);
@@ -462,10 +454,10 @@ namespace Pillow::Input
       {
          for (int32_t i = 0; i < GamepadKeyNum; i++)
          {
-            genericKeyStates[GamepadGKeys[i]] = State::Released;
+            genericKeyStates[GamepadGKeys[i]] = KeyState::Released;
          }
-         genericKeyStates[GenericKey::PadLT] = State::Released;
-         genericKeyStates[GenericKey::PadRT] = State::Released;
+         genericKeyStates[GenericKey::PadLT] = KeyState::Released;
+         genericKeyStates[GenericKey::PadRT] = KeyState::Released;
          gameStick = {};
       }
 #elif defined(__ANDROID__)
@@ -534,19 +526,29 @@ namespace Pillow::Input
       stringBuffer += character;
    }
 
+   bool GetCursorMode()
+   {
+      return bCursorHidden;
+   }
+
    bool GetKey(GenericKey key)
    {
-      return genericKeyStates[key] == State::Pressed || genericKeyStates[key] == State::Down;
+      return genericKeyStates[key] == KeyState::Pressed || genericKeyStates[key] == KeyState::Down;
    }
 
    bool GetKeyDown(GenericKey key)
    {
-      return genericKeyStates[key] == State::Down;
+      return genericKeyStates[key] == KeyState::Down;
    }
 
    bool GetKeyUp(GenericKey key)
    {
-      return genericKeyStates[key] == State::Up;
+      return genericKeyStates[key] == KeyState::Up;
+   }
+
+   KeyState GetKeyState(GenericKey key)
+   {
+      return genericKeyStates[key];
    }
 
    XMFLOAT4A GetNormalizedSticks()
@@ -562,12 +564,12 @@ namespace Pillow::Input
    }
 
 #if defined(_WIN64)
-   XMFLOAT2 GetMicePos()
+   XMFLOAT2A GetMicePos()
    {
       return cursorPos;
    }
 
-   XMFLOAT2 GetMiceOffset()
+   XMFLOAT2A GetMiceOffset()
    {
       return cursorOffset;
    }
