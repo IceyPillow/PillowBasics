@@ -1,0 +1,15 @@
+BasedOnStyle: Microsoft
+Standard: Latest
+
+ColumnLimit: 140
+ReflowComments: false
+MaxEmptyLinesToKeep: 2
+
+UseTab: Never
+IndentWidth: 3
+ContinuationIndentWidth: 3
+
+AlignAfterOpenBracket: Align
+SpaceAfterCStyleCast: false
+BinPackParameters: true
+BinPackArguments: true
