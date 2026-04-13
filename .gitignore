@@ -13,4 +13,5 @@ _deps
 
 # Customed ignore
 Cmake
-.github
+Packed
+*.aps

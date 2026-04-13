@@ -8,7 +8,11 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 
 #message("SOURCES: ${SOURCES}")
 
-add_executable(Pillow WIN32 ${SOURCES})
+if(WIN32)
+   set(ICON_FILES "${CMAKE_CURRENT_SOURCE_DIR}/../Win64Icon.rc" "${CMAKE_CURRENT_SOURCE_DIR}/../Pillow.ico")
+   target_sources(Pillow PRIVATE ${ICON_FILES})
+   source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/../" PREFIX "PillowEngine/Icons" FILES ${ICON_FILES})
+endif()
 
 target_include_directories(Pillow PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -59,4 +63,4 @@ set_target_properties(${LIBRARIES} PROPERTIES FOLDER "3rdParty")
 target_include_directories(Pillow PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../3rdParty")
 
 # Build an IDE hierarchy.
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "PillowEngine" FILES ${SOURCES})
