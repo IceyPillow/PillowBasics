@@ -6,7 +6,12 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
    "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
 )
 
-#message("SOURCES: ${SOURCES}")
+file(GLOB_RECURSE GAMEPLAY_SOURCES CONFIGURE_DEPENDS
+   "${CMAKE_CURRENT_SOURCE_DIR}/../Gameplay/*.h"
+   "${CMAKE_CURRENT_SOURCE_DIR}/../Gameplay/*.cc"
+)
+
+add_executable(Pillow WIN32 ${SOURCES} ${GAMEPLAY_SOURCES})
 
 if(WIN32)
    set(ICON_FILES "${CMAKE_CURRENT_SOURCE_DIR}/../Win64Icon.rc" "${CMAKE_CURRENT_SOURCE_DIR}/../Pillow.ico")
@@ -64,3 +69,4 @@ target_include_directories(Pillow PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../3rdPar
 
 # Build an IDE hierarchy.
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "PillowEngine" FILES ${SOURCES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/../" FILES ${GAMEPLAY_SOURCES})

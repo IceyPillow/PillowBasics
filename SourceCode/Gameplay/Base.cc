@@ -1,0 +1,4 @@
+namespace Gameplay
+{
+   void foo(){}
+}
