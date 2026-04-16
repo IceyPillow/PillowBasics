@@ -34,3 +34,14 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 )
 set_source_files_properties(${SOURCES} PROPERTIES VS_SETTINGS "ExcludedFromBuild=true")
 add_library(Shaders INTERFACE ${SOURCES})
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    get_filename_component(INSTALL_PATH "${CMAKE_SOURCE_DIR}/../Cmake/Packed" ABSOLUTE)
+    set(CMAKE_INSTALL_PREFIX "${INSTALL_PATH}" CACHE PATH "Default install path." FORCE)
+endif()
+
+install(TARGETS Pillow RUNTIME DESTINATION "./")
+install(FILES ${RUNTIMES} DESTINATION "./")
+if(WIN32)
+   install(FILES ${D3D12_RUNTIMES} DESTINATION "./D3D12/")
+endif()
