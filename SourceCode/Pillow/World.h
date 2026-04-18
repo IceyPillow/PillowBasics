@@ -3,9 +3,11 @@
 #include <vector>
 namespace Pillow::World
 {
+   using ComponentEvent = void(*)(float deltaTime);
 
    class GameObject
    {
+      std::vector<ComponentEvent> ticks{};
    };
 
    class GenericCamera : public GameObject
