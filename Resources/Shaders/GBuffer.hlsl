@@ -48,18 +48,18 @@ Standard_Vertex2Pixel VertexShader(StandardVertex vertex)
    // gBuffer1 = rg(normal) + b(smoothness)
    // Albedo
    float3 texCoords = float3(pixelMetadata.UV01.xy, pixelMetadata.TexIdxA.y);
-   float texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxA.x);
-   output.gBuffer0.rgb = TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoords).rgb;
+   uint texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxA.x);
+   output.gBuffer0.rgb = Gallery[texArrayArrayIdx].Sample(AniWrap, texCoords).rgb;
    // Metallic + smoothness
    texCoords.z = pixelMetadata.TexIdxA.w;
    texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxA.z);
-   float2 metallic_smoothness = TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoords).rg;
+   float2 metallic_smoothness = Gallery[texArrayArrayIdx].Sample(AniWrap, texCoords).rg;
    output.gBuffer0.a = metallic_smoothness.x * ObjectCB.Metallic;
    output.gBuffer1.b = metallic_smoothness.y * ObjectCB.Smoothness;
    // World Normal
    texCoords.z = pixelMetadata.TexIdxB.y;
    texArrayArrayIdx = NonUniformResourceIndex(pixelMetadata.TexIdxB.x);
-   float3 normalTBN = UnpackNormal((float2)TexArrays[texArrayArrayIdx].Sample(AniWrap, texCoords));
+   float3 normalTBN = UnpackNormal((float2)Gallery[texArrayArrayIdx].Sample(AniWrap, texCoords));
    float3 normal = normalize(pixelMetadata.NormalW.xyz);
    float3 tangent = normalize(pixelMetadata.TangentW.xyz);
    tangent = normalize(tangent - dot(tangent, normal) * normal);

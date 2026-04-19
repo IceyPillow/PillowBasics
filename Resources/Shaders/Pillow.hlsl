@@ -24,18 +24,12 @@ static const float PI_DIV4 = 0.785398163f;
 static const float TimeLapseMax = 3600 * PI2; // Seconds
 static const uint FrameIdxMax = 1000000;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
-// Unified root signature
+static const uint GBuffer1 = 1;
+static const uint GBuffer2 = 2;
+static const uint HalfBuffer = 3;
 
-// These are static samplers.
-// Use the uniform branches to select them in shaders (see the func SampleTexSmart).
-SamplerState PointClamp : register(s0);
-SamplerState PointWrap : register(s1);
-SamplerState TriClamp : register(s2);
-SamplerState TriWrap : register(s3);
-SamplerState AniClamp : register(s4);
-SamplerState AniWrap : register(s5);
-SamplerComparisonState Cmp : register(s6);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
+// Bound resources
 
 struct ObjectStruct
 {
@@ -82,28 +76,36 @@ struct PassStruct
    float TimeLapse;
 };
 
-ConstantBuffer<ObjectStruct> ObjectCB : register(b0, space0);
-ConstantBuffer<LightStruct> LightCB : register(b1, space0);
-ConstantBuffer<PassStruct> PassCB : register(b2, space0);
-
-
 struct BoneData
 {
    float3x4 MatrixPalette;
 };
 
+// Static samplers.
+// Use the uniform branches to select them in shaders (see the func SampleTexSmart).
+SamplerState PointClamp : register(s0);
+SamplerState PointWrap : register(s1);
+SamplerState TriClamp : register(s2);
+SamplerState TriWrap : register(s3);
+SamplerState AniClamp : register(s4);
+SamplerState AniWrap : register(s5);
+SamplerComparisonState Cmp : register(s6);
+
+// Bound resources.
+ConstantBuffer<ObjectStruct> ObjectCB : register(b0, space0);
+ConstantBuffer<LightStruct> LightCB : register(b1, space0);
+ConstantBuffer<PassStruct> PassCB : register(b2, space0);
 StructuredBuffer<BoneData> MatrixBones : register(t0, space0);
+TextureCubeArray CubeGallery : register(t1, space0);
+Texture2DArray Gallery[] : register(t0, space1);
 
-Texture2D Textures[] : register(t1, space0);
-
-Texture2DArray TexArrays[] : register(t0, space1);
-
-TextureCube Cubemaps[] : register(t0, space2);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
+// Unified root signature
 
 #define CSU_DESC_HEAP_SIZE 65535
 #define MIPS_MAX 16.f
 
- // Value to string literal
+// Value to string literal
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
@@ -123,13 +125,12 @@ TextureCube Cubemaps[] : register(t0, space2);
 
 #define ROOT_SIGN \
    "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT), " \
-   "CBV(b0, space=0), " \
-   "CBV(b1, space=0), " \
-   "CBV(b2, space=0), " \
-   "SRV(t0, space=0), " \
-   "DescriptorTable(SRV(t1, space=0, numDescriptors = " STR(CSU_DESC_HEAP_SIZE) ")), " \
-   "DescriptorTable(SRV(t0, space=1, numDescriptors = " STR(CSU_DESC_HEAP_SIZE) ")), " \
-   "DescriptorTable(SRV(t0, space=2, numDescriptors = " STR(CSU_DESC_HEAP_SIZE) ")), " \
+   "CBV(b0, space = 0), " \
+   "CBV(b1, space = 0), " \
+   "CBV(b2, space = 0), " \
+   "SRV(t0, space = 0), " \
+   "DescriptorTable(SRV(t1, space = 0, numDescriptors = 1)), " \
+   "DescriptorTable(SRV(t0, space = 1, numDescriptors = " STR(CSU_DESC_HEAP_SIZE) ")), " \
    "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT, " TEX_CLAMP(0) ", " CMP_NV "), " \
    "StaticSampler(s1, filter = FILTER_MIN_MAG_MIP_POINT, " TEX_WRAP(0) ", " CMP_NV "), " \
    "StaticSampler(s2, filter = FILTER_MIN_MAG_MIP_LINEAR, " TEX_CLAMP(MIPS_MAX) ", " CMP_NV "), " \

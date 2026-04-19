@@ -66,23 +66,18 @@ namespace Pillow::Graphics
    // Those resources have no handles, client should refer to them by this enum type.
    enum class PiplelineBuffer : uint8_t
    {
-      // Swap chain
       Backbuffer,
-      // For half-resolution post-process effects
-      PostProcessingHalf,
-      PostProcessingHalfOld,
-      // Lighting pass of the deferred pipeline
-      LightBuffer,
-      LightBufferOld,
-      // G-buffer pass of the deferred pipeline
       Depth,
-      DepthOld,
       MotionVector,
-      MotionVectorOld,
+      // Geometry buffer for deferred shading.
       GBuffer1,
       GBuffer2,
-      GBuffer3,
-      Count,
+      // Pixel Buffer for post-processing.
+      PBuffer1,
+      PBuffer2,
+      PHalfBuffer1,
+      PHalfBuffer2,
+      Count
    };
 
    struct GenericRendererResourceDesc
