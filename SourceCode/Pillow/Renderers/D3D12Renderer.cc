@@ -1,7 +1,7 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 // TODO: bundle cmd lists
-#if defined(_WIN64)
 #include "Renderer.h"
+#if defined(_WIN64)
 #define NOMINMAX
 #include <Windows.h>
 #undef NOMINMAX
@@ -29,8 +29,8 @@
 #include <exception>
 #include "utfcpp-4.0.6/utf8.h"
 
-using namespace Pillow;
-using namespace Pillow::Common;
+using namespace Pillow::Graphics;
+
 using Microsoft::WRL::ComPtr;
 
 // DirectX 12 Agility SDK 1.618.5 (618), released on 2025.05.12
@@ -72,7 +72,7 @@ namespace
    const int32_t BC5BlockSize = BC4BlockSize * 2; // AA, 1:2 zip rate
 
    constexpr int32_t PiplelineBufferNum = (int32_t)PiplelineBuffer::Count;
-   constexpr int32_t piplelineBufferArrayNum = (int32_t)Constants::SwapChainSize * PiplelineBufferNum;
+   constexpr int32_t piplelineBufferArrayNum = (int32_t)SwapChainSize * PiplelineBufferNum;
    
    // TODO: BC7, mode 6 and mode 7
    const DXGI_FORMAT NativeTexFmt[int32_t(TextureInfo::Format::Count)]
@@ -159,7 +159,7 @@ const DXGI_FORMAT VtxUInt4C = DXGI_FORMAT_R10G10B10A2_UINT;
 #define MIP_MAX 16
 
 #define SMAPLER_DESC(filter, addressMode, cmpFunc, maxLOD, registerNum) \
-{filter, addressMode, addressMode, addressMode, 0, Constants::AnisotropyLevel, cmpFunc, \
+{filter, addressMode, addressMode, addressMode, 0, AnisotropyLevel, cmpFunc, \
 D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY_ALL}
    const D3D12_STATIC_SAMPLER_DESC StaticSamplers[7]
    {
@@ -195,7 +195,7 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    std::vector<ComPtr<ICommandList>> cmdLists;
    std::vector<ID3D12CommandList*> cmdListsRaw; // A copy of cmdLists, used for ExecuteCommandLists()
    std::vector<ComPtr<ID3D12CommandAllocator>> cmdAllocators;
-   ComPtr<IResource> backBuffers[Constants::SwapChainSize]{};
+   ComPtr<IResource> backBuffers[SwapChainSize]{};
 
    // Utility Wrapper
    std::unique_ptr<FenceSync> fenceSync;
@@ -244,7 +244,7 @@ namespace
 
       uint64_t GetTargetFence() { return f_FrameIndex + 1; }
       uint64_t GetCompletedFence() { return fence->GetCompletedValue(); }
-      int32_t GetFrameArrayIdx() { return f_FrameIndex % Constants::SwapChainSize; }
+      int32_t GetFrameArrayIdx() { return f_FrameIndex % SwapChainSize; }
 
       // Get the next frame.
       // ***WARNING***
@@ -254,9 +254,9 @@ namespace
          f_FrameIndex++;
          cmdQueue->Signal(fence.Get(), f_FrameIndex);
          uint64_t minFence = 0 ;
-         if (f_FrameIndex >= Constants::SwapChainSize)
+         if (f_FrameIndex >= SwapChainSize)
          {
-            minFence = f_FrameIndex - Constants::SwapChainSize + 1;
+            minFence = f_FrameIndex - SwapChainSize + 1;
          }
          Synchronize(minFence);
       }
@@ -1424,7 +1424,7 @@ namespace
       static constexpr float pC[] = { 1, 2.f / 3.f, 1.f / 3.f, 0 };
       static constexpr float pD[] = { pC[3], pC[2], pC[1], pC[0] };
       // Find Min and Max points, as starting point
-      XMVECTOR c0 = RGBLuminance;
+      XMVECTOR c0 = XMLoadFloat4A(&RGBLuminance);
       XMVECTOR c1 = XMVectorZero();
       for (int32_t i = 0; i < BCBlockLength; i++)
       {
@@ -1628,7 +1628,7 @@ namespace
          const XMVECTOR v3 = XMVectorReplicate(0.5f);
          const XMVECTOR factor = XMVectorSet(1 / 31.f, 1 / 63.f, 1 / 31.f, 0);
          colors[i] = XMVectorMultiply(XMVectorFloor(XMVectorMultiplyAdd(c, v2, v3)), factor);
-         colors[i] = XMVectorMultiply(colors[i], RGBLuminance);
+         colors[i] = XMVectorMultiply(colors[i], XMLoadFloat4A(&RGBLuminance));
          if (!RGBDithering) continue;
          XMVECTOR diff = XMVectorSubtract(c, colors[i]);
          if (3 != (i & 3))
@@ -1656,8 +1656,8 @@ namespace
       // Then quantize and sort the endpoints depending on mode.
       XMVECTOR ColorA, ColorB, ColorC, ColorD;
       OptimizeRGB(ColorA, ColorB, colors);
-      ColorC = XMVectorMultiply(ColorA, RGBLuminanceInv);
-      ColorD = XMVectorMultiply(ColorB, RGBLuminanceInv);
+      ColorC = XMVectorMultiply(ColorA, XMLoadFloat4A(&RGBLuminanceInv));
+      ColorD = XMVectorMultiply(ColorB, XMLoadFloat4A(&RGBLuminanceInv));
       const uint16_t wColorA = EncodeRGB565(ColorC);
       const uint16_t wColorB = EncodeRGB565(ColorD);
       if (wColorA == wColorB)
@@ -1669,8 +1669,8 @@ namespace
       }
       ColorC = DecodeRGB565(wColorA);
       ColorD = DecodeRGB565(wColorB);
-      ColorA = XMVectorMultiply(ColorC, RGBLuminance);
-      ColorB = XMVectorMultiply(ColorD, RGBLuminance);
+      ColorA = XMVectorMultiply(ColorC, XMLoadFloat4A(&RGBLuminance));
+      ColorB = XMVectorMultiply(ColorD, XMLoadFloat4A(&RGBLuminance));
       // Calculate color steps
       XMVECTOR Step[4];
       reinterpret_cast<uint16_t*>(destination)[0] = wColorB;
@@ -1692,7 +1692,7 @@ namespace
       for (int32_t i = 0; i < BCBlockLength; i++)
       {
          XMVECTOR c = XMLoadFloat4A(&blockRGB[i]);
-         c = XMVectorMultiply(c, RGBLuminance);
+         c = XMVectorMultiply(c, XMLoadFloat4A(&RGBLuminance));
          if (RGBDithering) c = XMVectorAdd(c, errors[i]);
          const float fDot = XMVectorGetX(XMVector3Dot(XMVectorSubtract(c, Step[0]), Dir));
          uint32_t iStep;
@@ -1821,7 +1821,7 @@ namespace
       DXGI_SWAP_CHAIN_DESC1 swapChainDesc
       {
          0,0, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
-         DXGI_USAGE_RENDER_TARGET_OUTPUT, Constants::SwapChainSize, DXGI_SCALING_NONE,
+         DXGI_USAGE_RENDER_TARGET_OUTPUT, SwapChainSize, DXGI_SCALING_NONE,
          DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
          uint32_t(bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
       };
@@ -1829,7 +1829,7 @@ namespace
       DXGI_RGBA color{ 0.f, 0.f, 0.f, 1.f };
       swapChain->SetBackgroundColor(&color);
       // Command Allocators & Lists
-      int32_t count = Constants::SwapChainSize * workerThreadCount;
+      int32_t count = SwapChainSize * workerThreadCount;
       cmdAllocators.reserve(count);
       for (int i = 0; i < count; i++)
       {
@@ -1866,12 +1866,12 @@ namespace
          DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RTV_DIMENSION_TEXTURE2D
       };
       rtvDesc.Texture2D = { 0,0 };
-      for (int i = 0; i < Constants::SwapChainSize; i++)
+      for (int i = 0; i < SwapChainSize; i++)
       {
          // After resizing the swapchain, the frame array index may not be euqal to the active backbuffer index.
          // So, we should associate the first buffer of the resized swapchain to the current frame array index.
          // e.g. frameIdx = 8, frameArrayIdx = 2, in this case, backbuffers[2] should refer to swapChain->GetBuffer(0).
-         int32_t frameArrayIdx = (fenceSync->GetFrameIndex() + i) % Constants::SwapChainSize;
+         int32_t frameArrayIdx = (fenceSync->GetFrameIndex() + i) % SwapChainSize;
          Check_HRESULT(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[frameArrayIdx])));
          piplelineRTVs[GetPiplelineBufferIndex(PiplelineBuffer::Backbuffer, frameArrayIdx)] =
             descriptorMgr->CreateDescirptor(device, backBuffers[frameArrayIdx], &rtvDesc, DescriptorHeapManeger::Type::RTV);
@@ -1884,12 +1884,12 @@ namespace
       currentBackBufferSize = IRenderer::GetInstance()->GetBackBufferSize();
       // Resize the swapchain.
       fenceSync->FlushQueue();
-      for (int32_t i = 0; i < Constants::SwapChainSize; i++)
+      for (int32_t i = 0; i < SwapChainSize; i++)
       {
          backBuffers[i].Reset();
          descriptorMgr->ReleaseDescriptor(piplelineRTVs[GetPiplelineBufferIndex(PiplelineBuffer::Backbuffer, i)]);
       }
-      Check_HRESULT(swapChain->ResizeBuffers(Constants::SwapChainSize, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM,
+      Check_HRESULT(swapChain->ResizeBuffers(SwapChainSize, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM,
          bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
       CreateFrames();
    }

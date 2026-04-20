@@ -11,17 +11,13 @@
 #include "Resources/Texture.h"
 #include "Resources/Mesh.h"
 
-using namespace Pillow::Graphics;
 using namespace DirectX;
+using namespace Pillow::Constants;
+using namespace Pillow::Common;
 
 namespace Pillow::Graphics
 {
    const int32_t ReservedCommandCount = 20000; // 68B*20000 = nearly 1.3MB
-   // Perceptual weightings for the importance of each channel.
-   const XMVECTOR RGBLuminance = XMVectorSet(0.2125f / 0.7154f, 1, 0.0721f / 0.7154f, 1);
-   const XMVECTOR RGBLuminanceInv = XMVectorSet(0.7154f / 0.2125f, 1, 0.7154f / 0.0721f, 1);
-
-   class IRenderer;
 
    // Resource handle, index starts at 1.
    // 4-bit type + 28-bit index
