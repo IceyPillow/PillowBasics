@@ -6,6 +6,7 @@
 #include "lodepng-apr2025/lodepng.h"
 
 using namespace Pillow;
+using namespace Pillow::Common;
 using namespace Pillow::Graphics;
 using namespace DirectX;
 

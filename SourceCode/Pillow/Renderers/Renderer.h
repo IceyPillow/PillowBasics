@@ -7,8 +7,7 @@
 #include <atomic>
 #include <vector>
 #include <functional>
-#include "Auxiliaries.h"
-#include "Constants.h"
+#include "Common.h"
 #include "Resources/Texture.h"
 #include "Resources/Mesh.h"
 

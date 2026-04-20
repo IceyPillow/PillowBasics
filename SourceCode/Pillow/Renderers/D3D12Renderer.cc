@@ -30,6 +30,7 @@
 #include "utfcpp-4.0.6/utf8.h"
 
 using namespace Pillow;
+using namespace Pillow::Common;
 using Microsoft::WRL::ComPtr;
 
 // DirectX 12 Agility SDK 1.618.5 (618), released on 2025.05.12

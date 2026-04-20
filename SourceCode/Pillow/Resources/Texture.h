@@ -1,7 +1,9 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 #pragma once
-#include "Auxiliaries.h"
+#include "Common.h"
 #include "DirectXMath-apr2025/DirectXMath.h"
+
+using namespace Pillow::Common;
 
 namespace Pillow::Graphics
 {

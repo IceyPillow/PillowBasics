@@ -4,11 +4,10 @@
 #include <string_view>
 #include "DirectXMath-apr2025/DirectXMath.h"
 #include "utfcpp-4.0.6/utf8.h"
-#include "Constants.h"
 #include "Renderers/Renderer.h"
 #include "Input.h"
 #include "UI.h"
-#include "Auxiliaries.h"
+#include "Common.h"
 #if defined(_WIN64)
 #define NOMINMAX
 #include <Windows.h>
@@ -16,11 +15,13 @@
 #elif defined(__ANDROID__)
 #endif
 
+using namespace Pillow::Common;
+
 extern void TempCode();
 
 namespace Pillow::Hidden
 {
-   extern Pillow::GameClock GlobalClock;
+   extern GameClock GlobalClock;
    extern float WheelAccumulation;
 }
 

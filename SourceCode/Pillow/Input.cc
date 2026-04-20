@@ -15,6 +15,7 @@
 #endif
 
 using namespace Pillow;
+using namespace Pillow::Common;
 using namespace Pillow::Input;
 
 namespace Pillow::Hidden
