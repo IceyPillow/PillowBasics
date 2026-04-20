@@ -349,16 +349,6 @@ namespace
       {
          SingletonCheck();
          std::unique_lock lock(mutex);
-         csuFreePool.reserve(MaxHeapCapcity);
-         rtvFreePool.reserve(MaxHeapCapcity);
-         dsvFreePool.reserve(MaxHeapCapcity);
-         // Warning: DescriptorHandle is uint32_t, be aware of an ill-defined for-loop!
-         for (DescriptorHandle idx = MaxHeapCapcity; idx > 0; idx--)
-         {
-            csuFreePool.push_back(idx);
-            rtvFreePool.push_back(idx);
-            dsvFreePool.push_back(idx);
-         }
 
          D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc
          {
@@ -428,33 +418,33 @@ namespace
       {
          std::unique_lock lock(mutex);
          DescriptorHandle handle{};
-         auto GetHandle = [&](std::vector<DescriptorHandle>& freePool, const char* name)
-            {
-               if (freePool.empty())
-                  throw std::exception(std::format("Descriptor heap[{}] is full, try to alter MaxHeapCapcity.", name).c_str());
-               handle = SetType(freePool.back(), type);
-               freePool.pop_back();
-            };
+         //auto GetHandle = [&](std::vector<DescriptorHandle>& freePool, const char* name)
+         //   {
+         //      if (freePool.empty())
+         //         throw std::exception(std::format("Descriptor heap[{}] is full, try to alter MaxHeapCapcity.", name).c_str());
+         //      handle = SetType(freePool.back(), type);
+         //      freePool.pop_back();
+         //   };
          switch (type)
          {
          case Type::CBV:
-            GetHandle(csuFreePool, "CSV_SRV_UAV");
+            handle = csuPool.Acquire();
             device->CreateConstantBufferView((D3D12_CONSTANT_BUFFER_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::SRV:
-            GetHandle(csuFreePool, "CSV_SRV_UAV");
+            handle = csuPool.Acquire();
             device->CreateShaderResourceView(res.Get(), (D3D12_SHADER_RESOURCE_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::UAV:
-            GetHandle(csuFreePool, "CSV_SRV_UAV");
+            handle = csuPool.Acquire();
             device->CreateUnorderedAccessView(res.Get(), nullptr, (D3D12_UNORDERED_ACCESS_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::RTV:
-            GetHandle(rtvFreePool, "RTV");
+            handle = rtvPool.Acquire();
             device->CreateRenderTargetView(res.Get(), (D3D12_RENDER_TARGET_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::DSV:
-            GetHandle(dsvFreePool, "DSV");
+            handle = dsvPool.Acquire();
             device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
          }
 #ifdef PILLOW_DEBUG
@@ -466,14 +456,6 @@ namespace
       void ReleaseDescriptor(DescriptorHandle handle)
       {
          std::unique_lock lock(mutex);
-         auto ReleaseHandle = [&](std::vector<DescriptorHandle>& freePool)
-            {
-#ifdef PILLOW_DEBUG
-               //bool found = std::find(freePool.begin(), freePool.end(), handle) != freePool.end();
-               //if (found) throw std::exception("Invalid index.");
-#endif
-               freePool.push_back(handle);
-            };
          auto Type = GetType(handle);
          handle = ClearType(handle);
          switch (Type)
@@ -481,13 +463,13 @@ namespace
          case Type::CBV:
          case Type::SRV:
          case Type::UAV:
-            ReleaseHandle(csuFreePool);
+            csuPool.Release(handle);
             break;
          case Type::RTV:
-            ReleaseHandle(rtvFreePool);
+            rtvPool.Release(handle);
             break;
          case Type::DSV:
-            ReleaseHandle(dsvFreePool);
+            dsvPool.Release(handle);
             break;
          }
       }
@@ -512,7 +494,7 @@ namespace
       const static uint32_t FlagBits = 3;
       const static uint32_t IndexBits = sizeof(DescriptorHandle) * 8 - FlagBits;
       const static uint32_t HandleMaxNum = (1 << IndexBits) - 1;
-      const static uint32_t MaxHeapCapcity = (1 << 16) - 1;
+      const static uint32_t MaxHeapCapcity = UINT16_MAX;
       static_assert(MaxHeapCapcity <= HandleMaxNum, "MaxHeapCapcity exceeds the max allowed number of handles.");
 
       mutable std::shared_mutex mutex;
@@ -520,9 +502,9 @@ namespace
       ComPtr<ID3D12DescriptorHeap> csuDescHeap;
       ComPtr<ID3D12DescriptorHeap> rtvDescHeap;
       ComPtr<ID3D12DescriptorHeap> dsvDescHeap;
-      std::vector<DescriptorHandle> csuFreePool;
-      std::vector<DescriptorHandle> rtvFreePool;
-      std::vector<DescriptorHandle> dsvFreePool;
+      GenericHandlePool<uint16_t> csuPool{"CSU Pool", MaxHeapCapcity};
+      GenericHandlePool<uint16_t> rtvPool{"RTV Pool", MaxHeapCapcity};
+      GenericHandlePool<uint16_t> dsvPool{"DSV Pool", MaxHeapCapcity};
       D3D12_CPU_DESCRIPTOR_HANDLE csuCpuHandle0;
       D3D12_GPU_DESCRIPTOR_HANDLE csuGpuHandle0;
       // RTV and DSV don't have gpu handles.

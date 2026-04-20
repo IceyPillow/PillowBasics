@@ -1,15 +1,13 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 #pragma once
 #include <map>
-#include <typeinfo>
-#include <type_traits>
-#include <exception>
-#include <shared_mutex>
 #include <string>
 #include <ranges>
-#include <filesystem>
-#include <locale>
 #include <chrono>
+#include <exception>
+#include <algorithm>
+#include <filesystem>
+#include <shared_mutex>
 #include "utfcpp-4.0.6/utf8.h"
 #include "DirectXMath-apr2025/DirectXMath.h"
 #include "Constants.h"
@@ -26,7 +24,7 @@
 #endif
 
 // A known issue: VS applies wrong formats for consecutive "PropertyReadonly" macros.
-// _Aaa is reserved for the compiler in C++, makes a C# programmer wanna cry.
+// _Aaa is reserved for the compiler in C++, which is unfriendly to a C# coder.
 // "f_" means field; it's from C#.
 #define ReadonlyProperty(type, name) \
 protected: type f_##name{}; \
@@ -61,7 +59,7 @@ namespace Pillow
    // by default), but MessageBoxW always supports UTF-16.
    // 
    // III. The Naughty Wide Character
-   // whcar_t represents UTF-16 on Win, However, represents UTF-32 on Android typically.
+   // whcar_t represents UTF-16 on Win, However, represents UTF-32 on Android.
    // 
    // IV. The String Convention of Pillow Basics
    // Only use UTF-8 strings in Pillow Basics for coherence.
@@ -171,4 +169,60 @@ namespace Pillow
 
    // Check the global clock.
    double GetLapseTimeSinceLaunch();
+
+   template<std::unsigned_integral ANY_UINT>
+   class GenericHandlePool
+   {
+   public:
+      static const ANY_UINT NullHandle = 0;
+      const string Name;
+      const ANY_UINT MaxIndex;
+
+      GenericHandlePool(const string& name, ANY_UINT maxIndex) :
+         Name(name),
+         MaxIndex(maxIndex)
+      {
+         const uint32_t initialPoolSize = 256;
+         FreePool.reserve(initialPoolSize);
+      }
+
+      ANY_UINT Acquire()
+      {
+         if (FreePool.empty() == false)
+         {
+            ANY_UINT handle = FreePool.back();
+            FreePool.pop_back();
+            return handle;
+         }
+         else
+         {
+            if (head > MaxIndex || head == 0)
+               throw std::exception(std::format("Handle pool overflowed. PoolName={}", Name).c_str());
+            return head++;
+         }
+      }
+
+      ANY_UINT Release(ANY_UINT handle)
+      {
+         if (handle == NullHandle || handle >= head)
+         {
+            string error = std::format("Invalid handle. PoolName={}, Handle={}", Name, handle);
+            throw std::exception(error.c_str());
+         }
+#ifdef PILLOW_DEBUG
+         bool found = std::find(FreePool.begin(), FreePool.end(), handle) != FreePool.end();
+         if (found)
+         {
+            string error = std::format("Cannot release an unbound handle. PoolName={}, Handle={}", Name, handle);
+            throw std::exception(error.c_str());
+         }
+#endif
+         FreePool.push_back(handle);
+         return NullHandle;
+      }
+
+   private:
+      ANY_UINT head = 1;
+      std::vector<ANY_UINT> FreePool;
+   };
 }
