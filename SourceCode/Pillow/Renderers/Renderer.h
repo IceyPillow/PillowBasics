@@ -2,9 +2,6 @@
 #pragma once
 #include <cmath>
 #include <ranges>
-#include <thread>
-#include <barrier>
-#include <atomic>
 #include <vector>
 #include <functional>
 #include "Common.h"
@@ -21,11 +18,11 @@ namespace Pillow::Graphics
 
    // Resource handle, index starts at 1.
    // 4-bit type + 28-bit index
-   typedef uint32_t ResHandle;
+   using ResHandle = uint32_t;
+   const ResHandle ResHandleNULL = 0;
+   const ResHandle ResIndexBits = 28;
+   const ResHandle ResourceTypeMask = 0xF0000000;
 
-   const uint32_t ResHandleNULL = 0;
-   const uint32_t ResIndexBits = 28;
-   const uint32_t ResourceTypeMask = 0xF0000000;
    struct alignas(XMVECTOR) ObjectConstantBuffer
    {
       XMFLOAT3X4A MatrixModel;
@@ -304,9 +301,8 @@ namespace Pillow::Graphics
          ReadonlyProperty(int32_t, VSyncBlanks)
 
    public:
-      static void Initialize(int32_t threadCount, XMINT2 backBufferSize, int32_t refreshRate, void* parameter);
+      static void Initialize(uint32_t threadCount, XMINT2 backBufferSize, int32_t refreshRate, void* parameter);
       static IRenderer* GetInstance();
-      static void Terminate();
 
    public:
       virtual ~IRenderer() = 0;
@@ -334,28 +330,30 @@ namespace Pillow::Graphics
       void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
       void SetVSyncBlanks(int32_t blanks) { f_VSyncBlanks = blanks; }
 
-      virtual void ResourceRegister(ResHandle handle, ResourceType type, const void* desc) {/*dumb*/};
-      virtual void ResourceRelease(ResHandle handle) {/*dumb*/};
-      void Launch();
+      virtual void ResourceRegister(ResHandle handle, ResourceType type, const void* desc) {/*dumb*/ }
+      virtual void ResourceRelease(ResHandle handle) {/*dumb*/ }
+      void Launch() { threadPool.Launch(); }
+      void Terminate() { threadPool.Terminate(); }
       // ***CORE WORKLOAD***
       // Commit a frame, or wait for the last CPU renderer frame.
-      void CommitOrWait();
+      void Commit() { threadPool.Commit(); }
       // Get the idle generic command list.
       // Client code should never invoke it; instead, uses CmdXXX() (see: CmdNone()) to record commands.
       std::vector<GenericRendererCommand>* GetIdleCmdList();
 
    protected:
-      IRenderer(int32_t threadCount, string name, XMINT2 renderBufferSize, int32_t refreshRate);
-      virtual void Worker(int32_t workerIndex) = 0;
+      IRenderer(uint32_t threadCount, string name, XMINT2 renderBufferSize, int32_t refreshRate);
+      virtual void Worker(uint32_t workerIndex) = 0;
+      void BasePioneer();
       virtual void Pioneer() = 0;
       virtual void Assembler() = 0;
       // Get the busy generic command list, provided for a renderer backend.
       const std::vector<GenericRendererCommand>* GetBusyCmdList();
 
    private:
-      void BaseWorker(std::stop_token token, int32_t workerIndex);
-      //error C2216 : 'friend' cannot be used with 'static'
-      friend void BarrierCompletionAction() noexcept;
+      using ActionT = void(IRenderer::*)();
+      using WorkerT = void(IRenderer::*)(uint32_t);
+      ThreadPool<IRenderer, WorkerT, ActionT> threadPool;
    };
 
 #if defined(_WIN64)
@@ -369,7 +367,7 @@ namespace Pillow::Graphics
       uint64_t GetFrameIndex() override final;
 
    private:
-      void Worker(int32_t workerIndex) override final;
+      void Worker(uint32_t workerIndex) override final;
       void Pioneer() override final;
       void Assembler() override final;
    };

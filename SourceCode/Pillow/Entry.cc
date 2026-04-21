@@ -344,13 +344,13 @@ namespace
 #endif
       TempUISubSystem_April2025::UITick();
       GameTick();
-      renderer->CommitOrWait();
+      renderer->Commit();
       //Pillow::Input::Update();
    }
 
    void EngineTerminate()
    {
-      IRenderer::Terminate();
+      IRenderer::GetInstance()->Terminate();
       InputClose();
    }
 
