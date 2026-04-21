@@ -26,6 +26,50 @@ namespace Pillow::Graphics
    const uint32_t ResHandleNULL = 0;
    const uint32_t ResIndexBits = 28;
    const uint32_t ResourceTypeMask = 0xF0000000;
+   struct alignas(XMVECTOR) ObjectConstantBuffer
+   {
+      XMFLOAT3X4A MatrixModel;
+      XMFLOAT3X4A MatrixModelInvTrans;
+      XMFLOAT4A ColorObject;
+      XMUINT4 TexIdx;
+      // 16B
+      uint32_t SamplerIdx;
+      uint32_t InstanceNum;
+      float Metallic;
+      float Smoothness;
+   };
+
+   struct alignas(XMVECTOR) LightConstantBuffer
+   {
+      // 16B
+      XMFLOAT3 PositionWorld;
+      uint32_t TypeLight;
+      // 16B
+      XMFLOAT3 DirectionWorld;
+      float Intensity;
+      // 16B
+      XMFLOAT3 ColorLight;
+      float RangeMax;
+      // 16B
+      XMFLOAT4A ShapeLight;
+   };
+
+   struct alignas(XMVECTOR) PassConstantBuffer
+   {
+      XMFLOAT3X4A MatrixView;
+      XMFLOAT3X4A MatrixProj;
+      XMFLOAT3X4A MatrixViewProjection;
+      XMFLOAT3X4A MatrixViewProjectionInv;
+      XMFLOAT4A ViewportSizeAndRecip;
+      // 16B
+      XMFLOAT3 CameraPositionWorld;
+      uint32_t FrameIdx;
+      // 16B
+      float DistanceNear;
+      float DistanceFar;
+      float TimeDelta;
+      float TimeLapse;
+   };
 
    enum class LightType : uint8_t
    {
