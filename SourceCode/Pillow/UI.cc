@@ -6,7 +6,7 @@ namespace Pillow::TempUISubSystem_April2025
    void UITick()
    {
       bool bFPSMode = Input::GetCursorMode();
-      float deltaTime = Pillow::GetFrameDeltaTime();
+      float deltaTime = GetFrameDeltaTime();
       if (bFPSMode)
       {
          for (IControl* control : IControl::controls)

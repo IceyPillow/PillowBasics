@@ -1,7 +1,7 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 // TODO: bundle cmd lists
-#include "Renderer.h"
 #if defined(_WIN64)
+#include "Renderer.h"
 #define NOMINMAX
 #include <Windows.h>
 #undef NOMINMAX
@@ -419,6 +419,7 @@ namespace
       {
          std::unique_lock lock(mutex);
          DescriptorHandle handle{};
+         handle = SetType(handle, type);
          //auto GetHandle = [&](std::vector<DescriptorHandle>& freePool, const char* name)
          //   {
          //      if (freePool.empty())
@@ -429,23 +430,23 @@ namespace
          switch (type)
          {
          case Type::CBV:
-            handle = csuPool.Acquire();
+            handle |= csuPool.Acquire();
             device->CreateConstantBufferView((D3D12_CONSTANT_BUFFER_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::SRV:
-            handle = csuPool.Acquire();
+            handle |= csuPool.Acquire();
             device->CreateShaderResourceView(res.Get(), (D3D12_SHADER_RESOURCE_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::UAV:
-            handle = csuPool.Acquire();
+            handle |= csuPool.Acquire();
             device->CreateUnorderedAccessView(res.Get(), nullptr, (D3D12_UNORDERED_ACCESS_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::RTV:
-            handle = rtvPool.Acquire();
+            handle |= rtvPool.Acquire();
             device->CreateRenderTargetView(res.Get(), (D3D12_RENDER_TARGET_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::DSV:
-            handle = dsvPool.Acquire();
+            handle |= dsvPool.Acquire();
             device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
          }
 #ifdef PILLOW_DEBUG
