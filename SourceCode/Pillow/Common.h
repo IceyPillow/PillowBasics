@@ -6,8 +6,12 @@
 #include <string>
 #include <ranges>
 #include <chrono>
+#include <thread>
+#include <barrier>
+#include <atomic>
 #include <exception>
 #include <algorithm>
+#include <functional>
 #include <filesystem>
 #include <shared_mutex>
 #include "utfcpp-4.0.6/utf8.h"
@@ -242,5 +246,114 @@ namespace Pillow::Common
    private:
       ANY_UINT head = 1;
       std::vector<ANY_UINT> FreePool;
+   };
+
+   template <typename T>
+   concept ClassType = std::is_class_v<T>;
+
+   template <typename FuncT, typename ClassT>
+   concept ActionType = ClassType<ClassT> && std::is_invocable_v<FuncT, ClassT*>;
+
+   template <typename FuncT, typename ClassT>
+   concept WorkerType = ClassType<ClassT> && std::is_invocable_v<FuncT, ClassT*, uint32_t>;
+
+   class DefualtClass {};
+
+   template <ClassType BossT, WorkerType<BossT> WorkerT, ActionType<BossT> ActionT>
+   class ThreadPool
+   {
+   public:
+      const uint32_t ThreadNum;
+
+      ThreadPool(
+         uint32_t threadNum,
+         BossT* object,
+         WorkerT worker,
+         ActionT pionner = nullptr,
+         ActionT assembler = nullptr) :
+         completeFunctor(this),
+         frameBarrier(threadNum, completeFunctor),
+         config { object, worker, pionner, assembler },
+         ThreadNum(threadNum)
+      {
+         workers.reserve(threadNum);
+         signalCompute.store(false);
+      }
+
+      ~ThreadPool()
+      {
+         workers.clear();
+      }
+
+      void Launch()
+      {
+         for (int32_t i = 0; i < ThreadNum; i++)
+         {
+            workers.emplace_back(std::bind_front(&ThreadPool::BaseWorker, this), i);
+         }
+      }
+
+      void Commit()
+      {
+         while (signalCompute.load(std::memory_order::acquire)) std::this_thread::yield();
+         std::invoke(config.Pioneer, config.This);
+         // Activate all workers.
+         signalCompute.store(true, std::memory_order::release);
+      }
+
+      void Terminate()
+      {
+         for (auto& thread : workers)
+         {
+            thread.request_stop();
+            if (thread.joinable()) thread.join();
+         }
+         workers.clear();
+      }
+
+   private:
+      class CompleteFunctor
+      {
+      private:
+         ThreadPool* pool;
+
+      public:
+         CompleteFunctor(ThreadPool* pool) : pool(pool) {}
+
+         void operator()() noexcept
+         {
+            std::invoke(pool->config.Assembler, pool->config.This);
+            pool->signalCompute.store(false, std::memory_order::release);
+         }
+      };
+
+      struct PoolConfig
+      {
+         BossT* This = nullptr;
+         WorkerT Worker = nullptr;
+         ActionT Pioneer = nullptr;
+         ActionT Assembler = nullptr;
+      };
+
+      CompleteFunctor completeFunctor;
+      std::barrier<CompleteFunctor> frameBarrier;
+      std::vector<std::jthread> workers; // jthread from C++20
+      std::atomic<bool> signalCompute;
+      const PoolConfig config;
+
+      void BaseWorker(std::stop_token token, uint32_t workerIndex)
+      {
+         while (true)
+         {
+            while (!signalCompute.load(std::memory_order::acquire))
+            {
+               if (token.stop_requested()) return;
+               std::this_thread::yield();
+            }
+            // ***CORE WORKLOAD***
+            std::invoke(config.Worker, config.This, workerIndex);
+            frameBarrier.arrive_and_wait();
+         }
+      }
    };
 }
