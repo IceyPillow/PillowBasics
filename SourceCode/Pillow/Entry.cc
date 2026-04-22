@@ -25,6 +25,13 @@ namespace Pillow::Hidden
    extern float WheelAccumulation;
 }
 
+namespace Gameplay
+{
+   extern void BaseBegin();
+   extern void BaseEnd();
+   extern void BaseTick();
+}
+
 // Static definitions. External code cannot access those contents.
 namespace
 {
@@ -297,8 +304,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 namespace
 {
-   void GameTick();
-
    void EngineLaunch()
    {
       SetThreadNumbers();
@@ -310,6 +315,7 @@ namespace
 #endif
       IRenderer::GetInstance()->Launch();
       Hidden::GlobalClock.Restart();
+      Gameplay::BaseBegin();
       return;
    }
 
@@ -342,29 +348,16 @@ namespace
          //renderer->SetRefreshRate(refreshRate);
       }
 #endif
+      Gameplay::BaseTick();
       TempUISubSystem_April2025::UITick();
-      GameTick();
       renderer->Commit();
       //Pillow::Input::Update();
    }
 
    void EngineTerminate()
    {
+      Gameplay::BaseEnd();
       IRenderer::GetInstance()->Terminate();
       InputClose();
-   }
-
-   // Game logic goes here.
-   void GameTick()
-   {
-      auto renderer = IRenderer::GetInstance();
-      // Clear the main render target.
-      XMVECTOR _color = XMVectorReplicate(GetLapseTimeSinceLaunch());
-      _color = XMVectorAdd(_color, XMVectorSet(0, XM_PI * 0.66f, XM_PI * 1.33f, 0));
-      _color = XMVectorMultiplyAdd(XMVectorSin(_color), XMVectorReplicate(0.5f), XMVectorReplicate(0.5f));
-      XMFLOAT4 color;
-      XMStoreFloat4(&color, _color);
-      PiplelineBuffer buffers[1] = { PiplelineBuffer::Backbuffer };
-      CmdClearPiplelineBuffers(buffers, 1, color);
    }
 }
