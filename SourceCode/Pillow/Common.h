@@ -61,8 +61,8 @@ namespace Pillow::Constants
 
    // 1 Unit = 1 km
 
-   const int32_t MaxStaticRenderItems = 1 << 10;
-   const int32_t MaxUIRenderItems = 1 << 8;
+   const uint32_t MaxStaticRenderItems = 1 << 10;
+   const uint32_t MaxUIRenderItems = 1 << 8;
 
    const int32_t MaxThreadNumRenderer = 4, MaxThreadNumOther = 8;
    extern int32_t ThreadNumRenderer, ThreadNumPhysics, ThreadNumTick;
@@ -77,6 +77,8 @@ namespace Pillow::Constants
    constexpr float FrameTime30FPS = 1.f / 30.f;
    constexpr float FrameTime60FPS = 1.f / 60.f;
    constexpr float FrameTime120FPS = 1.f / 120.f;
+   constexpr double TimeLapseMax = 3600.0 * DirectX::XM_2PI; // Seconds
+   constexpr uint32_t FrameIdxMax = 1000000;
 
    void SetThreadNumbers();
 }
