@@ -252,12 +252,17 @@ namespace Pillow::Common
    concept ClassType = std::is_class_v<T>;
 
    template <typename FuncT, typename ClassT>
-   concept ActionType = ClassType<ClassT> && std::is_invocable_v<FuncT, ClassT*>;
+   concept ActionType =
+      ClassType<ClassT>
+      && std::is_member_function_pointer_v<FuncT>
+      && std::is_invocable_v<FuncT, ClassT*>;
 
    template <typename FuncT, typename ClassT>
-   concept WorkerType = ClassType<ClassT> && std::is_invocable_v<FuncT, ClassT*, uint32_t>;
+   concept WorkerType =
+      ClassType<ClassT>
+      && std::is_member_function_pointer_v<FuncT>
+      && std::is_invocable_v<FuncT, ClassT*, uint32_t>;
 
-   class DefualtClass {};
 
    template <ClassType BossT, WorkerType<BossT> WorkerT, ActionType<BossT> ActionT>
    class ThreadPool
@@ -296,7 +301,7 @@ namespace Pillow::Common
       void Commit()
       {
          while (signalCompute.load(std::memory_order::acquire)) std::this_thread::yield();
-         std::invoke(config.Pioneer, config.This);
+         if(config.Pioneer != nullptr)std::invoke(config.Pioneer, config.This);
          // Activate all workers.
          signalCompute.store(true, std::memory_order::release);
       }
@@ -322,7 +327,7 @@ namespace Pillow::Common
 
          void operator()() noexcept
          {
-            std::invoke(pool->config.Assembler, pool->config.This);
+            if (pool->config.Assembler != nullptr) std::invoke(pool->config.Assembler, pool->config.This);
             pool->signalCompute.store(false, std::memory_order::release);
          }
       };
