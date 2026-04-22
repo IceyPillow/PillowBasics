@@ -1,4 +1,8 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
+
+// RawInput (GetRawInputBuffer) on Win creates too many messages (especially a 8kHz mice).
+// This either costs too much (kernel mode switch) or makes the input subsys more complicated (multi-thread).
+
 #pragma once
 #include <string>
 #include "DirectXMath-apr2025/DirectXMath.h"
@@ -67,10 +71,6 @@ namespace Pillow::Input
 
    void InputInitialize(void* params);
    void InputClose();
-   // Update once per frame; invoke it before processing any message!
-   // 
-   // RawInput (GetRawInputBuffer) on Win creates too many messages (especially a 8kHz mice)
-   // This either costs too much (kernel mode switch) or makes the input subsys more complicated (multi-thread).
    void InputTick();
    // If true, the mice behaviour is FPS/TPS style.
    void SetCursorMode(bool bHidden);

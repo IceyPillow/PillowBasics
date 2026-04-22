@@ -5,6 +5,7 @@
 #include "Renderers/Renderer.h"
 
 using namespace DirectX;
+using namespace Pillow::Graphics;
 
 namespace Pillow::World
 {
@@ -30,12 +31,19 @@ namespace Pillow::World
    public:
       struct Configuration
       {
-         float VerticalFOV;
-         float AspectRatio;
-         float NearZ;
-         float FarZ;
+         float VerticalFOV = XM_PIDIV4;
+         float AspectRatio = 16.0f / 9.0f;
+         float Width = 16.0f;
+         float Height = 9.0f;
+         float NearZ = 0.1f;
+         float FarZ = 100.0f;
       } Config;
 
-      void Write(Graphics::PassConstantBuffer& passCB);
+      void UpdateConstBuffer(uint32_t frameIdx, float deltaTime, float timeLapse, XMINT2 viewportSize);
+
+      const CameraConstantBuffer& GetConstBuffer() const { return ConstBuffer; }
+
+   private:
+      CameraConstantBuffer ConstBuffer{};
    };
 }

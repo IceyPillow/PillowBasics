@@ -1,6 +1,7 @@
 #include "Renderers/Renderer.h"
 #include "World.h"
 
+using namespace Pillow;
 using namespace Pillow::Graphics;
 using namespace Pillow::Common;
 using namespace Pillow::World;
@@ -15,8 +16,6 @@ namespace Gameplay
       renderer = IRenderer::GetInstance();
       mainCamera.Position = { 3, 3, -3, 1};
       XMStoreFloat4A(&mainCamera.Quaternion, XMQuaternionRotationRollPitchYaw(XM_PIDIV4, -XM_PIDIV4, 0));
-      XMINT2 screenSize = renderer->GetBackBufferSize();      
-      mainCamera.Config = { XM_PIDIV4, float(screenSize.x) / float(screenSize.y), 0.1f, 100.0f };
    }
 
    void BaseEnd()
@@ -28,10 +27,14 @@ namespace Gameplay
    {
       double deltaTime = GetFrameDeltaTime();
       double lapseTime = GetLapseTimeSinceLaunch();
+      float safeLapseTime = (float)std::fmod(lapseTime, Constants::TimeLapseMax);
+      uint64_t frameIdx = renderer->GetFrameIndex();
+      uint32_t safeFrameIdx = (uint32_t)(frameIdx % Constants::FrameIdxMax);
 
-      // ...
+      // Camera.
       XMINT2 screenSize = renderer->GetBackBufferSize();
       mainCamera.Config.AspectRatio = float(screenSize.x) / float(screenSize.y);
+      mainCamera.UpdateConstBuffer(frameIdx, deltaTime, safeLapseTime, screenSize);
 
       // Clear the main render target.
       XMVECTOR _color = XMVectorReplicate(lapseTime);
