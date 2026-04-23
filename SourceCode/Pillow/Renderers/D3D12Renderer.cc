@@ -40,16 +40,13 @@ extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 618; }
 // Avoid the mismatch between D3D12SDKLayers (the debug layer) and D3D12Core.dll.
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
-typedef uint32_t DescriptorHandle; // Inner descriptor handle
-
-typedef IDXGIFactory5 IFactory;     // Has CheckFeatureSupport()
-typedef IDXGISwapChain1 ISwapChain; // Has SetBackgroundColor()
-
-typedef ID3D12Device4 IDevice;                   // Has CreateCommandList1()
-typedef ID3D12GraphicsCommandList2 ICommandList; // Has WriteBufferImmediate()
-typedef ID3D12Resource IResource;                // The original one is fine
-
-typedef CD3DX12_PIPELINE_STATE_STREAM2 PIPELINE_STATE_STREAM; // Supports mesh shader.
+using DescriptorHandle = uint32_t;                            // Inner descriptor handle.
+using IFactory = IDXGIFactory5;                               // Has CheckFeatureSupport().
+using ISwapChain = IDXGISwapChain1;                           // Has SetBackgroundColor().
+using IDevice = ID3D12Device4;                                // Has CreateCommandList1().
+using ICommandList = ID3D12GraphicsCommandList2;              // Has WriteBufferImmediate().
+using IResource = ID3D12Resource;                             // The original one is fine.
+using PIPELINE_STATE_STREAM = CD3DX12_PIPELINE_STATE_STREAM2; // Supports mesh shader.
 
 // An anonymous namespace has internal linkage (accessable in local translation unit)
 // Static variables
