@@ -78,6 +78,23 @@ namespace Pillow::Graphics
       AreaRectangle
    };
 
+   enum class PipelineBuffer : uint8_t
+   {
+      BackBuffer,
+      Depth,
+      MotionVector,
+      // (TextureArray) General-usage render buffers.
+      Buffer1,
+      Buffer2,
+      Buffer3,
+      Buffer4,
+      HalfBuffer1,
+      HalfBuffer2,
+      HalfBuffer3,
+      HalfBuffer4,
+      Count,
+   };
+
    // DIRECT3D12 VIEW TYPES
    // IN  DESCRIPTOR HEAP： RTV DSV CSV SRV UAV Sampler
    // OUT DESCRIPTOR HEAP： VBV IBV SOV
@@ -309,7 +326,7 @@ namespace Pillow::Graphics
 
       virtual uint64_t GetFrameIndex() = 0;
 
-      int32_t GetFrameArrayIdx()
+      uint32_t GetFrameArrayIdx()
       {
          return GetFrameIndex() % Constants::SwapChainSize;
       }

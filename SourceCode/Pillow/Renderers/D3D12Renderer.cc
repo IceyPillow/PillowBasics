@@ -68,9 +68,9 @@ namespace
    const int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize; // RGBA, 1:4 zip rate
    const int32_t BC5BlockSize = BC4BlockSize * 2; // AA, 1:2 zip rate
 
-   constexpr int32_t PiplelineBufferNum = (int32_t)PiplelineBuffer::Count;
-   constexpr int32_t piplelineBufferArrayNum = (int32_t)SwapChainSize * PiplelineBufferNum;
-   
+   constexpr int32_t pipeBufferCount = int32_t(PipelineBuffer::Count) - 1; // Exclude the swap chain.
+   constexpr int32_t pipeBufferResCount = 3; // Depth + MotionVector + GeneralBufferTexArray
+
    // TODO: BC7, mode 6 and mode 7
    const DXGI_FORMAT NativeTexFmt[int32_t(TextureInfo::Format::Count)]
    {
@@ -193,6 +193,7 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    std::vector<ID3D12CommandList*> cmdListsRaw; // A copy of cmdLists, used for ExecuteCommandLists()
    std::vector<ComPtr<ID3D12CommandAllocator>> cmdAllocators;
    ComPtr<IResource> backBuffers[SwapChainSize]{};
+   ComPtr<IResource> pipeBuffers[pipeBufferResCount]{};
 
    // Utility Wrapper
    std::unique_ptr<FenceSync> fenceSync;
@@ -201,8 +202,10 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    std::unique_ptr<LateReleaseManager> lateReleaseMgr;
 
    // Parameters
-   std::array<DescriptorHandle, piplelineBufferArrayNum> piplelineRTVs;
-   std::array<DescriptorHandle, piplelineBufferArrayNum> piplelineSRVs;
+   std::array<DescriptorHandle, SwapChainSize> backBufferRTVs;
+   std::array<DescriptorHandle, SwapChainSize> backBufferSRVs;
+   std::array<DescriptorHandle, pipeBufferCount> pipeBufferDSV_RTVs; // Exclude the swap chain.
+   std::array<DescriptorHandle, pipeBufferResCount> pipeBufferSRVs; // Exclude the swap chain.
    HWND hwnd;
    D3D12Renderer* rendererInstance;
    int32_t workerThreadCount;
@@ -218,7 +221,6 @@ namespace
       D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
    uint32_t GetAlignMipmapSize(const TextureInfo& texInfo, uint32_t mipLevel);
    uint32_t GetAlignTextureArraySliceSize(const TextureInfo& texInfo);
-   uint32_t GetPiplelineBufferIndex(PiplelineBuffer type, uint32_t frameIdx);
 
    // Fence synchronization wrapper
    class FenceSync
@@ -1404,11 +1406,6 @@ namespace
       return size;
    }
 
-   uint32_t GetPiplelineBufferIndex(PiplelineBuffer type, uint32_t frameIdx)
-   {
-      return frameIdx * PiplelineBufferNum + uint32_t(type);
-   }
-
    ForceInline void PlaceBCIndex(uint8_t* destination, uint32_t value, uint32_t pixelIndex)
    {
       uint32_t bitCount = pixelIndex * 3;
@@ -1817,17 +1814,6 @@ namespace
       Check_HRESULT(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&cmdQueue)));
       // Fence
       fenceSync = std::make_unique<FenceSync>(device, cmdQueue);
-      // Swapchain
-      DXGI_SWAP_CHAIN_DESC1 swapChainDesc
-      {
-         0,0, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
-         DXGI_USAGE_RENDER_TARGET_OUTPUT, SwapChainSize, DXGI_SCALING_NONE,
-         DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
-         uint32_t(bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
-      };
-      Check_HRESULT(factory->CreateSwapChainForHwnd(cmdQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
-      DXGI_RGBA color{ 0.f, 0.f, 0.f, 1.f };
-      swapChain->SetBackgroundColor(&color);
       // Command Allocators & Lists
       int32_t count = SwapChainSize * workerThreadCount;
       cmdAllocators.reserve(count);
@@ -1859,39 +1845,125 @@ namespace
 
    }
 
-   void CreateFrames()
+   void CreateRenderBuffers()
    {
-      D3D12_RENDER_TARGET_VIEW_DESC rtvDesc
+      using enum PipelineBuffer;
+      using ViewType = DescriptorHeapManeger::Type;
+      // 1. Initialize or release.
+      const bool bInitial = (swapChain.Get() == nullptr);
+      if (bInitial)
       {
-         DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RTV_DIMENSION_TEXTURE2D
-      };
+         DXGI_SWAP_CHAIN_DESC1 swapChainDesc
+         {
+            0,0, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
+            DXGI_USAGE_RENDER_TARGET_OUTPUT, SwapChainSize, DXGI_SCALING_NONE,
+            DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
+            uint32_t(bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
+         };
+         Check_HRESULT(factory->CreateSwapChainForHwnd(
+            cmdQueue.Get(), hwnd,&swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
+         DXGI_RGBA color{ 0.f, 0.f, 0.f, 1.f };
+         swapChain->SetBackgroundColor(&color);
+      }
+      else
+      {
+         fenceSync->FlushQueue();
+         Check_HRESULT(swapChain->ResizeBuffers(SwapChainSize, currentBackBufferSize.x, currentBackBufferSize.y,
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+            bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
+         for (int32_t i = 0; i < SwapChainSize; i++)
+         {
+            backBuffers[i].Reset();
+            descriptorMgr->ReleaseDescriptor(backBufferRTVs[i]);
+            descriptorMgr->ReleaseDescriptor(backBufferSRVs[i]);
+         }
+         for (auto& res : pipeBuffers)
+         {
+            res.Reset();
+         }
+         for (int32_t i = 0; i < pipeBufferCount; i++)
+         {
+            descriptorMgr->ReleaseDescriptor(pipeBufferDSV_RTVs[i]);
+            descriptorMgr->ReleaseDescriptor(pipeBufferSRVs[i]);
+         }
+      }
+      // 2. Create resources and descriptors.
+      // 2.1 Back buffers.
+      D3D12_RENDER_TARGET_VIEW_DESC rtvDesc { DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RTV_DIMENSION_TEXTURE2D };
       rtvDesc.Texture2D = { 0,0 };
       for (int i = 0; i < SwapChainSize; i++)
       {
          // After resizing the swapchain, the frame array index may not be euqal to the active backbuffer index.
          // So, we should associate the first buffer of the resized swapchain to the current frame array index.
          // e.g. frameIdx = 8, frameArrayIdx = 2, in this case, backbuffers[2] should refer to swapChain->GetBuffer(0).
-         int32_t frameArrayIdx = (fenceSync->GetFrameIndex() + i) % SwapChainSize;
+         int32_t frameArrayIdx = fenceSync->GetFrameArrayIdx();
          Check_HRESULT(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[frameArrayIdx])));
-         piplelineRTVs[GetPiplelineBufferIndex(PiplelineBuffer::Backbuffer, frameArrayIdx)] =
-            descriptorMgr->CreateDescirptor(device, backBuffers[frameArrayIdx], &rtvDesc, DescriptorHeapManeger::Type::RTV);
+         backBufferRTVs[frameArrayIdx] =
+            descriptorMgr->CreateDescirptor(device, backBuffers[frameArrayIdx], &rtvDesc, ViewType::RTV);
       }
-   }
-
-   void TryResizeSwapChain()
-   {
-      if (currentBackBufferSize == IRenderer::GetInstance()->GetBackBufferSize()) return;
-      currentBackBufferSize = IRenderer::GetInstance()->GetBackBufferSize();
-      // Resize the swapchain.
-      fenceSync->FlushQueue();
-      for (int32_t i = 0; i < SwapChainSize; i++)
+      // 2.2 Depth buffer.
+      D3D12_RESOURCE_DESC resDesc
       {
-         backBuffers[i].Reset();
-         descriptorMgr->ReleaseDescriptor(piplelineRTVs[GetPiplelineBufferIndex(PiplelineBuffer::Backbuffer, i)]);
+         D3D12_RESOURCE_DIMENSION_TEXTURE2D, 0,
+         (uint32_t)currentBackBufferSize.x, (uint32_t)currentBackBufferSize.y, 1, 1,
+         DXGI_FORMAT_D32_FLOAT, DXGI_SAMPLE_DESC{1, 0}, D3D12_TEXTURE_LAYOUT_UNKNOWN,
+         D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
+      };
+      D3D12_HEAP_PROPERTIES heapProperties =
+      {
+         D3D12_HEAP_TYPE_DEFAULT,
+         D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+         D3D12_MEMORY_POOL_UNKNOWN,
+         0, 0
+      };
+      auto heapFlag = D3D12_HEAP_FLAG_NONE;
+      auto state = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+      D3D12_CLEAR_VALUE clearColor = { resDesc.Format };
+      clearColor.DepthStencil = { 1.f, 0 };
+      Check_HRESULT(device->CreateCommittedResource(
+         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipeBuffers[0])));
+      pipeBuffers[0]->SetName(L"PipelineBuffer::Depth");
+      D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{ resDesc.Format, D3D12_DSV_DIMENSION_TEXTURE2D };
+      dsvDesc.Texture2D = { 0 };
+      pipeBufferDSV_RTVs[0] = descriptorMgr->CreateDescirptor(device, pipeBuffers[0], &dsvDesc, ViewType::DSV);
+      D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc
+      {
+         DXGI_FORMAT_R32_FLOAT, D3D12_SRV_DIMENSION_TEXTURE2DARRAY, D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING
+      };
+      srvDesc.Texture2DArray = { 0, 1, 0, 1, 0, 0 };
+      pipeBufferSRVs[0] = descriptorMgr->CreateDescirptor(device, pipeBuffers[0], &srvDesc, ViewType::SRV);
+      // 2.3 Motion vector.
+      resDesc.Format = DXGI_FORMAT_R16G16_FLOAT;
+      resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+      state = D3D12_RESOURCE_STATE_RENDER_TARGET;
+      clearColor.Format = resDesc.Format;
+      *reinterpret_cast<XMFLOAT4*>(clearColor.Color) = {};
+      Check_HRESULT(device->CreateCommittedResource(
+         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipeBuffers[1])));
+      pipeBuffers[1]->SetName(L"PipelineBuffer::MotionVector");
+      rtvDesc.Format = resDesc.Format;
+      srvDesc.Format = resDesc.Format;
+      pipeBufferDSV_RTVs[1] = descriptorMgr->CreateDescirptor(device, pipeBuffers[1], &rtvDesc, ViewType::RTV);
+      pipeBufferSRVs[1] = descriptorMgr->CreateDescirptor(device, pipeBuffers[1], &srvDesc, ViewType::SRV);
+      // 2.4 General buffers.
+      resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+      resDesc.DepthOrArraySize = 4;
+      resDesc.MipLevels = 2;
+      clearColor.Format = resDesc.Format;
+      Check_HRESULT(device->CreateCommittedResource(
+         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipeBuffers[2])));
+      pipeBuffers[2]->SetName(L"PipelineBuffer::(Half)Buffer(1~4)");
+      rtvDesc.Format = resDesc.Format;
+      rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+      srvDesc.Format = resDesc.Format;
+      srvDesc.Texture2DArray = { 0, 2, 0, 4, 0, 0 };
+      for (uint32_t i = 0; i < 8; i++)
+      {
+         // Please see the order in PipelineBuffer.
+         rtvDesc.Texture2DArray = { i / 4, i % 4, 1, 0 };
+         pipeBufferDSV_RTVs[i + 2] = descriptorMgr->CreateDescirptor(device, pipeBuffers[2], &rtvDesc, ViewType::RTV);
       }
-      Check_HRESULT(swapChain->ResizeBuffers(SwapChainSize, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM,
-         bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
-      CreateFrames();
+      pipeBufferSRVs[2] = descriptorMgr->CreateDescirptor(device, pipeBuffers[2], &srvDesc, ViewType::SRV);
    }
 
    void BlockCompressionEncode()
@@ -1899,15 +1971,17 @@ namespace
 
    }
 
-   void ValidateDriverFeatures()
+   void CheckDeviceDriver()
    {
       CD3DX12FeatureSupport features;
       features.Init(device.Get());
 
       // Shader model level test.
       D3D_SHADER_MODEL smSupported = features.HighestShaderModel();
-      if (smSupported < MinShaderModelLevel) throw std::runtime_error(std::format("(D3D12) Shader model {:x} must be supported. Your highest version: {:x}\n"
-         "Update your GPU driver; if not work, please contact the developers.", int32_t(MinShaderModelLevel), int32_t(smSupported)));
+      if (smSupported < MinShaderModelLevel) throw
+         std::runtime_error(std::format("(D3D12) Shader model {:x} must be supported. Your highest version: {:x}\n"
+         "Update your GPU driver; if not work, please contact the developers.",
+            int32_t(MinShaderModelLevel), int32_t(smSupported)));
 
       // ... Check other features here.
    }
@@ -1955,9 +2029,9 @@ D3D12Renderer::D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 bac
    workerThreadCount = threadCount;
    currentBackBufferSize = backBufferSize;
    CreateBase();
+   CheckDeviceDriver();
    CreateManagers();
-   CreateFrames();
-   ValidateDriverFeatures();
+   CreateRenderBuffers();
    TEMP_RendererTestZone();
 }
 
@@ -1970,7 +2044,7 @@ uint64_t D3D12Renderer::GetFrameIndex()
    return fenceSync->GetFrameIndex();
 }
 
-void D3D12Renderer::Worker(int32_t workerIndex)
+void D3D12Renderer::Worker(uint32_t workerIndex)
 {
    int32_t frameIdx = fenceSync->GetFrameArrayIdx();
    ComPtr<ICommandList>& cmdList = cmdLists[workerIndex];
@@ -2013,9 +2087,14 @@ void D3D12Renderer::Worker(int32_t workerIndex)
    Check_HRESULT(cmdList->Close());
 }
 
-void Pillow::Graphics::D3D12Renderer::Pioneer()
+void D3D12Renderer::Pioneer()
 {
-   TryResizeSwapChain();
+   // Resize render buffers if needed.
+   if (currentBackBufferSize != GetBackBufferSize())
+   {
+      currentBackBufferSize = GetBackBufferSize();
+      CreateRenderBuffers();
+   }
 }
 
 void D3D12Renderer::Assembler()
