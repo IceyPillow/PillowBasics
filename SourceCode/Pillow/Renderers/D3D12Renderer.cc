@@ -452,23 +452,25 @@ namespace
          return handle;
       }
 
-      void ReleaseDescriptor(DescriptorHandle handle)
+      void ReleaseDescriptor(DescriptorHandle& handle)
       {
+         DescriptorHandle _handle = handle;
+         handle = 0;
          std::unique_lock lock(mutex);
-         auto Type = GetType(handle);
-         handle = ClearType(handle);
-         switch (Type)
+         Type type = GetType(_handle);
+         _handle = ClearType(_handle);
+         switch (type)
          {
          case Type::CBV:
          case Type::SRV:
          case Type::UAV:
-            csuPool.Release(handle);
+            csuPool.Release(_handle);
             break;
          case Type::RTV:
-            rtvPool.Release(handle);
+            rtvPool.Release(_handle);
             break;
          case Type::DSV:
-            dsvPool.Release(handle);
+            dsvPool.Release(_handle);
             break;
          }
       }
