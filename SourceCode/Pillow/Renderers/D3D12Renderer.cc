@@ -946,17 +946,18 @@ namespace
       }
    };
 
-   class PipelineState final : public IPipelineState
+   class PipelineState
    {
    public:
-      PipelineState(string name, std::vector<KeyValuePair>& macros, Description& desc, ComPtr<ID3D12PipelineState>&& pso) :
-         IPipelineState(name, macros, desc),
+      PipelineState(const PipelineInfo& info, ComPtr<ID3D12PipelineState>&& pso) :
+         PipeInfo(info),
          PSO(std::move(pso))
       {
          // Empty
       }
 
    public:
+      PipelineInfo PipeInfo;
       // Pipeline state object.
       ComPtr<ID3D12PipelineState> PSO;
    };
@@ -972,87 +973,76 @@ namespace
          Check_HRESULT(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)));
          Check_HRESULT(utils->CreateDefaultIncludeHandler(&includeHandler));
          CreateUnifiedSignature();
-         PipelineStates.reserve(PSOReservedNum);
+         psoMap.reserve(PSOReservedNum);
       }
 
-      ResHandle Add(string name, std::vector<KeyValuePair>& macros, IPipelineState::Description& desc, path filePath)
+      void Add(ResHandle handle, const PipelineInfo& info, const path filePath)
       {
-         using enum IPipelineState::ShaderType;
-         const uint32_t shaderMask = desc.ShaderMask;
+         using enum PipelineInfo::ShaderType;
+         const uint32_t shaderMask = info.Config.ShaderMask;
          std::vector<ComPtr<IDxcBlob>> shaders;
          shaders.reserve(int32_t(Count));
          ComPtr<ID3D12PipelineState> pso;
-         if (IPipelineState::CheckShaderMask(shaderMask, ComputeShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, ComputeShader))
          {
-            shaders.emplace_back(CompileShader(filePath, ComputeShader, macros));
+            shaders.emplace_back(CompileShader(filePath, ComputeShader, info.Macros));
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, AmplificationShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, AmplificationShader))
          {
-            shaders.emplace_back(CompileShader(filePath, AmplificationShader, macros));
+            shaders.emplace_back(CompileShader(filePath, AmplificationShader, info.Macros));
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, MeshShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, MeshShader))
          {
-            shaders.emplace_back(CompileShader(filePath, MeshShader, macros));
+            shaders.emplace_back(CompileShader(filePath, MeshShader, info.Macros));
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, VertexShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, VertexShader))
          {
-            shaders.emplace_back(CompileShader(filePath, VertexShader, macros));
+            shaders.emplace_back(CompileShader(filePath, VertexShader, info.Macros));
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, HullShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, HullShader))
          {
-            shaders.emplace_back(CompileShader(filePath, HullShader, macros));
+            shaders.emplace_back(CompileShader(filePath, HullShader, info.Macros));
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, DomainShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, DomainShader))
          {
-            shaders.emplace_back(CompileShader(filePath, DomainShader, macros));
+            shaders.emplace_back(CompileShader(filePath, DomainShader, info.Macros));
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, GeometryShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, GeometryShader))
          {
-            shaders.emplace_back(CompileShader(filePath, GeometryShader, macros));
+            shaders.emplace_back(CompileShader(filePath, GeometryShader, info.Macros));
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, PixelShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, PixelShader))
          {
-            shaders.emplace_back(CompileShader(filePath, PixelShader, macros));
-            if (desc.RTNum == 0)
+            shaders.emplace_back(CompileShader(filePath, PixelShader, info.Macros));
+            if (info.Config.RTNum == 0)
             {
-               desc.RTNum = ReflectRenderTargetNum(shaders.back());
+               info.Config.RTNum = ReflectRenderTargetNum(shaders.back());
             }
          }
-         pso = CreatePSO(shaders, desc);
+         pso = CreatePSO(shaders, info.Config);
          // Create PipelineState and return a handle.
-         ResHandle handle;
-         if (freeSlots.empty())
-         {
-            PipelineStates.emplace_back(std::make_unique<PipelineState>(name, macros, desc, std::move(pso)));
-            handle = uint32_t(PipelineStates.size()) | uint32_t(ResourceType::PiplelineState);
-         }
-         else
-         {
-            auto node = freeSlots.extract(freeSlots.begin());
-            uint32_t idx = node.value();
-            PipelineStates[idx] = std::make_unique<PipelineState>(name, macros, desc, std::move(pso));
-            handle = (idx + 1) | uint32_t(ResourceType::PiplelineState);
-         }
-         return handle;
+         psoMap.emplace(handle, std::make_unique<PipelineState>(info, std::move(pso)));
       }
 
       void Release(ResHandle& handle)
       {
-         uint32_t idx = CheckExternalHandleAndGetIdx(handle);
-         PipelineStates[idx].reset();
-         freeSlots.insert(idx);
-         handle = ResHandleNULL;
+         auto kv = psoMap.find(handle);
+         if (kv == psoMap.end()) throw std::runtime_error("Invalid PSO handle.");
+         kv->second.reset();
+         psoMap.erase(kv);
+         handle = ResHandleNull;
       }
 
       PipelineState& Get(ResHandle handle)
       {
-         uint32_t idx = CheckExternalHandleAndGetIdx(handle);
-         return *PipelineStates[idx];
+         auto kv = psoMap.find(handle);
+         if (kv == psoMap.end()) throw std::runtime_error("Invalid PSO handle.");
+         return *kv->second.get();
       }
 
    private:
       // Feature level 12.0 supports at least shader model 5.1.
-      const wchar_t* const Targets[uint32_t(IPipelineState::ShaderType::Count)] =
+      const wchar_t* const Targets[uint32_t(PipelineInfo::ShaderType::Count)] =
       {
          L"cs_5_1",
          L"as_x_x", // Unsupported now.
@@ -1070,19 +1060,9 @@ namespace
 
       // A unified root signature.
       ComPtr<ID3D12RootSignature> UnifiedRootSign{};
-      std::vector<std::unique_ptr<PipelineState>> PipelineStates{};
-      std::set<uint32_t> freeSlots;
+      std::unordered_map<ResHandle, std::unique_ptr<PipelineState>> psoMap;
 
    private:
-      uint32_t CheckExternalHandleAndGetIdx(ResHandle handle)
-      {
-         CheckHandle(handle);
-         if (GetResourceType(handle) != ResourceType::PiplelineState) throw std::runtime_error("Invalid handle type.");
-         uint32_t idx = GetResourceIndex(handle) - 1;
-         if (idx >= PipelineStates.size()) throw std::runtime_error("Invalid handle index.");
-         if (freeSlots.contains(idx)) throw std::runtime_error("The handle has been deleted.");
-         return idx;
-      }
       void CreateUnifiedSignature()
       {
          path filePath = GetResourcePath(L"Shaders\\Pillow.hlsl");
@@ -1121,7 +1101,7 @@ namespace
             signBlob->GetBufferSize(), IID_PPV_ARGS(UnifiedRootSign.GetAddressOf())));
       }
 
-      ComPtr<IDxcBlob> CompileShader(path filePath, IPipelineState::ShaderType type, std::vector<KeyValuePair>& macros)
+      ComPtr<IDxcBlob> CompileShader(path filePath, PipelineInfo::ShaderType type, const std::vector<KeyValuePair>& macros)
       {
          // Set constants.
          const uint32_t typeNum = uint32_t(type);
@@ -1152,7 +1132,7 @@ namespace
          }
          // Build arguments.
          ComPtr<IDxcCompilerArgs> argsCooked;
-         std::u16string entry = utf8::utf8to16(IPipelineState::EntryPoints[typeNum]);
+         std::u16string entry = utf8::utf8to16(PipelineInfo::EntryPoints[typeNum]);
          Check_HRESULT(utils->BuildArguments(filePath.c_str(), reinterpret_cast<const wchar_t*>(entry.c_str()), Targets[typeNum],
             flags.data(), flags.size(), defines.data(), defines.size(), argsCooked.GetAddressOf()));
          // Compile.
@@ -1177,52 +1157,52 @@ namespace
          return static_cast<uint8_t>(shaderDesc.OutputParameters);
       }
 
-      ComPtr<ID3D12PipelineState> CreatePSO(std::vector<ComPtr<IDxcBlob>>& shaders, const IPipelineState::Description& desc)
+      ComPtr<ID3D12PipelineState> CreatePSO(std::vector<ComPtr<IDxcBlob>>& shaders, const PipelineInfo::Configuration& desc)
       {
-         using enum IPipelineState::TopologyType;
-         using enum IPipelineState::CullMode;
-         using enum IPipelineState::DepthMode;
-         using enum IPipelineState::BlendMode;
-         using enum IPipelineState::ShaderType;
+         using enum PipelineInfo::TopologyType;
+         using enum PipelineInfo::CullMode;
+         using enum PipelineInfo::DepthMode;
+         using enum PipelineInfo::BlendMode;
+         using enum PipelineInfo::ShaderType;
          PIPELINE_STATE_STREAM stream{};
          const uint16_t shaderMask = desc.ShaderMask;
          int32_t idx = 0;
-         if (IPipelineState::CheckShaderMask(shaderMask, ComputeShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, ComputeShader))
          {
             stream.CS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
             idx++;
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, AmplificationShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, AmplificationShader))
          {
             stream.AS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
             idx++;
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, MeshShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, MeshShader))
          {
             stream.MS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
             idx++;
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, VertexShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, VertexShader))
          {
             stream.VS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
             idx++;
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, HullShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, HullShader))
          {
             stream.HS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
             idx++;
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, DomainShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, DomainShader))
          {
             stream.DS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
             idx++;
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, GeometryShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, GeometryShader))
          {
             stream.GS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
             idx++;
          }
-         if (IPipelineState::CheckShaderMask(shaderMask, PixelShader))
+         if (PipelineInfo::CheckShaderMask(shaderMask, PixelShader))
          {
             stream.PS = CD3DX12_SHADER_BYTECODE(shaders[idx]->GetBufferPointer(), shaders[idx]->GetBufferSize());
             idx++;

@@ -19,7 +19,7 @@ namespace Pillow::Graphics
    // Resource handle, index starts at 1.
    // 4-bit type + 28-bit index
    using ResHandle = uint32_t;
-   const ResHandle ResHandleNULL = 0;
+   const ResHandle ResHandleNull = 0;
    const ResHandle ResIndexBits = 28;
    const ResHandle ResourceTypeMask = 0xF0000000;
 
@@ -102,48 +102,51 @@ namespace Pillow::Graphics
    // DIRECT3D12 RESOURCE HEAP TYPES
    // Upload Default Readback Custom
 
-   enum class ResourceType : uint32_t
+   enum class GraphicsResourceType : uint8_t
    {
-      None = 0,
-      Mesh = 1 << ResIndexBits,
-      PiplelineState = 2 << ResIndexBits,
-      RenderTargetView = 3 << ResIndexBits,
-      DepthStencilVIew = 4 << ResIndexBits,
-      ShaderResourceView = 5 << ResIndexBits,
-      ConstantBufferView = 6 << ResIndexBits,
-      UnorderedAccessView = 7 << ResIndexBits,
-      ReadbackBuffer = 8u << ResIndexBits,
-      Count = 8
-   };
-
-   // Those resources have no handles, client should refer to them by this enum type.
-   enum class PiplelineBuffer : uint8_t
-   {
-      Backbuffer,
-      Depth,
-      MotionVector,
-      // Geometry buffer for deferred shading.
-      GBuffer1,
-      GBuffer2,
-      // Pixel Buffer for post-processing.
-      PBuffer1,
-      PBuffer2,
-      PHalfBuffer1,
-      PHalfBuffer2,
+      PiplelineState,
+      Texture,
+      Mesh,
+      StructArray,
+      ConstBuffer,
       Count
    };
 
-   struct GenericRendererResourceDesc
+   class PipelineInfo;
+   GraphicsResourceType GetResourceType(ResHandle handle);
+   ResHandle SetRecourceType(ResHandle handle, GraphicsResourceType type);
+   ResHandle ClearResourceType(ResHandle handle);
+   bool CheckHandle(ResHandle handle);
+
+   class GraphicsResourceInfo
    {
-      ResourceType Type;
+   public:
+      GraphicsResourceType Type;
+      uint16_t ElementSize;
+      uint32_t ElementCount;
+      std::string FilePath;
       union
       {
-         //std::weak_ptr<GenericTextureInfo> TextureInfo;
-         //MeshDesc Mesh;
-         //TextureDesc Texture;
-         //PipelineStateDesc PipelineState;
-         //ConstantBufferDesc ConstantBuffer;
+         std::unique_ptr<PipelineInfo> PipeState;
+         std::unique_ptr<TextureInfo> TexInfo;
+         std::unique_ptr<MeshInfo> MeshInfo;
       };
+
+      ~GraphicsResourceInfo()
+      {
+         if (Type == GraphicsResourceType::PiplelineState)
+         {
+            PipeState.reset();
+         }
+         else if (Type == GraphicsResourceType::Texture)
+         {
+            TexInfo.reset();
+         }
+         else if (Type == GraphicsResourceType::Mesh)
+         {
+            MeshInfo.reset();
+         }
+      }
    };
 
    // Designed for a modifiable deferred pipeline.
@@ -193,7 +196,7 @@ namespace Pillow::Graphics
 
    // Programmers call it pipeline state, and artists call it material. They are essentially the same thing.
    // * Utilize a unified root signature to achieve a modern bindless architecture.
-   class IPipelineState
+   class PipelineInfo
    {
    public:
       // To draw a mass of grass, GPU instancing (with triangle input) is better than using geometry shader (with point input).
@@ -268,7 +271,7 @@ namespace Pillow::Graphics
          "PixelShader"
       };
 
-      struct Description
+      struct Configuration
       {
          // VS+PS = 0x08 | 0x80 = 0x0088; CS = 0x0001, etc. (bit flags)
          uint16_t ShaderMask;
@@ -277,19 +280,19 @@ namespace Pillow::Graphics
          VertexType Vertex;
          DepthMode Depth;
          BlendMode Blend;
-         uint8_t RTNum;
          TextureInfo::Format RT_Formats[8];
+         mutable uint8_t RTNum;
       };
 
    public:
       // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
       const std::string NameID;
-      const std::unique_ptr<std::vector<KeyValuePair>> Macros;
-      const Description Desc;
+      const std::vector<KeyValuePair> Macros;
+      const Configuration Config;
 
-      IPipelineState() = delete;
-      IPipelineState(string originalName, std::vector<KeyValuePair>& macros, Description& desc);
-      bool EqualTo(const IPipelineState& right) const;
+      PipelineInfo(string originalName, std::vector<KeyValuePair>& macros, Configuration& config);
+
+      bool EqualTo(const PipelineInfo& right) const;
 
       inline static uint16_t CreateShaderMask(std::initializer_list<ShaderType> shaderTypes)
       {
@@ -398,13 +401,25 @@ namespace Pillow::Graphics
    //};
 #endif
 
-   inline ResourceType GetResourceType(ResHandle handle) { return ResourceType(handle & ResourceTypeMask); }
+   inline GraphicsResourceType GetResourceType(ResHandle handle)
+   {
+      return static_cast<GraphicsResourceType>((handle & ResourceTypeMask) >> ResIndexBits);
+   }
 
-   // ResourceIndex starts at 1.
-   inline uint32_t GetResourceIndex(ResHandle handle) { return handle & ~ResourceTypeMask; }
+   inline ResHandle SetRecourceType(ResHandle handle, GraphicsResourceType type)
+   {
+      return (handle & ~ResourceTypeMask) | (ResHandle(type) << ResIndexBits);
+   }
 
-   inline bool CheckHandle(ResHandle handle) { return GetResourceIndex(handle) != 0; }
+   inline ResHandle ClearResourceType(ResHandle handle)
+   {
+      return handle & ~ResourceTypeMask;
+   }
 
+   inline bool CheckHandle(ResHandle handle)
+   {
+      return ClearResourceType(handle) != 0;
+   }
 
    // Create an empty command.
    ForceInline void CmdNone()

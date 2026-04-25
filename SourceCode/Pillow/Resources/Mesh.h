@@ -107,7 +107,7 @@ namespace Pillow::Graphics
       std::unique_ptr<CacheLine[]> vtx;
    };
 
-   class GenericMeshInfo
+   class MeshInfo
    {
 
    };

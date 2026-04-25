@@ -14,26 +14,26 @@ namespace
    std::vector<GenericRendererCmd> cmdListBusy;
 
    // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
-   std::string MakePipelineStateID(const string& originalName, const std::vector<KeyValuePair>& macros, const IPipelineState::Description& desc)
+   std::string MakePipelineStateID(const string& originalName, const std::vector<KeyValuePair>& macros, const PipelineInfo::Configuration& config)
    {
       const char separator = ',';
       const char prefixMacro = '@';
       const char prefixValue = '=';
       string name = originalName;
       name += "@Stages=";
-      using ShaderType = IPipelineState::ShaderType;
+      using ShaderType = PipelineInfo::ShaderType;
       for (uint16_t i = 1; i <= uint16_t(ShaderType::Count); i++)
       {
          if (i != 1)
          {
             name += separator;
          }
-         if (IPipelineState::CheckShaderMask(desc.ShaderMask, ShaderType(i)))
+         if (PipelineInfo::CheckShaderMask(config.ShaderMask, ShaderType(i)))
          {
-            name += IPipelineState::ShaderAcronyms[i];
+            name += PipelineInfo::ShaderAcronyms[i];
          }
       }
-      name += std::format("@Depth={}@Blend={}", int32_t(desc.Depth), int32_t(desc.Blend));
+      name += std::format("@Depth={}@Blend={}", int32_t(config.Depth), int32_t(config.Blend));
       for (const auto& pair : macros)
       {
          name += prefixMacro + pair.GetKey();
@@ -46,15 +46,15 @@ namespace
    }
 }
 
-IPipelineState::IPipelineState(string originalName, std::vector<KeyValuePair>& macros, Description& desc) :
-   NameID(MakePipelineStateID(originalName, macros, desc)),
-   Macros(macros.empty() ? nullptr : std::make_unique<std::vector<KeyValuePair>>(macros)),
-   Desc(desc)
+PipelineInfo::PipelineInfo(string originalName, std::vector<KeyValuePair>& macros, Configuration& config) :
+   NameID(MakePipelineStateID(originalName, macros, config)),
+   Macros(macros),
+   Config(config)
 {
    // Empty body
 }
 
-bool IPipelineState::EqualTo(const IPipelineState& right) const
+bool PipelineInfo::EqualTo(const PipelineInfo& right) const
 {
    return this->NameID == right.NameID;
 }
