@@ -24,10 +24,6 @@ static const float PI_DIV4 = 0.785398163f;
 static const float TimeLapseMax = 3600 * PI2; // Seconds
 static const uint FrameIdxMax = 1000000;
 
-static const uint GBuffer1 = 1;
-static const uint GBuffer2 = 2;
-static const uint HalfBuffer = 3;
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
 // Bound resources
 
@@ -214,32 +210,64 @@ struct CompactGBufferPixelOutput
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////120-Slashes
 // Functions
 
-float4 SampleTexSmart(Texture2D tex, float2 uv, uint samplerIdx)
+float SampleDepth(float2 uv, SamplerState _sampler)
+{
+   const uint TexIdx_Depth = 1;
+   return Gallery[TexIdx_Depth].Sample(_sampler, float3(uv, 0)).r;
+}
+
+float2 SampleMotionVector(float2 uv, SamplerState _sampler)
+{
+   const uint TexIdx_MotionVector = 2;
+   return Gallery[TexIdx_MotionVector].Sample(_sampler, float3(uv, 0)).rg;
+}
+
+// General buffer
+float4 SampleGBuffer(uint bufferIdx, float2 uv, SamplerState _sampler)
+{
+   const uint TexIdx_GeneralBuffer = 3;
+   return Gallery[TexIdx_GeneralBuffer].Sample(_sampler, float3(uv, bufferIdx), 0);
+}
+// Half-size general buffer
+float4 SampleHalfGBuffer(uint bufferIdx, float2 uv, SamplerState _sampler)
+{
+   const uint TexIdx_GeneralBuffer = 3;
+   return Gallery[TexIdx_GeneralBuffer].Sample(_sampler, float3(uv, bufferIdx), 1);
+}
+
+float4 SampleBackBuffer(uint frameArrayIdx, float2 uv, SamplerState _sampler)
+{
+   static const uint TexIdx_BackBufferOffset = 4;
+   return Gallery[TexIdx_BackBufferOffset + frameArrayIdx].Sample(_sampler, float3(uv, 0));
+}
+
+// samplerIdx can be set dynamically.
+float4 SampleTexSmart(Texture2DArray tex, float3 uvi, uint samplerIdx)
 {
    [branch] // Uniform branches, the instruction flow is consistent in a warp (32Threads).
    if (samplerIdx == 0)
    {
-      return tex.Sample(PointClamp, uv);
+      return tex.Sample(PointClamp, uvi);
    }
    else if (samplerIdx == 1)
    {
-      return tex.Sample(PointWrap, uv);
+      return tex.Sample(PointWrap, uvi);
    }
    else if (samplerIdx == 2)
    {
-      return tex.Sample(TriClamp, uv);
+      return tex.Sample(TriClamp, uvi);
    }
    else if (samplerIdx == 3)
    {
-      return tex.Sample(TriWrap, uv);
+      return tex.Sample(TriWrap, uvi);
    }
    else if (samplerIdx == 4)
    {
-      return tex.Sample(AniClamp, uv);
+      return tex.Sample(AniClamp, uvi);
    }
    else if (samplerIdx >= 5)
    {
-      return tex.Sample(AniWrap, uv);
+      return tex.Sample(AniWrap, uvi);
    }
    return (float4)0;
 }
