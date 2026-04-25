@@ -2097,6 +2097,48 @@ uint64_t D3D12Renderer::GetFrameIndex()
    return fenceSync->GetFrameIndex();
 }
 
+ResHandle D3D12Renderer::ResourceCreate(const GraphicsResourceInfo& info)
+{
+   ResHandle handle = IRenderer::ResourceCreate(info);
+   if (info.Type == GraphicsResourceType::PiplelineState)
+   {
+      psoMgr->Add(handle, *info.PipeState, info.FilePath);
+   }
+   else if (info.Type == GraphicsResourceType::Texture)
+   {
+      UnionBuffer buffer = UnionBuffer::Create1_Texture(*info.TexInfo, true);
+      unionBufferMap.emplace(handle, std::move(buffer));
+   }
+   else if(info.Type == GraphicsResourceType::Mesh)
+   {
+      //UnionBuffer buffer = UnionBuffer::Create6_VertexIndexBuffer();
+      //unionBufferMap.emplace(handle, std::move(buffer));
+   }
+   else if (info.Type == GraphicsResourceType::StructArray)
+   {
+   }
+   else if(info.Type == GraphicsResourceType::ConstBuffer)
+   {
+
+   }
+   return handle;
+}
+
+void D3D12Renderer::ResourceRelease(ResHandle& handle)
+{
+   IRenderer::ResourceRelease(handle);
+}
+
+void D3D12Renderer::ResourceUpdate(ResHandle handle, const void* data, size_t dataSize)
+{
+   //...
+}
+
+void D3D12Renderer::ResourceReadback(ResHandle handle, void* outData, size_t dataSize)
+{
+   //...
+}
+
 void D3D12Renderer::Worker(uint32_t workerIndex)
 {
    int32_t frameIdx = fenceSync->GetFrameArrayIdx();

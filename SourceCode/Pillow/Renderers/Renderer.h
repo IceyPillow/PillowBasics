@@ -321,6 +321,8 @@ namespace Pillow::Graphics
          ReadonlyProperty(int32_t, VSyncBlanks)
 
    public:
+      const static uint32_t MaxRescourceNum = UINT16_MAX;
+
       static void Initialize(uint32_t threadCount, XMINT2 backBufferSize, int32_t refreshRate, void* parameter);
       static IRenderer* GetInstance();
 
@@ -350,8 +352,26 @@ namespace Pillow::Graphics
       void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
       void SetVSyncBlanks(int32_t blanks) { f_VSyncBlanks = blanks; }
 
-      virtual void ResourceRegister(ResHandle handle, ResourceType type, const void* desc) {/*dumb*/ }
-      virtual void ResourceRelease(ResHandle handle) {/*dumb*/ }
+      virtual ResHandle ResourceCreate(const GraphicsResourceInfo& info)
+      {
+         if(info.Type == GraphicsResourceType::Count)
+            throw std::runtime_error("Invalid resource type.");
+         ResHandle handle = resHandlePool.Acquire();
+         handle = SetRecourceType(handle, info.Type);
+         return handle;
+      }
+
+      virtual void ResourceRelease(ResHandle& handle)
+      {
+         if(CheckHandle(handle) == false)
+            throw std::runtime_error("Invalid resource handle.");
+         resHandlePool.Release(uint16_t(ClearResourceType(handle)));
+         handle = ResHandleNull;
+      }
+
+      virtual void ResourceUpdate(ResHandle handle, const void* data, size_t dataSize) = 0;
+      virtual void ResourceReadback(ResHandle handle, void* outData, size_t dataSize) = 0;
+
       void Launch() { threadPool.Launch(); }
       void Terminate() { threadPool.Terminate(); }
       // ***CORE WORKLOAD***
@@ -374,6 +394,7 @@ namespace Pillow::Graphics
       using ActionT = void(IRenderer::*)();
       using WorkerT = void(IRenderer::*)(uint32_t);
       ThreadPool<IRenderer, WorkerT, ActionT> threadPool;
+      GenericHandlePool<uint16_t> resHandlePool{ "ResHandle Pool", MaxRescourceNum };
    };
 
 #if defined(_WIN64)
@@ -385,6 +406,11 @@ namespace Pillow::Graphics
       D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 backBufferSize, int32_t refreshRate);
       ~D3D12Renderer();
       uint64_t GetFrameIndex() override final;
+
+      ResHandle ResourceCreate(const GraphicsResourceInfo& info) override final;
+      void ResourceRelease(ResHandle& handle) override final;
+      void ResourceUpdate(ResHandle handle, const void* data, size_t dataSize) override final;
+      void ResourceReadback(ResHandle handle, void* outData, size_t dataSize) override final;
 
    private:
       void Worker(uint32_t workerIndex) override final;
