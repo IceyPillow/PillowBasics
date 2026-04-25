@@ -42,7 +42,7 @@ namespace Gameplay
       _color = XMVectorMultiplyAdd(XMVectorSin(_color), XMVectorReplicate(0.5f), XMVectorReplicate(0.5f));
       XMFLOAT4 color;
       XMStoreFloat4(&color, _color);
-      PiplelineBuffer buffers[1] = { PiplelineBuffer::Backbuffer };
+      PipelineBuffer buffers[1] = { PipelineBuffer::BackBuffer };
       CmdClearPiplelineBuffers(buffers, 1, color);
    }
 }

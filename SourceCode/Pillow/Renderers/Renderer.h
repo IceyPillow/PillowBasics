@@ -431,7 +431,7 @@ namespace Pillow::Graphics
 
    // Clear 1~8 built-in pipeline buffers. 
    // depth, stencil: When clearing depth or stencil, they must be specified, otherwise they will be ignored.
-   ForceInline void CmdClearPiplelineBuffers(PiplelineBuffer builtinBuffers[], int32_t count,
+   ForceInline void CmdClearPiplelineBuffers(PipelineBuffer builtinBuffers[], int32_t count,
       const XMFLOAT4& color = Constants::CleanColor, float depth = Constants::FloatInfinity,
       uint8_t stencil = UINT8_MAX)
    {
@@ -484,7 +484,7 @@ namespace Pillow::Graphics
    }
 
    // Set 1~8 built-in pipeline buffers.
-   ForceInline void CmdSetPipelineBuffers(PiplelineBuffer builtinBuffers[], int32_t count)
+   ForceInline void CmdSetPipelineBuffers(PipelineBuffer builtinBuffers[], int32_t count)
    {
       if (count > 8) throw std::runtime_error("Too many pipeline buffers to set. Max is 8.");
       GenericRendererCommand cmd;
@@ -498,7 +498,7 @@ namespace Pillow::Graphics
    }
 
    //  Set 1~7 render targets and 1 depth buffer.
-   ForceInline void CmdSetRenderTargets(ResHandle handles[], int32_t count, ResHandle depthHandle = ResHandleNULL)
+   ForceInline void CmdSetRenderTargets(ResHandle handles[], int32_t count, ResHandle depthHandle = ResHandleNull)
    {
       if (count > 7) throw std::runtime_error("Too many render targets to set. Max is 7.");
       GenericRendererCommand cmd;
@@ -610,7 +610,7 @@ namespace Pillow::Graphics
    }
 
    // Dispatch a post-processing pass.
-   ForceInline void CmdDispatchPostProcess(PiplelineBuffer from, PiplelineBuffer to)
+   ForceInline void CmdDispatchPostProcess(PipelineBuffer from, PipelineBuffer to)
    {
       GenericRendererCommand cmd;
       cmd.CmdType = GenericRendererCommand::Type::DispatchPostProcess;

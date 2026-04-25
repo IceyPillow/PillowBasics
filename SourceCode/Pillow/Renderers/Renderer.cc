@@ -10,8 +10,8 @@ using namespace DirectX;
 namespace
 {
    std::unique_ptr<IRenderer> rendererInstance;
-   std::vector<GenericRendererCmd> cmdListIdle;
-   std::vector<GenericRendererCmd> cmdListBusy;
+   std::vector<GenericRendererCommand> cmdListIdle;
+   std::vector<GenericRendererCommand> cmdListBusy;
 
    // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
    std::string MakePipelineStateID(const string& originalName, const std::vector<KeyValuePair>& macros, const PipelineInfo::Configuration& config)

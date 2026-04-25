@@ -2061,10 +2061,10 @@ namespace
       {
          if (cmd.CmdType == GenericRendererCommand::Type::ClearPiplelineBuffers)
          {
-            if (cmd.Count == 1 && cmd.Params.UIntArray8[0] == (int32_t)PiplelineBuffer::Backbuffer)
+            if (cmd.Count == 1 && cmd.Params.UIntArray8[0] == (int32_t)PipelineBuffer::BackBuffer)
             {
                DescriptorHandle handle = pipeBufferDSV_RTVs[frameArrayIdx];
-               cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(handle), (float*)(&cmd.Params.FVector1), 0, nullptr);
+               cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(handle), (float*)(&cmd.Params.Float4_1), 0, nullptr);
             }
          }
          DescriptorHandle dsvHandle = pipeBufferDSV_RTVs[SwapChainSize + 0];
