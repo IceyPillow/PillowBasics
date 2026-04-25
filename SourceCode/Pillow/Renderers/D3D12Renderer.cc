@@ -1368,6 +1368,43 @@ namespace
       cmdList->ResourceBarrier(1, &barrier);
    }
 
+   DescriptorHandle GetPipeplineBufferDSV_RTV(PipelineBuffer name)
+   {
+      if (int32_t(name) > int32_t(PipelineBuffer::HalfBuffer4))
+         throw std::runtime_error("GetPipeplineBuffer(): Invalid arguments.");
+      if (name == PipelineBuffer::BackBuffer)
+      {
+         return pipeBufferDSV_RTVs[fenceSync->GetFrameArrayIdx()];
+
+      }
+      else
+      {
+         return pipeBufferDSV_RTVs[SwapChainSize + int32_t(name) - 1];
+      }
+   }
+
+   DescriptorHandle GetPipeplineBufferSRV(PipelineBuffer name)
+   {
+      if (int32_t(name) > int32_t(PipelineBuffer::HalfBuffer4))
+         throw std::runtime_error("GetPipeplineBuffer(): Invalid arguments.");
+      if (name == PipelineBuffer::Depth)
+      {
+         return DepthSRVHandle;
+      }
+      else if (name == PipelineBuffer::MotionVector)
+      {
+         return DepthSRVHandle + 1;
+      }
+      else if (name == PipelineBuffer::BackBuffer)
+      {
+         return DepthSRVHandle + 3 + fenceSync->GetFrameArrayIdx();
+      }
+      else
+      {
+         return DepthSRVHandle + 2;
+      }
+   }
+
    // Must align the subresource size with D3D12_TEXTURE_DATA_PITCH_ALIGNMENT.
    uint32_t GetAlignMipmapSize(const TextureInfo& texInfo, uint32_t mipLevel)
    {
