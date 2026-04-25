@@ -414,10 +414,13 @@ namespace
          return result;
       }
 
-      DescriptorHandle CreateDescirptor(ComPtr<IDevice>& device, ComPtr<IResource>& res, void* viewDesc, Type type)
+      DescriptorHandle CreateDescirptor(ComPtr<IDevice>& device, ComPtr<IResource>& res, void* viewDesc, Type type, DescriptorHandle oldHandle = 0)
       {
          std::unique_lock lock(mutex);
-         DescriptorHandle handle{};
+         bool bNewHandle = oldHandle == 0;
+         if(bNewHandle == false && GetType(oldHandle) != type)
+            throw std::exception("CreateDescirptor(): Type mismatch.");
+         DescriptorHandle handle = bNewHandle ?  0 : oldHandle;
          handle = SetType(handle, type);
          //auto GetHandle = [&](std::vector<DescriptorHandle>& freePool, const char* name)
          //   {
@@ -429,23 +432,23 @@ namespace
          switch (type)
          {
          case Type::CBV:
-            handle |= csuPool.Acquire();
+            if(bNewHandle) handle |= csuPool.Acquire();
             device->CreateConstantBufferView((D3D12_CONSTANT_BUFFER_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::SRV:
-            handle |= csuPool.Acquire();
+            if (bNewHandle) handle |= csuPool.Acquire();
             device->CreateShaderResourceView(res.Get(), (D3D12_SHADER_RESOURCE_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::UAV:
-            handle |= csuPool.Acquire();
+            if (bNewHandle) handle |= csuPool.Acquire();
             device->CreateUnorderedAccessView(res.Get(), nullptr, (D3D12_UNORDERED_ACCESS_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::RTV:
-            handle |= rtvPool.Acquire();
+            if (bNewHandle) handle |= rtvPool.Acquire();
             device->CreateRenderTargetView(res.Get(), (D3D12_RENDER_TARGET_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::DSV:
-            handle |= dsvPool.Acquire();
+            if (bNewHandle) handle |= dsvPool.Acquire();
             device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
          }
 #ifdef PILLOW_DEBUG
