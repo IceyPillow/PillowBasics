@@ -265,7 +265,11 @@ namespace
   {
      RECT rect{};
      GetClientRect(hwnd, &rect);
-     clientSize = XMINT2{ rect.right, rect.bottom };
+     // Avoid zero size which may cause some errors.
+     if (rect.right != 0 && rect.bottom != 0)
+     {
+        clientSize = XMINT2{ rect.right, rect.bottom };
+     }
   }
 
    void SetWindowMode(bool fullScreen, bool allowResizing)
