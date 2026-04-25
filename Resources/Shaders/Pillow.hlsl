@@ -29,8 +29,8 @@ static const uint FrameIdxMax = 1000000;
 
 struct ObjectStruct
 {
-   float4x4 MatrixModel;
-   float3x4 MatrixModelInvTrans;
+   float3x4 MatrixModel;
+   float3x3 MatrixModelInvTrans;
    float4 ColorObject;
    uint4 TexIdx;
    // 16B
@@ -55,16 +55,16 @@ struct LightStruct
    float4 ShapeLight;
 };
 
-struct PassStruct
+struct CameraStruct
 {
-   float4x4 MatrixView;
-   float4x4 MatrixProj;
+   float3x4 MatrixView;
+   float4x4 MatrixProjection;
    float4x4 MatrixViewProjection;
    float4x4 MatrixViewProjectionInv;
    float4 ViewportSizeAndRecip;
    // 16B
    float3 CameraPositionWorld;
-   uint FrameIdx;
+   uint FrameArrayIdx;
    // 16B
    float DistanceNear;
    float DistanceFar;
@@ -90,7 +90,7 @@ SamplerComparisonState Cmp : register(s6);
 // Bound resources.
 ConstantBuffer<ObjectStruct> ObjectCB : register(b0, space0);
 ConstantBuffer<LightStruct> LightCB : register(b1, space0);
-ConstantBuffer<PassStruct> PassCB : register(b2, space0);
+ConstantBuffer<CameraStruct> CameraCB : register(b2, space0);
 StructuredBuffer<BoneData> MatrixBones : register(t0, space0);
 TextureCubeArray CubeGallery : register(t1, space0);
 Texture2DArray Gallery[] : register(t0, space1);

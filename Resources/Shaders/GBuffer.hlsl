@@ -29,7 +29,7 @@ Standard_Vertex2Pixel VertexShader(StandardVertex vertex)
    output.NormalW = mul((float3x3) ObjectCB.MatrixModelInvTrans, (float3)vertex.Normal);
    output.TangentW = mul((float3x3) ObjectCB.MatrixModel, (float3)vertex.Tangent);
 #endif
-   output.PositionH = mul(PassCB.MatrixViewProjection, output.PositionW);
+   output.PositionH = mul(CameraCB.MatrixViewProjection, output.PositionW);
    output.TangentW.w = vertex.Tangent.w;
    // Transfer other data.
    output.TexIdxA = vertex.TexIdxA;

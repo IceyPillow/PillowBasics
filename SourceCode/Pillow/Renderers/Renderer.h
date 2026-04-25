@@ -51,16 +51,16 @@ namespace Pillow::Graphics
       XMFLOAT4A ShapeLight;
    };
 
-   struct alignas(XMVECTOR) PassConstantBuffer
+   struct alignas(XMVECTOR) CameraConstantBuffer
    {
       XMFLOAT3X4A MatrixView;
-      XMFLOAT3X4A MatrixProj;
-      XMFLOAT3X4A MatrixViewProjection;
-      XMFLOAT3X4A MatrixViewProjectionInv;
+      XMFLOAT4X4A MatrixProjection;
+      XMFLOAT4X4A MatrixViewProjection;
+      XMFLOAT4X4A MatrixViewProjectionInv;
       XMFLOAT4A ViewportSizeAndRecip;
       // 16B
       XMFLOAT3 CameraPositionWorld;
-      uint32_t FrameIdx;
+      uint32_t FrameArrayIdx;
       // 16B
       float DistanceNear;
       float DistanceFar;
