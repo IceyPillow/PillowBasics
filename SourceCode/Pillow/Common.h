@@ -207,15 +207,15 @@ namespace Pillow::Common
          MaxIndex(maxIndex)
       {
          const uint32_t initialPoolSize = 256;
-         FreePool.reserve(initialPoolSize);
+         freePool.reserve(initialPoolSize);
       }
 
       ANY_UINT Acquire()
       {
-         if (FreePool.empty() == false)
+         if (freePool.empty() == false)
          {
-            ANY_UINT handle = FreePool.back();
-            FreePool.pop_back();
+            ANY_UINT handle = freePool.back();
+            freePool.pop_back();
             return handle;
          }
          else
@@ -234,20 +234,20 @@ namespace Pillow::Common
             throw std::exception(error.c_str());
          }
 #ifdef PILLOW_DEBUG
-         bool found = std::find(FreePool.begin(), FreePool.end(), handle) != FreePool.end();
+         bool found = std::find(freePool.begin(), freePool.end(), handle) != freePool.end();
          if (found)
          {
             string error = std::format("Cannot release an unbound handle. PoolName={}, Handle={}", Name, handle);
             throw std::exception(error.c_str());
          }
 #endif
-         FreePool.push_back(handle);
+         freePool.push_back(handle);
          return NullHandle;
       }
 
    private:
-      ANY_UINT head = 1;
-      std::vector<ANY_UINT> FreePool;
+      ANY_UINT head = 1; // Handle index 0 is always null.
+      std::vector<ANY_UINT> freePool;
    };
 
    template <typename T>
@@ -264,7 +264,6 @@ namespace Pillow::Common
       ClassType<ClassT>
       && std::is_member_function_pointer_v<FuncT>
       && std::is_invocable_v<FuncT, ClassT*, uint32_t>;
-
 
    template <ClassType BossT, WorkerType<BossT> WorkerT, ActionType<BossT> ActionT>
    class ThreadPool
