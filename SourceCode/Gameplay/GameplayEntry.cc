@@ -32,9 +32,6 @@ namespace Gameplay
       uint32_t safeFrameIdx = (uint32_t)(frameIdx % Constants::FrameIdxMax);
 
       // Camera.
-      XMINT2 screenSize = renderer->GetBackBufferSize();
-      mainCamera.Config.AspectRatio = float(screenSize.x) / float(screenSize.y);
-      mainCamera.UpdateConstBuffer(frameIdx, deltaTime, safeLapseTime, screenSize);
 
       // Clear the main render target.
       XMVECTOR _color = XMVectorReplicate(lapseTime);

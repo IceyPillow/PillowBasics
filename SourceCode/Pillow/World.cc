@@ -3,8 +3,10 @@
 
 namespace Pillow::World
 {
-   void Camera::UpdateConstBuffer(uint32_t frameIdx, float deltaTime, float timeLapse, XMINT2 viewportSize)
+   void Camera::Tick(double deltaTime, double timeLapse)
    {
+      XMINT2 screenSize = IRenderer::GetInstance()->GetBackBufferSize();
+      float aspectRatio = (float)screenSize.x / (float)screenSize.y;
       // Matrix View
       XMVECTOR pos = XMLoadFloat4A(&Position);
       XMVECTOR dir = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4A(&Quaternion));
@@ -15,7 +17,7 @@ namespace Pillow::World
       XMMATRIX matrixProj;
       if(Config.VerticalFOV > 0)
       {
-         matrixProj = XMMatrixPerspectiveFovLH(Config.VerticalFOV, Config.AspectRatio, Config.NearZ, Config.FarZ);
+         matrixProj = XMMatrixPerspectiveFovLH(Config.VerticalFOV, aspectRatio, Config.NearZ, Config.FarZ);
       }
       else
       {
@@ -31,12 +33,12 @@ namespace Pillow::World
       ConstBuffer.CameraPositionWorld = { Position.x, Position.y, Position.z };
       ConstBuffer.DistanceNear = Config.NearZ;
       ConstBuffer.DistanceFar = Config.FarZ;
-      ConstBuffer.ViewportSizeAndRecip[0] = (float)viewportSize.x;
-      ConstBuffer.ViewportSizeAndRecip[1] = (float)viewportSize.y;
-      ConstBuffer.ViewportSizeAndRecip[2] = 1.0f / (float)viewportSize.x;
-      ConstBuffer.ViewportSizeAndRecip[3] = 1.0f / (float)viewportSize.y;
+      ConstBuffer.ViewportSizeAndRecip[0] = (float)screenSize.x;
+      ConstBuffer.ViewportSizeAndRecip[1] = (float)screenSize.y;
+      ConstBuffer.ViewportSizeAndRecip[2] = 1.0f / (float)screenSize.x;
+      ConstBuffer.ViewportSizeAndRecip[3] = 1.0f / (float)screenSize.y;
       ConstBuffer.TimeDelta = deltaTime;
-      ConstBuffer.TimeLapse = timeLapse;
-      ConstBuffer.FrameIdx = frameIdx;
+      ConstBuffer.TimeLapse = (float)std::fmod(timeLapse, Constants::TimeLapseMax);
+      ConstBuffer.FrameArrayIdx = IRenderer::GetInstance()->GetFrameArrayIdx();
    }
 }
