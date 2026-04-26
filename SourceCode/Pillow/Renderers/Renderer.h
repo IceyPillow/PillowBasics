@@ -106,7 +106,8 @@ namespace Pillow::Graphics
    {
       PiplelineState,
       Texture,
-      Mesh,
+      VertexBuffer,
+      IndexBuffer,
       StructArray,
       ConstBuffer,
       Count
@@ -122,14 +123,23 @@ namespace Pillow::Graphics
    {
    public:
       GraphicsResourceType Type;
-      uint16_t ElementSize;
-      uint32_t ElementCount;
       std::string FilePath;
+
       union
       {
          std::unique_ptr<PipelineInfo> PipeState;
          std::unique_ptr<TextureInfo> TexInfo;
-         std::unique_ptr<MeshInfo> MeshInfo;
+         struct VtxIdxBuffer
+         {
+            VertexType VtxType;
+            uint32_t VertexCount;
+            uint32_t IndexCount;
+         } VtxIdxBuffer;
+         struct StructAndCB
+         {
+            uint32_t ElementSize;
+            uint32_t ElementCount;
+         } StructAndCB;
       };
 
       ~GraphicsResourceInfo()
@@ -141,10 +151,6 @@ namespace Pillow::Graphics
          else if (Type == GraphicsResourceType::Texture)
          {
             TexInfo.reset();
-         }
-         else if (Type == GraphicsResourceType::Mesh)
-         {
-            MeshInfo.reset();
          }
       }
    };

@@ -18,6 +18,7 @@
 #include <memory>
 #include <vector>
 #include <set>
+#include <unordered_map>
 #include <queue>
 #include <array>
 #include <ranges>
@@ -518,8 +519,6 @@ namespace
    // It represents the core memory management in D3D12.
    class UnionBuffer
    {
-      DeleteDefautedMethods(UnionBuffer)
-
    public:
       enum class HeapType : uint8_t
       {
@@ -532,8 +531,7 @@ namespace
       {
          Texture,
          ConstantBuffer, // Store simple constants in system memory.
-         StructuredBuffer, // Used as SRV or UAV. e.g., store skeletal matrices; store compute shaders' output.
-         VertexIndexBuffer,
+         StructuredBuffer, // VBV, IBV, SRV and UAV. e.g., meshes,  skeletal matrices, and compute shaders' output.
       };
 
       // The maximum number of updated subresources in one resource each frame.
@@ -547,10 +545,24 @@ namespace
       const uint32_t ElementRawSize;
       const uint32_t ElementCount;
       const uint32_t ElementAlignSize;
-      const std::unique_ptr<TextureInfo> TexInfo;
+      std::unique_ptr<TextureInfo> TexInfo;
       ReadonlyProperty(uint64_t, ReadyFence)
 
    public:
+       static void Release(ResHandle handle)
+       {
+          auto kv = bufferMap.find(handle);
+          if (kv == bufferMap.end()) throw std::runtime_error("Invalid PSO handle.");
+          bufferMap.erase(kv);
+       }
+
+       UnionBuffer& Get(ResHandle handle)
+       {
+          auto kv = bufferMap.find(handle);
+          if (kv == bufferMap.end()) throw std::runtime_error("Invalid PSO handle.");
+          return kv->second;
+       }
+
       // 7 Pre-Defined Resource Types
       // No  NAME                      DATA_TYPE          HEAP_TYPE  WRITE_FUNC       READ_FUNC
       // 1   Texture                   Texture            Default    WriteOneTexture  x
@@ -558,54 +570,57 @@ namespace
       // 3   ConstantBuffer            ConstantBuffer     Upload     WriteStructs     x
       // 4   StructuredBuffer          StructuredBuffer   Upload     WriteStructs     x
       // 5   StructuredBufferReadBack  StructuredBuffer   ReadBack   x                ReadBackResources
-      // 6   VertexIndexBuffer         VertexIndexBuffer  Default    WriteStructs     x
-      // 7   DynamicVertexIndexBuffer  VertexIndexBuffer  Upload     WriteStructs     x
+      // 6   VertexIndexBuffer         StructuredBuffer   Default    WriteStructs     x
+      // 7   DynamicVertexIndexBuffer  StructuredBuffer   Upload     WriteStructs     x
 
       // Default Heap + Texture2D
-      static UnionBuffer Create1_Texture(const TextureInfo& textureInfo, bool keepMidBuffer = false)
+      static void Create1_Texture(const ResHandle handle, const TextureInfo& textureInfo, bool keepMidBuffer = false)
       {
-         return UnionBuffer(HeapType::Default, DataType::Texture, 0, 0, 0, keepMidBuffer, &textureInfo);
+         auto buffer = UnionBuffer(HeapType::Default, DataType::Texture, 0, 0, 0, keepMidBuffer, &textureInfo);
+         bufferMap.emplace(handle, std::move(buffer));
       }
 
       // Read-Back Heap + Texture2D
-      static UnionBuffer Create2_TextureReadBack(const TextureInfo& textureInfo, bool keepMidBuffer = false)
+      static void Create2_TextureReadBack(const ResHandle handle, const TextureInfo& textureInfo, bool keepMidBuffer = false)
       {
-         if (textureInfo.MipCount != 1) throw std::runtime_error("Read back textures with multiple mips are not supported currently.");
-         if (textureInfo.CompressionType != TextureInfo::ZipType::None) throw std::runtime_error("Read-back textures cannot be compressed.");
-         return UnionBuffer(HeapType::ReadBack, DataType::Texture, 0, 0, 0, keepMidBuffer, &textureInfo);
+         if (textureInfo.MipCount != 1)
+            throw std::runtime_error("Read back textures with multiple mips are not supported currently.");
+         if (textureInfo.CompressionType != TextureInfo::ZipType::None)
+            throw std::runtime_error("Read-back textures cannot be compressed.");
+         auto buffer = UnionBuffer(HeapType::ReadBack, DataType::Texture, 0, 0, 0, keepMidBuffer, &textureInfo);
+         bufferMap.emplace(handle, std::move(buffer));
       }
 
       // Upload Heap + Buffer
-      static UnionBuffer Create3_ConstantBuffer(int32_t elementSize, int32_t elementCount)
+      static void Create3_ConstantBuffer(const ResHandle handle, int32_t elementRawSize, int32_t elementCount)
       {
-         return UnionBuffer(HeapType::Upload, DataType::ConstantBuffer, elementSize, elementCount, GetAlignSize(elementSize, AlignmentConstBuffer));
+         uint32_t alignedSize = GetAlignSize(elementRawSize, AlignmentConstBuffer);
+         auto buffer = UnionBuffer(HeapType::Upload, DataType::ConstantBuffer, elementRawSize, elementCount, alignedSize);
+         bufferMap.emplace(handle, std::move(buffer));
       }
 
       // Upload Heap + Buffer
       // Upload heap is enough for a small structured buffer (<= 64KB).
-      static UnionBuffer Create4_StructuredBuffer(int32_t structSize, int32_t structCount)
+      static void Create4_StructuredBuffer(const ResHandle handle, int32_t structSize, int32_t structCount)
       {
-         return UnionBuffer(HeapType::Upload, DataType::StructuredBuffer, structSize, structCount, structSize);
+         auto buffer = UnionBuffer(HeapType::Upload, DataType::StructuredBuffer, structSize, structCount, structSize);
+         bufferMap.emplace(handle, std::move(buffer));
       }
 
       // Read-Back Heap + Buffer
-      static UnionBuffer Create5_StructuredBufferReadBack(int32_t structSize, int32_t structCount)
+      static void Create5_StructuredBufferReadBack(const ResHandle handle, int32_t structSize, int32_t structCount)
       {
-         return UnionBuffer(HeapType::ReadBack, DataType::StructuredBuffer, structSize, structCount, structSize);
+         auto buffer = UnionBuffer(HeapType::ReadBack, DataType::StructuredBuffer, structSize, structCount, structSize);
+         bufferMap.emplace(handle, std::move(buffer));
       }
 
-      // Default Heap + Buffer
-      // ordinary meshes, can only update once.
-      static UnionBuffer Create6_VertexIndexBuffer(int32_t elementSize, int32_t elementCount)
+      // Default/Upload Heap + Buffer
+      // ordinary meshes(can only update once) and dynamic meshes (typically have vertex animations) in a small memory size..
+      static void Create6_VertexIndexBuffer(const ResHandle handle,
+         int32_t elementSize, int32_t elementCount, HeapType heapType = HeapType::Default, bool keepMidBuffer = false)
       {
-         return UnionBuffer(HeapType::Default, DataType::VertexIndexBuffer, elementSize, elementCount, elementSize, false);
-      }
-
-      // Upload Heap + Buffer
-      // For dynamic meshes (typically have vertex animations) in a small memory size.
-      static UnionBuffer Create7_DynamicVertexIndexBuffer(int32_t elementSize, int32_t elementCount, bool keepMidBuffer = false)
-      {
-         return UnionBuffer(HeapType::Upload, DataType::VertexIndexBuffer, elementSize, elementCount, elementSize, keepMidBuffer);
+         auto buffer = UnionBuffer(heapType, DataType::StructuredBuffer, elementSize, elementCount, elementSize, keepMidBuffer);
+         bufferMap.emplace(handle, std::move(buffer));
       }
 
    public:
@@ -614,7 +629,8 @@ namespace
       {
          throw std::runtime_error("UpdateTileMappings() is not implemented yet.");
          device->CreateReservedResource(nullptr, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&resource));
-         cmdQueue->UpdateTileMappings(nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr,nullptr, D3D12_TILE_MAPPING_FLAG_NONE);
+         cmdQueue->UpdateTileMappings(nullptr, 0, nullptr, nullptr,
+            nullptr, 0, nullptr, nullptr,nullptr, D3D12_TILE_MAPPING_FLAG_NONE);
       }
 
       // Pillow: Not supported; it's not useful.
@@ -657,11 +673,18 @@ namespace
          if (Heap_Type == HeapType::ReadBack) throw std::runtime_error("Cannot write data into a read-back buffer.");
          if (dstElementIdx + elementCount > ElementCount) throw std::runtime_error("The index range exceeds the resource limit.");
          // VIB + Default Heap
-         if (Heap_Type == HeapType::Default && Data_Type == DataType::VertexIndexBuffer)
+         if (Heap_Type == HeapType::Default && Data_Type == DataType::StructuredBuffer)
          {
             if (ElementAlignSize * ElementCount != srcSize) throw std::runtime_error("Source data size isn't euqal to the buffer size.");
             RegisterGPUCopy();
             memcpy(midBuffer->pointerCPU, src, srcSize);
+         }
+         else if (Heap_Type == HeapType::Upload && Data_Type == DataType::StructuredBuffer)
+         {
+            if (ElementRawSize * elementCount > srcSize) throw std::runtime_error("Source data size is too small.");
+            if (ElementRawSize != ElementAlignSize) throw std::runtime_error("A upload heap with none-constant-buffer data cannot have special alignment.");
+            uint32_t dstOffset = dstElementIdx * ElementRawSize;
+            memcpy(pointerCPU + dstOffset, src, elementCount * ElementRawSize);
          }
          // Upload heaps
          else if (Heap_Type == HeapType::Upload && Data_Type == DataType::ConstantBuffer)
@@ -673,13 +696,6 @@ namespace
                uint32_t srcOffset = i * ElementRawSize;
                memcpy(pointerCPU + dstOffset, src + srcOffset, ElementRawSize);
             }
-         }
-         else if (Heap_Type == HeapType::Upload)
-         {
-            if (ElementRawSize * elementCount > srcSize) throw std::runtime_error("Source data size is too small.");
-            if (ElementRawSize != ElementAlignSize) throw std::runtime_error("A upload heap with none-constant-buffer data cannot have special alignment.");
-            uint32_t dstOffset = dstElementIdx  * ElementRawSize;
-            memcpy(pointerCPU + dstOffset, src, elementCount * ElementRawSize);
          }
          else
          {
@@ -745,7 +761,7 @@ namespace
             DirtyPool.pop_back();
             buffer.f_ReadyFence = fenceSync->GetTargetFence();
             // Fill the cmd list.
-            if(buffer.Data_Type == DataType::VertexIndexBuffer)
+            if(buffer.Data_Type == DataType::StructuredBuffer)
             {
                ApplyBarrier(cmdList, buffer.midBuffer->resource, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
                ApplyBarrier(cmdList, buffer.resource, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -807,8 +823,12 @@ namespace
          }
       }
 
+   public:
+      UnionBuffer(UnionBuffer&&) = default;
+
    private:
-      inline static std::vector<UnionBuffer*> DirtyPool{};
+      static inline std::unordered_map<ResHandle, UnionBuffer> bufferMap{};
+      static inline std::vector<UnionBuffer*> DirtyPool{};
 
       // Used to copy data into default heaps.
       std::unique_ptr<UnionBuffer> midBuffer;
@@ -819,6 +839,8 @@ namespace
       uint64_t pointerGPU{};
       uint8_t* pointerCPU{};
 
+      UnionBuffer() = delete;
+      UnionBuffer(const UnionBuffer&) = delete;
       UnionBuffer(HeapType heapType, DataType dataType, int32_t eleRawSize, int32_t eleNum, int32_t eleAlignSize,
          bool keepMid = false, const TextureInfo* texInfo = nullptr) :
          Heap_Type(heapType),
@@ -1021,23 +1043,22 @@ namespace
          }
          pso = CreatePSO(shaders, info.Config);
          // Create PipelineState and return a handle.
-         psoMap.emplace(handle, std::make_unique<PipelineState>(info, std::move(pso)));
+         auto state = PipelineState(info, std::move(pso));
+         psoMap.emplace(handle, std::move(state));
       }
 
-      void Release(ResHandle& handle)
+      void Release(ResHandle handle)
       {
          auto kv = psoMap.find(handle);
          if (kv == psoMap.end()) throw std::runtime_error("Invalid PSO handle.");
-         kv->second.reset();
          psoMap.erase(kv);
-         handle = ResHandleNull;
       }
 
       PipelineState& Get(ResHandle handle)
       {
          auto kv = psoMap.find(handle);
          if (kv == psoMap.end()) throw std::runtime_error("Invalid PSO handle.");
-         return *kv->second.get();
+         return kv->second;
       }
 
    private:
@@ -1060,7 +1081,7 @@ namespace
 
       // A unified root signature.
       ComPtr<ID3D12RootSignature> UnifiedRootSign{};
-      std::unordered_map<ResHandle, std::unique_ptr<PipelineState>> psoMap;
+      std::unordered_map<ResHandle, PipelineState> psoMap;
 
    private:
       void CreateUnifiedSignature()
@@ -2106,27 +2127,43 @@ ResHandle D3D12Renderer::ResourceCreate(const GraphicsResourceInfo& info)
    }
    else if (info.Type == GraphicsResourceType::Texture)
    {
-      UnionBuffer buffer = UnionBuffer::Create1_Texture(*info.TexInfo, true);
-      unionBufferMap.emplace(handle, std::move(buffer));
+      UnionBuffer::Create1_Texture(handle, *info.TexInfo, true);
    }
-   else if(info.Type == GraphicsResourceType::Mesh)
+   else if(info.Type == GraphicsResourceType::VertexBuffer)
    {
-      //UnionBuffer buffer = UnionBuffer::Create6_VertexIndexBuffer();
-      //unionBufferMap.emplace(handle, std::move(buffer));
+      const int32_t vtxSize = VertexSize[int32_t(info.VtxIdxBuffer.VtxType)];
+      UnionBuffer::Create6_VertexIndexBuffer(handle, vtxSize, info.VtxIdxBuffer.VertexCount);
+   }
+   else if (info.Type == GraphicsResourceType::IndexBuffer)
+   {
+      const int32_t idxSize = sizeof(uint32_t);
+      UnionBuffer::Create6_VertexIndexBuffer(handle, idxSize, info.VtxIdxBuffer.IndexCount);
    }
    else if (info.Type == GraphicsResourceType::StructArray)
    {
+      auto& params = info.StructAndCB;
+      UnionBuffer::Create4_StructuredBuffer(handle, params.ElementSize, params.ElementCount);
    }
    else if(info.Type == GraphicsResourceType::ConstBuffer)
    {
-
+      auto& params = info.StructAndCB;
+      UnionBuffer::Create3_ConstantBuffer(handle, params.ElementSize, params.ElementCount);
    }
    return handle;
 }
 
 void D3D12Renderer::ResourceRelease(ResHandle& handle)
 {
+   ResHandle handleCopy = handle;
    IRenderer::ResourceRelease(handle);
+   if (GetResourceType(handleCopy) == GraphicsResourceType::PiplelineState)
+   {
+      psoMgr->Release(handleCopy);
+   }
+   else
+   {
+      UnionBuffer::Release(handleCopy);
+   }
 }
 
 void D3D12Renderer::ResourceUpdate(ResHandle handle, const void* data, size_t dataSize)
