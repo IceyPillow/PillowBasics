@@ -1,5 +1,7 @@
+// PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 #include "Renderers/Renderer.h"
 #include "World.h"
+#include "Resources/Mesh.h"
 
 using namespace Pillow;
 using namespace Pillow::Graphics;

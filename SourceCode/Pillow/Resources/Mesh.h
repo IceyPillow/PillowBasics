@@ -4,6 +4,7 @@
 #include "Common.h"
 #include "Texture.h"
 #include "DirectXMath-apr2025/DirectXPackedVector.h"
+#include "cgltf-1.15/cgltf.h"
 
 using namespace DirectX;
 using namespace DirectX::PackedVector;
@@ -69,26 +70,30 @@ namespace Pillow::Graphics
       9
    };
 
-   struct alignas(16) BoneData
-   {
-      XMFLOAT3X4A MatrixPalette;
-   };
-
    class StandardMesh
    {
    public:
       const uint32_t VtxNum;
+      const uint32_t IdxNum;
       const VertexType VtxType;
       const bool SkeletonEnabled;
 
-      StandardMesh(VertexType vtxType, uint32_t vtxNum, bool skeletonEnabled = false) :
-         VtxType(vtxType),
+      StandardMesh() = delete;
+
+      StandardMesh(const path _path, VertexType vtxType,
+         uint32_t vtxNum, uint32_t idxNum, bool skeletonEnabled = false) :
          VtxNum(vtxNum),
+         IdxNum(idxNum),
+         VtxType(vtxType),
          SkeletonEnabled(skeletonEnabled)
       {
          if (vtxNum < 1) throw std::runtime_error("Vertex number must be at least 1.");
-         uint32_t num = (vtxNum * VertexSize[uint32_t(vtxType)] + 32) / sizeof(CacheLine);
-         vtx = std::make_unique<CacheLine[]>(num);
+         uint32_t vtxBufferSize = vtxNum * VertexSize[uint32_t(vtxType)];
+         uint32_t idxBufferSize = idxNum * sizeof(uint32_t);
+         vtx = std::make_unique<uint8_t[]>(vtxBufferSize);
+         idx = std::make_unique<uint8_t[]>(idxBufferSize);
+         string dir = GetResourcePathUTF8(_path);
+         // Load the model
       }
 
       UIVertex* GetUIVertices()
@@ -104,12 +109,10 @@ namespace Pillow::Graphics
       }
 
    private:
-      std::unique_ptr<CacheLine[]> vtx;
-   };
-
-   class MeshInfo
-   {
-
+      std::unique_ptr<uint8_t[]> vtx;
+      std::unique_ptr<uint8_t[]> idx;
+      ResHandle resVtx = ResHandleNull;
+      ResHandle resIdx = ResHandleNull;
    };
 
    std::unique_ptr<StandardMesh> CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);
