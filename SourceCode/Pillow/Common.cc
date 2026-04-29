@@ -125,6 +125,20 @@ namespace Pillow::Common
       return resourceRootPath / name;
    }
 
+   string GetResourcePathUTF8(const path& name)
+   {
+      path _path = GetResourcePath(name);
+      std::string result;
+#if defined(_WIN64)
+
+      utf8::utf16to8(_path.native().begin(), _path.native().end(), std::back_inserter(result));
+#elif defined(__ANDROID__)
+      static_assert(std::is_same_v<path::string_type, std::string>, "The path::string_type test failed.");
+      result = _path.native();
+#endif
+      return result;
+   }
+
    void LogSystem(const string& text)
    {
 #if defined(_WIN64)

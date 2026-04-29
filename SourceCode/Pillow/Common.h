@@ -157,6 +157,7 @@ namespace Pillow::Common
    inline bool CheckUTF16_SingleUnit(char16_t uc) { return (uc & 0xF800) != 0xD800; }
 
    path GetResourcePath(const path& name);
+   string GetResourcePathUTF8(const path& name);
    void LogSystem(const string& text);
    void LogGame(const string& text);
 
