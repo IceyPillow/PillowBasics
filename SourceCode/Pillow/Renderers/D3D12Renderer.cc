@@ -29,6 +29,8 @@
 #include <filesystem>
 #include <exception>
 #include "utfcpp-4.0.6/utf8.h"
+#include "Resources/Mesh.h"
+#include "Resources/Texture.h"
 
 using namespace Pillow::Graphics;
 
@@ -74,7 +76,7 @@ namespace
    const DescriptorHandle DepthSRVHandle = 0x20000001;
 
    // TODO: BC7, mode 6 and mode 7
-   const DXGI_FORMAT NativeTexFmt[int32_t(TextureInfo::Format::Count)]
+   const DXGI_FORMAT NativeTexFmt[int32_t(TextureFormat::Count)]
    {
       DXGI_FORMAT_R8_UNORM,
       DXGI_FORMAT_R8G8_SNORM,
@@ -84,7 +86,7 @@ namespace
       DXGI_FORMAT_R16G16_FLOAT,
       DXGI_FORMAT_R16G16B16A16_FLOAT
    };
-   const DXGI_FORMAT NativeBCTexFmt[int32_t(TextureInfo::Format::Count)]
+   const DXGI_FORMAT NativeBCTexFmt[int32_t(TextureFormat::Count)]
    {
       DXGI_FORMAT_BC4_UNORM,
       DXGI_FORMAT_BC5_UNORM,
@@ -94,7 +96,7 @@ namespace
       DXGI_FORMAT_UNKNOWN,
       DXGI_FORMAT_UNKNOWN
    };
-   constexpr uint32_t NativeBCBlockSize[int32_t(TextureInfo::Format::Count)]
+   constexpr uint32_t NativeBCBlockSize[int32_t(TextureFormat::Count)]
    {
       BC4BlockSize,
       BC5BlockSize,

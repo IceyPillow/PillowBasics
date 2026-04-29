@@ -9,6 +9,21 @@ namespace Pillow::Graphics
 {
    using namespace DirectX;
 
+   // Texture (pixel) format.
+   enum class TextureFormat : uint8_t
+   {
+      // 1.Supports .hdr files.
+      // 2.R8G8B8 isn't supported in DXGI_FORMAT, use R8G8B8A8 to store it.
+      UnsignedNormalized_R8,
+      UnsignedNormalized_R8G8,
+      UnsignedNormalized_R8G8B8,
+      UnsignedNormalized_R8G8B8A8,
+      Float_R16,
+      Float_R16G16,
+      Float_R16G16B16A16,
+      Count
+   };
+
    //                     Subresource Indexing                       //
    //                                         ______________________ //
    // subres(0) subres(3) -> Row: Mip Slice 0 |subres(6) subres(9) | //
@@ -44,21 +59,6 @@ namespace Pillow::Graphics
          BakedTexArray,
       };
 
-      // Texture (pixel) format.
-      enum class Format : uint8_t
-      {
-         // 1.Supports .hdr files.
-         // 2.R8G8B8 isn't supported in DXGI_FORMAT, use R8G8B8A8 to store it.
-         UnsignedNormalized_R8,
-         UnsignedNormalized_R8G8,
-         UnsignedNormalized_R8G8B8,
-         UnsignedNormalized_R8G8B8A8,
-         Float_R16,
-         Float_R16G16,
-         Float_R16G16B16A16,
-         Count
-      };
-
       // Texture compression type.
       enum class ZipType : uint8_t
       {
@@ -71,21 +71,21 @@ namespace Pillow::Graphics
       static const int32_t MaxWidth = 1 << 13;
       static const int32_t MaxArraySize = UINT8_MAX;
 
-      static TextureInfo DefineTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, bool useMip);
-      static TextureInfo DefineTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip);
+      static TextureInfo DefineTexture(Tag tag, TextureFormat format, ZipType zip, int32_t width, int32_t height, bool useMip);
+      static TextureInfo DefineTextureArray(Tag tag, TextureFormat format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip);
       static TextureInfo DefineTextureArray(const TextureInfo& info, int32_t count);
       // Baked textures cannot have mipmaps. They are designed for screen captures, not for pragmatic textures.
       // Pillow Basics doesn't support GPU mipmap generation currently.
-      static TextureInfo DefineBakedTexture(Format format, int32_t width, int32_t height);
+      static TextureInfo DefineBakedTexture(TextureFormat format, int32_t width, int32_t height);
       // Baked textures cannot have mipmaps. They are designed for screen captures, not for pragmatic textures.
       // Pillow Basics doesn't support GPU mipmap generation currently.
-      static TextureInfo DefineBakedTextureArray(Format format, int32_t width, int32_t height, int32_t count);
+      static TextureInfo DefineBakedTextureArray(TextureFormat format, int32_t width, int32_t height, int32_t count);
 
    public:
       // Format
       const Tag TexTag;
       const Type TexType;
-      const Format TexFormat;
+      const TextureFormat TexFormat;
       const ZipType CompressionType;
       const uint16_t Width;
       const uint16_t Height;
@@ -105,11 +105,11 @@ namespace Pillow::Graphics
       int32_t GetMipmapSize(uint32_t mipLevel) const;
 
    private:
-      TextureInfo(Tag tag, Type type, Format format, ZipType zip, int32_t w, int32_t h, int32_t mips, int32_t arrayNum);
+      TextureInfo(Tag tag, Type type, TextureFormat format, ZipType zip, int32_t w, int32_t h, int32_t mips, int32_t arrayNum);
    };
 
    // Enquire the original pixel size.
-   int32_t GetPixelSize(TextureInfo::Format format); 
+   int32_t GetPixelSize(TextureFormat format); 
    // Enquire the original pixel size.
    int32_t GetPixelSize(const TextureInfo& info);
    void LoadTexture(const string& relativePath);

@@ -2,13 +2,14 @@
 #pragma once
 #include <vector>
 #include "Common.h"
-#include "Texture.h"
 #include "DirectXMath-apr2025/DirectXPackedVector.h"
 #include "cgltf-1.15/cgltf.h"
+#include "Renderers/Renderer.h"
 
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 using namespace Pillow::Common;
+using namespace Pillow::Graphics;
 
 namespace Pillow::Graphics
 {

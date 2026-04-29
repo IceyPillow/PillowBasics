@@ -12,7 +12,7 @@ using namespace DirectX;
 
 namespace
 {
-   const uint8_t PixelBytes[int32_t(TextureInfo::Format::Count)]
+   const uint8_t PixelBytes[int32_t(TextureFormat::Count)]
    {
       1, // UnsignedNormalized_R8
       2, // UnsignedNormalized_R8G8
@@ -38,7 +38,7 @@ namespace
       return uint8_t(exponent + 1);
    }
 
-   uint32_t CalculateArraySliceSize(TextureInfo::Format format, uint32_t w, uint32_t h)
+   uint32_t CalculateArraySliceSize(TextureFormat format, uint32_t w, uint32_t h)
    {
       uint32_t min = std::min(w, h);
       uint32_t max = std::max(w, h);
@@ -145,14 +145,14 @@ namespace
    }
 }
 
-TextureInfo TextureInfo::DefineTexture(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, bool useMip)
+TextureInfo TextureInfo::DefineTexture(Tag tag, TextureFormat format, ZipType zip, int32_t width, int32_t height, bool useMip)
 {
    CheckTextureSize(width, height, 1, true);
    uint8_t mips = useMip ? CalculateMipCount(width, height) : 1;
    return TextureInfo(tag, Type::Tex, format, zip, width, height, mips, 1);
 }
 
-TextureInfo TextureInfo::DefineTextureArray(Tag tag, Format format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip)
+TextureInfo TextureInfo::DefineTextureArray(Tag tag, TextureFormat format, ZipType zip, int32_t width, int32_t height, int32_t count, bool useMip)
 {
    if (count < 2) throw std::runtime_error("A texture array should have at least 2 textures.");
    CheckTextureSize(width, height, count, true);
@@ -167,13 +167,13 @@ TextureInfo Pillow::Graphics::TextureInfo::DefineTextureArray(const TextureInfo&
 }
 
 
-TextureInfo TextureInfo::DefineBakedTexture(Format format, int32_t width, int32_t height)
+TextureInfo TextureInfo::DefineBakedTexture(TextureFormat format, int32_t width, int32_t height)
 {
    CheckTextureSize(width, height, 1, false);
    return TextureInfo(Tag::Development, Type::BakedTex, format, ZipType::None, width, height, 1, 1);
 }
 
-TextureInfo TextureInfo::DefineBakedTextureArray(Format format, int32_t width, int32_t height, int32_t count)
+TextureInfo TextureInfo::DefineBakedTextureArray(TextureFormat format, int32_t width, int32_t height, int32_t count)
 {
    if (count < 2) throw std::runtime_error("A baked-texture array should have at least 2 textures.");
    CheckTextureSize(width, height, count, false);
@@ -199,7 +199,7 @@ int32_t TextureInfo::GetMipmapSize(uint32_t mipLevel) const
    return w * h * GetPixelSize(TexFormat);
 }
 
-TextureInfo::TextureInfo(Tag tag, Type type, Format format, ZipType zip, int32_t w, int32_t h, int32_t mips, int32_t arrayNum) :
+TextureInfo::TextureInfo(Tag tag, Type type, TextureFormat format, ZipType zip, int32_t w, int32_t h, int32_t mips, int32_t arrayNum) :
    TexTag(tag),
    TexType(type),
    TexFormat(format),
@@ -215,7 +215,7 @@ TextureInfo::TextureInfo(Tag tag, Type type, Format format, ZipType zip, int32_t
    // No need to write the body.
 }
 
-int32_t Pillow::Graphics::GetPixelSize(TextureInfo::Format format)
+int32_t Pillow::Graphics::GetPixelSize(TextureFormat format)
 {
    return PixelBytes[(int32_t)format];
 }

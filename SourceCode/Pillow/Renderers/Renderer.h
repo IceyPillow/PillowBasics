@@ -5,8 +5,6 @@
 #include <vector>
 #include <functional>
 #include "Common.h"
-#include "Resources/Texture.h"
-#include "Resources/Mesh.h"
 
 using namespace DirectX;
 using namespace Pillow::Constants;
@@ -22,6 +20,17 @@ namespace Pillow::Graphics
    const ResHandle ResHandleNull = 0;
    const ResHandle ResIndexBits = 28;
    const ResHandle ResourceTypeMask = 0xF0000000;
+
+   // Forward declarations
+   class PipelineInfo;
+   class TextureInfo;
+   enum class VertexType : uint8_t;
+   enum class TextureFormat : uint8_t;
+   enum class GraphicsResourceType : uint8_t;
+   GraphicsResourceType GetResourceType(ResHandle handle);
+   ResHandle SetRecourceType(ResHandle handle, GraphicsResourceType type);
+   ResHandle ClearResourceType(ResHandle handle);
+   bool CheckHandle(ResHandle handle);
 
    struct alignas(XMVECTOR) ObjectConstantBuffer
    {
@@ -113,12 +122,6 @@ namespace Pillow::Graphics
       Count
    };
 
-   class PipelineInfo;
-   GraphicsResourceType GetResourceType(ResHandle handle);
-   ResHandle SetRecourceType(ResHandle handle, GraphicsResourceType type);
-   ResHandle ClearResourceType(ResHandle handle);
-   bool CheckHandle(ResHandle handle);
-
    class GraphicsResourceInfo
    {
    public:
@@ -127,8 +130,8 @@ namespace Pillow::Graphics
 
       union
       {
-         std::unique_ptr<PipelineInfo> PipeState;
-         std::unique_ptr<TextureInfo> TexInfo;
+         PipelineInfo* PipeState;
+         TextureInfo* TexInfo;
          struct VtxIdxBuffer
          {
             VertexType VtxType;
@@ -141,18 +144,6 @@ namespace Pillow::Graphics
             uint32_t ElementCount;
          } StructAndCB;
       };
-
-      ~GraphicsResourceInfo()
-      {
-         if (Type == GraphicsResourceType::PiplelineState)
-         {
-            PipeState.reset();
-         }
-         else if (Type == GraphicsResourceType::Texture)
-         {
-            TexInfo.reset();
-         }
-      }
    };
 
    // Designed for a modifiable deferred pipeline.
@@ -286,7 +277,7 @@ namespace Pillow::Graphics
          VertexType Vertex;
          DepthMode Depth;
          BlendMode Blend;
-         TextureInfo::Format RT_Formats[8];
+         TextureFormat RT_Formats[8];
          mutable uint8_t RTNum;
       };
 
@@ -464,7 +455,7 @@ namespace Pillow::Graphics
    // Clear 1~8 built-in pipeline buffers. 
    // depth, stencil: When clearing depth or stencil, they must be specified, otherwise they will be ignored.
    ForceInline void CmdClearPiplelineBuffers(PipelineBuffer builtinBuffers[], int32_t count,
-      const XMFLOAT4& color = Constants::CleanColor, float depth = Constants::FloatInfinity,
+      const XMFLOAT4& color = Constants::DefaultBackColor, float depth = Constants::FloatInfinity,
       uint8_t stencil = UINT8_MAX)
    {
       if (count > 8) throw std::runtime_error("Too many pipeline buffers to clear. Max is 8.");
@@ -483,7 +474,7 @@ namespace Pillow::Graphics
 
    // Clear 1~8 render targets. (1 cubemap = 6 buffers)
    ForceInline void CmdClearRenderTargets(ResHandle handles[], int32_t count,
-      const XMFLOAT4& color = Constants::CleanColor)
+      const XMFLOAT4& color = Constants::DefaultBackColor)
    {
       if (count > 8) throw std::runtime_error("Too many render targets to clear. Max is 8.");
       GenericRendererCommand cmd;

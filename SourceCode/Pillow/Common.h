@@ -54,7 +54,7 @@ namespace Pillow::Constants
    const int32_t AnisotropyLevel = 4;
    const int32_t SwapChainSize = 3;
 
-   const DirectX::XMFLOAT4A CleanColor{ 0.2f, 0.21f, 0.2f, 0.0f };
+   const DirectX::XMFLOAT4A DefaultBackColor{ 0.2f, 0.21f, 0.2f, 0.0f };
    // Perceptual weightings for the importance of each channel.
    const DirectX::XMFLOAT4A RGBLuminance{ 0.2125f / 0.7154f, 1, 0.0721f / 0.7154f, 1.f };
    const DirectX::XMFLOAT4A RGBLuminanceInv{ 0.7154f / 0.2125f, 1, 0.7154f / 0.0721f, 1.f };
