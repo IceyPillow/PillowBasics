@@ -104,37 +104,50 @@ namespace Pillow::Common
       return f_ValueRaw == right.f_ValueRaw;
    }
 
-   path GetResourcePath(const path& name)
+   path GetCurrentWorkingDirectory()
    {
-      static path resourceRootPath;
-      if (resourceRootPath.empty())
-      {
-         path searchPath = std::filesystem::current_path();
-         do
-         {
-            path candidatePath = searchPath / path("Resources");
-            if (exists(candidatePath))
-            {
-               resourceRootPath = candidatePath;
-               break;
-            }
-            searchPath = searchPath.parent_path();
-         } while (searchPath != searchPath.root_path());
-         if (resourceRootPath.empty()) throw std::exception("Resources folder does not exist.");
-      }
-      return resourceRootPath / name;
+      return std::filesystem::current_path();
    }
 
-   string GetResourcePathUTF8(const path& name)
+   path GetResourceRelativePath(const path& shortPath)
    {
-      path _path = GetResourcePath(name);
+      const path rootFolder = "Resources";
+      static path rootRelativePath;
+      {
+         static std::mutex mutex;
+         std::unique_lock lock(mutex);
+         if (rootRelativePath.empty())
+         {
+            path candidatePath = GetCurrentWorkingDirectory();
+            while(true)
+            {
+               candidatePath /= rootFolder;
+
+               if (exists(candidatePath))
+               {
+                  rootRelativePath = std::filesystem::relative(candidatePath);
+                  break;
+               }
+               candidatePath = candidatePath / ".." / "..";
+               candidatePath = candidatePath.lexically_normal();
+               if (candidatePath == candidatePath.root_path()) break;
+            }
+            if (rootRelativePath.empty()) throw std::exception("Resources folder does not exist.");
+         }
+      }
+      if (shortPath.is_absolute())
+         throw std::exception("The path should be relative to the root resources folder.");
+      return exists(shortPath) ? shortPath : rootRelativePath / shortPath;
+   }
+
+   string GetU8StringfromPath(const path& dir)
+   {
       std::string result;
 #if defined(_WIN64)
-
-      utf8::utf16to8(_path.native().begin(), _path.native().end(), std::back_inserter(result));
+      utf8::utf16to8(dir.native().begin(), dir.native().end(), std::back_inserter(result));
 #elif defined(__ANDROID__)
       static_assert(std::is_same_v<path::string_type, std::string>, "The path::string_type test failed.");
-      result = _path.native();
+      result = dir.native();
 #endif
       return result;
    }

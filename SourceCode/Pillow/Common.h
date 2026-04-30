@@ -156,8 +156,11 @@ namespace Pillow::Common
    inline bool CheckUTF16_LowSurrogate(char16_t uc) { return (uc >= 0xDC00 && uc <= 0xDFFF); }
    inline bool CheckUTF16_SingleUnit(char16_t uc) { return (uc & 0xF800) != 0xD800; }
 
-   path GetResourcePath(const path& name);
-   string GetResourcePathUTF8(const path& name);
+   // Returns an absolute path to CWD.
+   path GetCurrentWorkingDirectory();
+   path GetResourceRelativePath(const path& shortPath);
+   string GetU8StringfromPath(const path& dir);
+
    void LogSystem(const string& text);
    void LogGame(const string& text);
 
