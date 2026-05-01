@@ -3,7 +3,6 @@
 #include <vector>
 #include "Common.h"
 #include "DirectXMath-apr2025/DirectXPackedVector.h"
-#include "cgltf-1.15/cgltf.h"
 #include "Renderers/Renderer.h"
 
 using namespace DirectX;
@@ -74,46 +73,41 @@ namespace Pillow::Graphics
    class StandardMesh
    {
    public:
-      const uint32_t VtxNum;
-      const uint32_t IdxNum;
+      void CreateEmptyStaticMesh(string id, uint32_t VtxNum, uint32_t IdxNum, VertexType vtxType);
+
+      // Load all meshes at once from a.gltf file.
+      // bStrict: In strict mode, only one mesh is allowed in one file.
+      static void LoadGltf(const path gltfShortPath, bool bStrict = true);
+
+   public:
+      mutable uint32_t VtxNum;
+      mutable uint32_t IdxNum;
       const VertexType VtxType;
       const bool SkeletonEnabled;
+      const path RelativePath;
+      const string UniqueName;
 
-      StandardMesh() = delete;
-
-      StandardMesh(const path _path, VertexType vtxType,
-         uint32_t vtxNum, uint32_t idxNum, bool skeletonEnabled = false) :
-         VtxNum(vtxNum),
-         IdxNum(idxNum),
-         VtxType(vtxType),
-         SkeletonEnabled(skeletonEnabled)
-      {
-         if (vtxNum < 1) throw std::runtime_error("Vertex number must be at least 1.");
-         uint32_t vtxBufferSize = vtxNum * VertexSize[uint32_t(vtxType)];
-         uint32_t idxBufferSize = idxNum * sizeof(uint32_t);
-         vtx = std::make_unique<uint8_t[]>(vtxBufferSize);
-         idx = std::make_unique<uint8_t[]>(idxBufferSize);
-         string dir = GetResourcePathUTF8(_path);
-         // Load the model
-      }
-
-      UIVertex* GetUIVertices()
-      {
-         if (VtxType != VertexType::UI) throw std::runtime_error("Vertex type mismatch.");
-         return reinterpret_cast<UIVertex*>(vtx.get());
-      }
-
-      StandardVertex* GetStandardVertices()
-      {
-         if (VtxType != VertexType::Standard) throw std::runtime_error("Vertex type mismatch.");
-         return reinterpret_cast<StandardVertex*>(vtx.get());
-      }
+      bool FromGltf();
+      void HotReload();
+      UIVertex* GetUIVtx();
+      StandardVertex* GetStandardVtx();
+      uint32_t GetPrimitiveCount() const;
+      uint32_t GetPrimitiveIdxOffset(uint32_t primIdx) const;
+      uint32_t GetPrimitiveIdxCount(uint32_t primIdx) const;
 
    private:
+      static inline std::unordered_map<string, StandardMesh> MeshMap{};
+
       std::unique_ptr<uint8_t[]> vtx;
       std::unique_ptr<uint8_t[]> idx;
       ResHandle resVtx = ResHandleNull;
       ResHandle resIdx = ResHandleNull;
+      std::vector<uint32_t> primitiveEndIdxOffsets;
+
+      StandardMesh() = delete;
+
+      StandardMesh(path relativePath, string id,
+         uint32_t vtxNum, uint32_t idxNum, VertexType vtxType, bool bSkeleton = false);
    };
 
    std::unique_ptr<StandardMesh> CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);
