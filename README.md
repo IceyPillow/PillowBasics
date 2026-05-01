@@ -3,7 +3,7 @@
 ![Static Badge](https://img.shields.io/badge/Android-On%20Hold-silver)<br><br>
 ## Pillow Basics
 ### Description
-A C++20 game engine focusing on low-cost abstraction, bloat-free, and modern designs.<br>
+A C++20 game engine focusing on zero-cost-abstraction, bloat-free, and modern designs.<br>
 Some takeaways to open your mind:
 - One unified root signature; a true bindless renderer design
 - **nit** is the unified luminance unit
