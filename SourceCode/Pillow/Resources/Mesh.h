@@ -73,11 +73,12 @@ namespace Pillow::Graphics
    class StandardMesh
    {
    public:
-      void CreateEmptyStaticMesh(string id, uint32_t VtxNum, uint32_t IdxNum, VertexType vtxType);
+      static void CreateEmptyStaticMesh(string id, uint32_t VtxNum, uint32_t IdxNum, VertexType vtxType);
 
-      // Load all meshes at once from a.gltf file.
-      // bStrict: In strict mode, only one mesh is allowed in one file.
-      static void LoadGltf(const path gltfShortPath, bool bStrict = true);
+      // Load one meshe from a .gltf file.
+      // Strict Mode: One mesh in a file, no transform.
+      string LoadGltfStaticStrict(const path shortPath_ID);
+
    public:
       ReadonlyProperty(uint32_t, VtxNum)
       ReadonlyProperty(uint32_t, IdxNum)
