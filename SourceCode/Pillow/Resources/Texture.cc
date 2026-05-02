@@ -228,7 +228,7 @@ int32_t Pillow::Graphics::GetPixelSize(const TextureInfo& info)
 void Pillow::Graphics::LoadTexture(const string& relativePath)
 {
    // Read the binary file.
-   path filePath = GetResourcePath(path(relativePath));
+   path filePath = GetResourceRelativePath(path(relativePath));
    std::ifstream file(filePath, std::ios::binary | std::ios::ate);
    if (!file.is_open()) throw std::runtime_error("Unable to open file");
    std::streamsize size = file.tellg();

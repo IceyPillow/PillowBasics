@@ -1088,7 +1088,7 @@ namespace
    private:
       void CreateUnifiedSignature()
       {
-         path filePath = GetResourcePath(L"Shaders\\Pillow.hlsl");
+         path filePath = GetResourceRelativePath(L"Shaders\\Pillow.hlsl");
          // Build arguments.
          ComPtr<IDxcCompilerArgs> argsCooked;
          Check_HRESULT(utils->BuildArguments(filePath.c_str(), L"ROOT_SIGN",
@@ -1128,7 +1128,7 @@ namespace
       {
          // Set constants.
          const uint32_t typeNum = uint32_t(type);
-         path shaderDir = GetResourcePath(path(L"Shaders"));
+         path shaderDir = GetResourceRelativePath(path(L"Shaders"));
          std::vector<const wchar_t*> flags =
          {
             L"-I",

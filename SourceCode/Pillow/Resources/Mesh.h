@@ -78,10 +78,11 @@ namespace Pillow::Graphics
       // Load all meshes at once from a.gltf file.
       // bStrict: In strict mode, only one mesh is allowed in one file.
       static void LoadGltf(const path gltfShortPath, bool bStrict = true);
+   public:
+      ReadonlyProperty(uint32_t, VtxNum)
+      ReadonlyProperty(uint32_t, IdxNum)
 
    public:
-      mutable uint32_t VtxNum;
-      mutable uint32_t IdxNum;
       const VertexType VtxType;
       const bool SkeletonEnabled;
       const path RelativePath;
@@ -91,6 +92,7 @@ namespace Pillow::Graphics
       void HotReload();
       UIVertex* GetUIVtx();
       StandardVertex* GetStandardVtx();
+      uint32_t* GetIndices();
       uint32_t GetPrimitiveCount() const;
       uint32_t GetPrimitiveIdxOffset(uint32_t primIdx) const;
       uint32_t GetPrimitiveIdxCount(uint32_t primIdx) const;
@@ -107,7 +109,8 @@ namespace Pillow::Graphics
       StandardMesh() = delete;
 
       StandardMesh(path relativePath, string id,
-         uint32_t vtxNum, uint32_t idxNum, VertexType vtxType, bool bSkeleton = false);
+         uint32_t vtxNum, uint32_t idxNum,
+         VertexType vtxType = VertexType::Standard, bool bSkeleton = false);
    };
 
    std::unique_ptr<StandardMesh> CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);

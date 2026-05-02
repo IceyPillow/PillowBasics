@@ -39,6 +39,11 @@ namespace Pillow::Graphics
       return reinterpret_cast<StandardVertex*>(vtx.get());
    }
 
+   uint32_t* StandardMesh::GetIndices()
+   {
+      return reinterpret_cast<uint32_t*>(idx.get());
+   }
+
    uint32_t StandardMesh::GetPrimitiveCount() const
    {
       return primitiveEndIdxOffsets.size();
@@ -74,8 +79,8 @@ namespace Pillow::Graphics
 
    StandardMesh::StandardMesh(path relativePath, string id,
       uint32_t vtxNum, uint32_t idxNum, VertexType vtxType, bool bSkeleton) :
-      VtxNum(vtxNum),
-      IdxNum(idxNum),
+      f_VtxNum(vtxNum),
+      f_IdxNum(idxNum),
       VtxType(vtxType),
       SkeletonEnabled(bSkeleton),
       RelativePath(relativePath),
