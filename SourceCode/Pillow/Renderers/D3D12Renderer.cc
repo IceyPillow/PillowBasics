@@ -502,7 +502,7 @@ namespace
       const static uint32_t MaxHeapCapcity = UINT16_MAX;
       static_assert(MaxHeapCapcity <= HandleMaxNum, "MaxHeapCapcity exceeds the max allowed number of handles.");
 
-      mutable std::shared_mutex mutex;
+      mutable std::mutex mutex;
       const int32_t csuSize, rtvSize, dsvSize;
       ComPtr<ID3D12DescriptorHeap> csuDescHeap;
       ComPtr<ID3D12DescriptorHeap> rtvDescHeap;
