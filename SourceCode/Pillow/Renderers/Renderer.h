@@ -126,8 +126,6 @@ namespace Pillow::Graphics
    {
    public:
       GraphicsResourceType Type;
-      std::string FilePath;
-
       union
       {
          PipelineInfo* PipeState;
@@ -135,8 +133,7 @@ namespace Pillow::Graphics
          struct VtxIdxBuffer
          {
             VertexType VtxType;
-            uint32_t VertexCount;
-            uint32_t IndexCount;
+            uint32_t Count;
          } VtxIdxBuffer;
          struct StructAndCB
          {
@@ -283,11 +280,12 @@ namespace Pillow::Graphics
 
    public:
       // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
-      const std::string NameID;
+      const std::string ID;
+      const path ShortPath;
       const std::vector<KeyValuePair> Macros;
       const Configuration Config;
 
-      PipelineInfo(string originalName, std::vector<KeyValuePair>& macros, Configuration& config);
+      PipelineInfo(path shortPath, std::vector<KeyValuePair>& macros, Configuration& config);
 
       bool EqualTo(const PipelineInfo& right) const;
 

@@ -1000,7 +1000,7 @@ namespace
          psoMap.reserve(PSOReservedNum);
       }
 
-      void Add(ResHandle handle, const PipelineInfo& info, const path filePath)
+      void Add(ResHandle handle, const PipelineInfo& info)
       {
          using enum PipelineInfo::ShaderType;
          const uint32_t shaderMask = info.Config.ShaderMask;
@@ -1009,35 +1009,35 @@ namespace
          ComPtr<ID3D12PipelineState> pso;
          if (PipelineInfo::CheckShaderMask(shaderMask, ComputeShader))
          {
-            shaders.emplace_back(CompileShader(filePath, ComputeShader, info.Macros));
+            shaders.emplace_back(CompileShader(info.ShortPath, ComputeShader, info.Macros));
          }
          if (PipelineInfo::CheckShaderMask(shaderMask, AmplificationShader))
          {
-            shaders.emplace_back(CompileShader(filePath, AmplificationShader, info.Macros));
+            shaders.emplace_back(CompileShader(info.ShortPath, AmplificationShader, info.Macros));
          }
          if (PipelineInfo::CheckShaderMask(shaderMask, MeshShader))
          {
-            shaders.emplace_back(CompileShader(filePath, MeshShader, info.Macros));
+            shaders.emplace_back(CompileShader(info.ShortPath, MeshShader, info.Macros));
          }
          if (PipelineInfo::CheckShaderMask(shaderMask, VertexShader))
          {
-            shaders.emplace_back(CompileShader(filePath, VertexShader, info.Macros));
+            shaders.emplace_back(CompileShader(info.ShortPath, VertexShader, info.Macros));
          }
          if (PipelineInfo::CheckShaderMask(shaderMask, HullShader))
          {
-            shaders.emplace_back(CompileShader(filePath, HullShader, info.Macros));
+            shaders.emplace_back(CompileShader(info.ShortPath, HullShader, info.Macros));
          }
          if (PipelineInfo::CheckShaderMask(shaderMask, DomainShader))
          {
-            shaders.emplace_back(CompileShader(filePath, DomainShader, info.Macros));
+            shaders.emplace_back(CompileShader(info.ShortPath, DomainShader, info.Macros));
          }
          if (PipelineInfo::CheckShaderMask(shaderMask, GeometryShader))
          {
-            shaders.emplace_back(CompileShader(filePath, GeometryShader, info.Macros));
+            shaders.emplace_back(CompileShader(info.ShortPath, GeometryShader, info.Macros));
          }
          if (PipelineInfo::CheckShaderMask(shaderMask, PixelShader))
          {
-            shaders.emplace_back(CompileShader(filePath, PixelShader, info.Macros));
+            shaders.emplace_back(CompileShader(info.ShortPath, PixelShader, info.Macros));
             if (info.Config.RTNum == 0)
             {
                info.Config.RTNum = ReflectRenderTargetNum(shaders.back());
@@ -2125,7 +2125,7 @@ ResHandle D3D12Renderer::ResourceCreate(const GraphicsResourceInfo& info)
    ResHandle handle = IRenderer::ResourceCreate(info);
    if (info.Type == GraphicsResourceType::PiplelineState)
    {
-      psoMgr->Add(handle, *info.PipeState, info.FilePath);
+      psoMgr->Add(handle, *info.PipeState);
    }
    else if (info.Type == GraphicsResourceType::Texture)
    {
@@ -2134,12 +2134,12 @@ ResHandle D3D12Renderer::ResourceCreate(const GraphicsResourceInfo& info)
    else if(info.Type == GraphicsResourceType::VertexBuffer)
    {
       const int32_t vtxSize = VertexSize[int32_t(info.VtxIdxBuffer.VtxType)];
-      UnionBuffer::Create6_VertexIndexBuffer(handle, vtxSize, info.VtxIdxBuffer.VertexCount);
+      UnionBuffer::Create6_VertexIndexBuffer(handle, vtxSize, info.VtxIdxBuffer.Count);
    }
    else if (info.Type == GraphicsResourceType::IndexBuffer)
    {
       const int32_t idxSize = sizeof(uint32_t);
-      UnionBuffer::Create6_VertexIndexBuffer(handle, idxSize, info.VtxIdxBuffer.IndexCount);
+      UnionBuffer::Create6_VertexIndexBuffer(handle, idxSize, info.VtxIdxBuffer.Count);
    }
    else if (info.Type == GraphicsResourceType::StructArray)
    {

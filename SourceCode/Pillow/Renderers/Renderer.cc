@@ -14,12 +14,12 @@ namespace
    std::vector<GenericRendererCommand> cmdListBusy;
 
    // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
-   std::string MakePipelineStateID(const string& originalName, const std::vector<KeyValuePair>& macros, const PipelineInfo::Configuration& config)
+   std::string MakePipelineStateID(const path& originalName, const std::vector<KeyValuePair>& macros, const PipelineInfo::Configuration& config)
    {
       const char separator = ',';
       const char prefixMacro = '@';
       const char prefixValue = '=';
-      string name = originalName;
+      string name = GetU8StringfromPath(originalName);
       name += "@Stages=";
       using ShaderType = PipelineInfo::ShaderType;
       for (uint16_t i = 1; i <= uint16_t(ShaderType::Count); i++)
@@ -46,8 +46,9 @@ namespace
    }
 }
 
-PipelineInfo::PipelineInfo(string originalName, std::vector<KeyValuePair>& macros, Configuration& config) :
-   NameID(MakePipelineStateID(originalName, macros, config)),
+PipelineInfo::PipelineInfo(path shortPath, std::vector<KeyValuePair>& macros, Configuration& config) :
+   ID(MakePipelineStateID(shortPath, macros, config)),
+   ShortPath(std::move(shortPath)),
    Macros(macros),
    Config(config)
 {
@@ -56,7 +57,7 @@ PipelineInfo::PipelineInfo(string originalName, std::vector<KeyValuePair>& macro
 
 bool PipelineInfo::EqualTo(const PipelineInfo& right) const
 {
-   return this->NameID == right.NameID;
+   return this->ID == right.ID;
 }
 
 void IRenderer::Initialize(uint32_t threadCount, XMINT2 renderBufferSize, int32_t refreshRate, void* parameter)
