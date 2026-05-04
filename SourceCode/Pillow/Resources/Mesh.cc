@@ -13,6 +13,85 @@ namespace Pillow::Graphics
       MeshMap.emplace(id, std::move(newMesh));
    }
 
+   string StandardMesh::CreateQuad(float xHalf, float zHalf)
+   {
+      if (xHalf < 0 || zHalf < 0) throw std::runtime_error("Invalid arguments");
+      static uint32_t suffix = 0;
+      string id = "Quad" + std::to_string(suffix++);
+      StandardMesh newMesh = StandardMesh(path(""), id, 4, 6);
+      StandardVertex* vtxBuffer = newMesh.GetStandardVtx();
+      uint32_t* idxBuffer = newMesh.GetIndices();
+      vtxBuffer[16] = { XMFLOAT4A{-xHalf,0,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[17] = { XMFLOAT4A{-xHalf,0, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[18] = { XMFLOAT4A{ xHalf,0, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[19] = { XMFLOAT4A{ xHalf,0,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      constexpr uint32_t indices[6] = { 0, 1, 2, 0, 2, 3, };
+      std::copy(indices, indices + 6, idxBuffer);
+      return id;
+   }
+
+   string StandardMesh::CreateCube(float xHalf, float yHalf, float zHalf)
+   {
+      if (xHalf < 0 || yHalf < 0 || zHalf < 0) throw std::runtime_error("Invalid arguments");
+      static uint32_t suffix = 0;
+      string id = "Cube" + std::to_string(suffix++);
+      StandardMesh newMesh = StandardMesh(path(""), id, 24, 36);
+      StandardVertex* vtxBuffer = newMesh.GetStandardVtx();
+      uint32_t* idxBuffer = newMesh.GetIndices();
+      // Front
+      vtxBuffer[0] = { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[1] = { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[2] = { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[3] = { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
+      // Back
+      vtxBuffer[4] = { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} };
+      vtxBuffer[5] = { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} };
+      vtxBuffer[6] = { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} };
+      vtxBuffer[7] = { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} };
+      // Left
+      vtxBuffer[8] = { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} };
+      vtxBuffer[9] = { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} };
+      vtxBuffer[10] = { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} };
+      vtxBuffer[11] = { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} };
+      // Right
+      vtxBuffer[12] = { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} };
+      vtxBuffer[13] = { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} };
+      vtxBuffer[14] = { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} };
+      vtxBuffer[15] = { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} };
+      // Top
+      vtxBuffer[16] = { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[17] = { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[18] = { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[19] = { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      // Bottom
+      vtxBuffer[20] = { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[21] = { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[22] = { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      vtxBuffer[23] = { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      // Indices
+      constexpr uint32_t indices[36] =
+      {
+           0, 1, 2, 0, 2, 3,
+           4, 5, 7, 5, 6, 7,
+           8, 9,10, 8,10,11,
+          12,13,15,13,14,15,
+          16,17,18,16,18,19,
+          20,21,23,21,22,23,
+      };
+      std::copy(indices, indices + 36, idxBuffer);
+      return id;
+   }
+
+   string StandardMesh::CreateSphere(float radius)
+   {
+      return string();
+   }
+
+   string StandardMesh::CreateCapsule(float radius, float height)
+   {
+      return string();
+   }
+
    string StandardMesh::LoadGltfStaticStrict(const path shortPath_ID)
    {
       if (shortPath_ID.extension() != ".gltf") throw std::runtime_error("Models must be .gltf files.");
@@ -31,7 +110,7 @@ namespace Pillow::Graphics
       cgltf_mesh* mesh = data->meshes;
       uint32_t primNum = mesh->primitives_count;
       uint32_t vtxNum = 0, idxNum = 0;
-      for(uint32_t i = 0; i < primNum; i++)
+      for (uint32_t i = 0; i < primNum; i++)
       {
          vtxNum += mesh->primitives[i].attributes[0].data->count;
          idxNum += mesh->primitives[i].indices->count;
@@ -47,13 +126,13 @@ namespace Pillow::Graphics
          uint32_t idxCount = prim.indices->count;
          // 3.1 Deserialize indices.
          cgltf_accessor_unpack_indices(prim.indices, &idxBuffer[idxOffset], sizeof(uint32_t), idxCount);
-         for(uint32_t idxI = 0; idxI < idxCount; idxI++)
+         for (uint32_t idxI = 0; idxI < idxCount; idxI++)
          {
             idxBuffer[idxOffset + idxI] += vtxOffset;
          }
          // 3.2 Deserialize vertex attributes.
          uint32_t attrCount = prim.attributes_count;
-         for(uint32_t vIdx = 0; vIdx < vtxCount; vIdx++)
+         for (uint32_t vIdx = 0; vIdx < vtxCount; vIdx++)
          {
             for (uint32_t attrI = 0; attrI < attrCount; attrI++)
             {
@@ -134,7 +213,7 @@ namespace Pillow::Graphics
       {
          return 0;
       }
-      else if(primIdx < primitiveEndIdxOffsets.size())
+      else if (primIdx < primitiveEndIdxOffsets.size())
       {
          return primitiveEndIdxOffsets[primIdx - 1] + 1;
       }
@@ -169,17 +248,14 @@ namespace Pillow::Graphics
       if (MeshMap.contains(id)) throw std::runtime_error("Mesh ID must be unique.");
       uint32_t vtxBufferSize = vtxNum * VertexSize[uint32_t(vtxType)];
       uint32_t idxBufferSize = idxNum * sizeof(uint32_t);
+      // Create CPU resources.
       vtx = std::make_unique<uint8_t[]>(vtxBufferSize);
       idx = std::make_unique<uint8_t[]>(idxBufferSize);
-   }
-
-   std::unique_ptr<StandardMesh> CreateCube(float xHalf, float yHalf, float zHalf)
-   {
-      return std::unique_ptr<StandardMesh>();
-   }
-
-   std::unique_ptr<StandardMesh> CreateSphere(float radius)
-   {
-      return std::unique_ptr<StandardMesh>();
+      // Create GPU resources.
+      GraphicsResourceInfo resInfo;
+      resInfo.Type = GraphicsResourceType::VertexBuffer;
+      resInfo.VtxIdxBuffer.VtxType = vtxType;
+      resInfo.VtxIdxBuffer.Count = vtxNum;
+      //IRenderer::GetInstance()->ResourceCreate()
    }
 }

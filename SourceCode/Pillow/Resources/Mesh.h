@@ -75,6 +75,11 @@ namespace Pillow::Graphics
    public:
       static void CreateEmptyStaticMesh(string id, uint32_t VtxNum, uint32_t IdxNum, VertexType vtxType);
 
+      static string CreateQuad(float xHalf = 0.5f, float zHalf = 1.0f);
+      static string CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);
+      static string CreateSphere(float radius = 0.5f);
+      static string CreateCapsule(float radius = 0.5f, float height = 1.f);
+
       // Load one meshe from a .gltf file.
       // Strict Mode: One mesh in a file, no transform.
       string LoadGltfStaticStrict(const path shortPath_ID);
@@ -113,7 +118,4 @@ namespace Pillow::Graphics
          uint32_t vtxNum, uint32_t idxNum,
          VertexType vtxType = VertexType::Standard, bool bSkeleton = false);
    };
-
-   std::unique_ptr<StandardMesh> CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);
-   std::unique_ptr<StandardMesh> CreateSphere(float radius = 0.5f);
 }
