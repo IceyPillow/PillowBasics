@@ -96,12 +96,13 @@ namespace Pillow::Graphics
 
       bool FromGltf();
       void HotReload();
-      UIVertex* GetUIVtx();
-      StandardVertex* GetStandardVtx();
-      uint32_t* GetIndices();
       uint32_t GetPrimitiveCount() const;
       uint32_t GetPrimitiveIdxOffset(uint32_t primIdx) const;
       uint32_t GetPrimitiveIdxCount(uint32_t primIdx) const;
+
+      operator UIVertex* ();
+      operator StandardVertex* ();
+      operator uint32_t* ();
 
    private:
       static inline std::unordered_map<string, StandardMesh> MeshMap{};

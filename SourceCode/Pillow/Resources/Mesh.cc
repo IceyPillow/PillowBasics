@@ -19,8 +19,8 @@ namespace Pillow::Graphics
       static uint32_t suffix = 0;
       string id = "Quad" + std::to_string(suffix++);
       StandardMesh newMesh = StandardMesh(path(""), id, 4, 6);
-      StandardVertex* vtxBuffer = newMesh.GetStandardVtx();
-      uint32_t* idxBuffer = newMesh.GetIndices();
+      StandardVertex* vtxBuffer = newMesh;
+      uint32_t* idxBuffer = newMesh;
       vtxBuffer[16] = { XMFLOAT4A{-xHalf,0,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
       vtxBuffer[17] = { XMFLOAT4A{-xHalf,0, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
       vtxBuffer[18] = { XMFLOAT4A{ xHalf,0, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
@@ -36,8 +36,8 @@ namespace Pillow::Graphics
       static uint32_t suffix = 0;
       string id = "Cube" + std::to_string(suffix++);
       StandardMesh newMesh = StandardMesh(path(""), id, 24, 36);
-      StandardVertex* vtxBuffer = newMesh.GetStandardVtx();
-      uint32_t* idxBuffer = newMesh.GetIndices();
+      StandardVertex* vtxBuffer = newMesh;
+      uint32_t* idxBuffer = newMesh;
       // Front
       vtxBuffer[0] = { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
       vtxBuffer[1] = { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
@@ -117,8 +117,8 @@ namespace Pillow::Graphics
       }
       // 3 Deserialize data.
       StandardMesh newMesh = StandardMesh(path(""), modelPathU8, vtxNum, idxNum);
-      StandardVertex* vtxBuffer = newMesh.GetStandardVtx();
-      uint32_t* idxBuffer = newMesh.GetIndices();
+      StandardVertex* vtxBuffer = newMesh;
+      uint32_t* idxBuffer = newMesh;
       for (uint32_t primIdx = 0, vtxOffset = 0, idxOffset = 0; primIdx < primNum; primIdx++)
       {
          cgltf_primitive& prim = mesh->primitives[primIdx];
@@ -185,23 +185,6 @@ namespace Pillow::Graphics
    {
    }
 
-   UIVertex* StandardMesh::GetUIVtx()
-   {
-      if (VtxType != VertexType::UI) throw std::runtime_error("Vertex type mismatch.");
-      return reinterpret_cast<UIVertex*>(vtx.get());
-   }
-
-   StandardVertex* StandardMesh::GetStandardVtx()
-   {
-      if (VtxType != VertexType::Standard) throw std::runtime_error("Vertex type mismatch.");
-      return reinterpret_cast<StandardVertex*>(vtx.get());
-   }
-
-   uint32_t* StandardMesh::GetIndices()
-   {
-      return reinterpret_cast<uint32_t*>(idx.get());
-   }
-
    uint32_t StandardMesh::GetPrimitiveCount() const
    {
       return primitiveEndIdxOffsets.size();
@@ -233,6 +216,23 @@ namespace Pillow::Graphics
       }
       throw std::runtime_error("Primitive index out of range.");
       return 0;
+   }
+
+   StandardMesh::operator StandardVertex* ()
+   {
+      if (VtxType != VertexType::Standard) throw std::runtime_error("Vertex type mismatch.");
+      return reinterpret_cast<StandardVertex*>(vtx.get());
+   }
+
+   StandardMesh::operator UIVertex* ()
+   {
+      if (VtxType != VertexType::UI) throw std::runtime_error("Vertex type mismatch.");
+      return reinterpret_cast<UIVertex*>(vtx.get());
+   }
+
+   StandardMesh::operator uint32_t* ()
+   {
+      return reinterpret_cast<uint32_t*>(idx.get());
    }
 
    StandardMesh::StandardMesh(path relativePath, string id,
