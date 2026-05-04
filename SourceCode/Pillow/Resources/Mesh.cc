@@ -38,36 +38,40 @@ namespace Pillow::Graphics
       StandardMesh newMesh = StandardMesh(path(""), id, 24, 36);
       StandardVertex* vtxBuffer = newMesh;
       uint32_t* idxBuffer = newMesh;
-      // Front
-      vtxBuffer[0] = { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[1] = { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[2] = { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[3] = { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} };
-      // Back
-      vtxBuffer[4] = { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} };
-      vtxBuffer[5] = { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} };
-      vtxBuffer[6] = { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} };
-      vtxBuffer[7] = { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} };
-      // Left
-      vtxBuffer[8] = { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} };
-      vtxBuffer[9] = { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} };
-      vtxBuffer[10] = { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} };
-      vtxBuffer[11] = { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} };
-      // Right
-      vtxBuffer[12] = { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} };
-      vtxBuffer[13] = { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} };
-      vtxBuffer[14] = { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} };
-      vtxBuffer[15] = { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} };
-      // Top
-      vtxBuffer[16] = { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[17] = { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[18] = { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[19] = { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      // Bottom
-      vtxBuffer[20] = { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[21] = { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[22] = { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[23] = { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
+      constexpr StandardVertex vertices[24] =
+      {
+         // Front
+         { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         // Back
+         { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         // Left
+         { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         // Right
+         { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         // Top
+         { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         // Bottom
+         { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
+      };
+      std::copy(vertices, vertices + 24, vtxBuffer);
       // Indices
       constexpr uint32_t indices[36] =
       {
@@ -84,11 +88,25 @@ namespace Pillow::Graphics
 
    string StandardMesh::CreateSphere(float radius)
    {
+      throw std::runtime_error("Not implemented.");
+      return string();
+   }
+
+   string StandardMesh::CreateCylinder(float radius, float height)
+   {
+      throw std::runtime_error("Not implemented.");
+      return string();
+   }
+
+   string StandardMesh::CreateCone(float radius, float height)
+   {
+      throw std::runtime_error("Not implemented.");
       return string();
    }
 
    string StandardMesh::CreateCapsule(float radius, float height)
    {
+      throw std::runtime_error("Not implemented.");
       return string();
    }
 

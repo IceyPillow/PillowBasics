@@ -78,6 +78,8 @@ namespace Pillow::Graphics
       static string CreateQuad(float xHalf = 0.5f, float zHalf = 1.0f);
       static string CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);
       static string CreateSphere(float radius = 0.5f);
+      static string CreateCylinder(float radius = 0.5f, float height = 1.f);
+      static string CreateCone(float radius = 0.5f, float height = 1.f);
       static string CreateCapsule(float radius = 0.5f, float height = 1.f);
 
       // Load one meshe from a .gltf file.
