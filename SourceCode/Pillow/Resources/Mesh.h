@@ -73,15 +73,17 @@ namespace Pillow::Graphics
    class StandardMesh
    {
    public:
-      static void CreateEmptyStaticMesh(string id, uint32_t VtxNum, uint32_t IdxNum, VertexType vtxType);
+      static inline const string DefaultQuadID = "DefaultQuad";
+      static inline const string DefaultCubeID = "DefaultCube";
+      static inline const string DefaultSphereID = "DefaultSphere";
+      static inline const string DefaultCylinderID = "DefaultCylinder";
+      static inline const string DefaultConeID = "DefaultCone";
+      static inline const string DefaultCapsuleID = "DefaultCapsule";
 
-      static string CreateQuad(float xHalf = 0.5f, float zHalf = 1.0f);
-      static string CreateCube(float xHalf = 0.5f, float yHalf = 0.5f, float zHalf = 0.5f);
-      static string CreateSphere(float radius = 0.5f);
-      static string CreateCylinder(float radius = 0.5f, float height = 1.f);
-      static string CreateCone(float radius = 0.5f, float height = 1.f);
-      static string CreateCapsule(float radius = 0.5f, float height = 1.f);
-
+      static void InitializeDefaultMeshes();
+      static StandardMesh* TryGetMesh(const string& id);
+      static StandardMesh* CreateEmptyStaticMesh(const string& id,
+         uint32_t VtxNum, uint32_t IdxNum, VertexType vtxType = VertexType::Standard);
       // Load one meshe from a .gltf file.
       // Strict Mode: One mesh in a file, no transform.
       string LoadGltfStaticStrict(const path shortPath_ID);
@@ -117,8 +119,7 @@ namespace Pillow::Graphics
 
       StandardMesh() = delete;
 
-      StandardMesh(path relativePath, string id,
-         uint32_t vtxNum, uint32_t idxNum,
+      StandardMesh(const path& relativePath, const string& id, uint32_t vtxNum, uint32_t idxNum,
          VertexType vtxType = VertexType::Standard, bool bSkeleton = false);
    };
 }

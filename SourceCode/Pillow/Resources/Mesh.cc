@@ -5,75 +5,66 @@
 #undef CGLTF_IMPLEMENTATION
 #include "Mesh.h"
 
+
 namespace Pillow::Graphics
 {
-   void StandardMesh::CreateEmptyStaticMesh(string id, uint32_t vtxNum, uint32_t idxNum, VertexType vtxType)
+   void StandardMesh::InitializeDefaultMeshes()
    {
-      StandardMesh newMesh = StandardMesh(path(""), id, vtxNum, idxNum, vtxType);
-      MeshMap.emplace(id, std::move(newMesh));
-   }
-
-   string StandardMesh::CreateQuad(float xHalf, float zHalf)
-   {
-      if (xHalf < 0 || zHalf < 0) throw std::runtime_error("Invalid arguments");
-      static uint32_t suffix = 0;
-      string id = "Quad" + std::to_string(suffix++);
-      StandardMesh newMesh = StandardMesh(path(""), id, 4, 6);
-      StandardVertex* vtxBuffer = newMesh;
-      uint32_t* idxBuffer = newMesh;
-      vtxBuffer[16] = { XMFLOAT4A{-xHalf,0,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[17] = { XMFLOAT4A{-xHalf,0, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[18] = { XMFLOAT4A{ xHalf,0, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      vtxBuffer[19] = { XMFLOAT4A{ xHalf,0,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} };
-      constexpr uint32_t indices[6] = { 0, 1, 2, 0, 2, 3, };
-      std::copy(indices, indices + 6, idxBuffer);
-      return id;
-   }
-
-   string StandardMesh::CreateCube(float xHalf, float yHalf, float zHalf)
-   {
-      if (xHalf < 0 || yHalf < 0 || zHalf < 0) throw std::runtime_error("Invalid arguments");
-      static uint32_t suffix = 0;
-      string id = "Cube" + std::to_string(suffix++);
-      StandardMesh newMesh = StandardMesh(path(""), id, 24, 36);
-      StandardVertex* vtxBuffer = newMesh;
-      uint32_t* idxBuffer = newMesh;
-      constexpr StandardVertex vertices[24] =
+      const float x = 1.0f;
+      const float hx = 0.5f;
+      const float r = 0.5f;
+      // 1. Quad
+      StandardMesh* mesh = CreateEmptyStaticMesh(DefaultQuadID, 4, 6);
+      StandardVertex* vtxBuffer = *mesh;
+      uint32_t* idxBuffer = *mesh;
+      const StandardVertex v1[4] =
+      {
+         { XMFLOAT4A{-hx,0,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx,0, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,0, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,0,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
+      };
+      constexpr uint32_t i1[6] = { 0, 1, 2, 0, 2, 3, };
+      std::copy(v1, v1 + 6, vtxBuffer);
+      std::copy(i1, i1 + 6, idxBuffer);
+      // 2. Cube
+      mesh = CreateEmptyStaticMesh(DefaultCubeID, 24, 36);
+      vtxBuffer = *mesh;
+      idxBuffer = *mesh;
+      const StandardVertex v2[24] =
       {
          // Front
-         { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
          // Back
-         { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
          // Left
-         { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
          // Right
-         { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
          // Top
-         { XMFLOAT4A{-xHalf, yHalf,-zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-xHalf, yHalf, zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ xHalf, yHalf, zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ xHalf, yHalf,-zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
          // Bottom
-         { XMFLOAT4A{-xHalf,-yHalf, zHalf,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-xHalf,-yHalf,-zHalf,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ xHalf,-yHalf,-zHalf,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ xHalf,-yHalf, zHalf,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
+         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
       };
-      std::copy(vertices, vertices + 24, vtxBuffer);
-      // Indices
-      constexpr uint32_t indices[36] =
+      const uint32_t i2[36] =
       {
            0, 1, 2, 0, 2, 3,
            4, 5, 7, 5, 6, 7,
@@ -82,32 +73,32 @@ namespace Pillow::Graphics
           16,17,18,16,18,19,
           20,21,23,21,22,23,
       };
-      std::copy(indices, indices + 36, idxBuffer);
-      return id;
+      std::copy(v2, v2 + 24, vtxBuffer);
+      std::copy(i2, i2 + 36, idxBuffer);
+      // 3. Sphere
+      // 4. Cylinder
+      // 5. Cone
+      // 6. Capsule
    }
 
-   string StandardMesh::CreateSphere(float radius)
+   StandardMesh* StandardMesh::TryGetMesh(const string& id)
    {
-      throw std::runtime_error("Not implemented.");
-      return string();
+      auto itr = MeshMap.find(id);
+      if (itr != MeshMap.end())
+      {
+         return &itr->second;
+      }
+      return nullptr;
    }
 
-   string StandardMesh::CreateCylinder(float radius, float height)
+   StandardMesh* StandardMesh::CreateEmptyStaticMesh(
+      const string& id, uint32_t vtxNum, uint32_t idxNum, VertexType vtxType)
    {
-      throw std::runtime_error("Not implemented.");
-      return string();
-   }
-
-   string StandardMesh::CreateCone(float radius, float height)
-   {
-      throw std::runtime_error("Not implemented.");
-      return string();
-   }
-
-   string StandardMesh::CreateCapsule(float radius, float height)
-   {
-      throw std::runtime_error("Not implemented.");
-      return string();
+      StandardMesh newMesh = StandardMesh(path(""), id, vtxNum, idxNum, vtxType);
+      MeshMap.emplace(id, std::move(newMesh));
+      StandardMesh* result = TryGetMesh(id);
+      if (result == nullptr) throw std::runtime_error("Create mesh failed.");
+      return result;
    }
 
    string StandardMesh::LoadGltfStaticStrict(const path shortPath_ID)
@@ -253,7 +244,7 @@ namespace Pillow::Graphics
       return reinterpret_cast<uint32_t*>(idx.get());
    }
 
-   StandardMesh::StandardMesh(path relativePath, string id,
+   StandardMesh::StandardMesh( const path& relativePath, const string& id,
       uint32_t vtxNum, uint32_t idxNum, VertexType vtxType, bool bSkeleton) :
       f_VtxNum(vtxNum),
       f_IdxNum(idxNum),
