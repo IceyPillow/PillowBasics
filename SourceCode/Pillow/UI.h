@@ -43,35 +43,52 @@ namespace Pillow::TempUISubSystem_April2025
    class Panel final : public IControl
    {
    public:
+      static Panel* Create();
 
    private:
-
+      Panel(std::string ID, XMFLOAT3 pos, XMFLOAT2 size): IControl(ID, pos, size)
+      {
+      }
    };
 
    // Text container.
    class TextArea final : public IControl
    {
    public:
+      std::u32string Text;
+
+      static TextArea* Create();
 
    private:
-
+      TextArea(std::string ID, XMFLOAT3 pos, XMFLOAT2 size) : IControl(ID, pos, size)
+      {
+      }
    };
 
    // Generic Button.
    class Button final : public IControl
    {
    public:
+      static Button* Create();
 
    private:
-
+      Button(std::string ID, XMFLOAT3 pos, XMFLOAT2 size) : IControl(ID, pos, size)
+      {
+      }
    };
 
    // Generic list, can be used as a dropdown menu or a selection list.
    class ItemList final : public IControl
    {
    public:
+      static ItemList* Create();
 
    private:
+      ItemList(std::string ID, XMFLOAT3 pos, XMFLOAT2 size) : IControl(ID, pos, size)
+      {
+      }
 
    };
+
+   void UITick();
 }
