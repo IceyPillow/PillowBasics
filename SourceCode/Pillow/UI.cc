@@ -3,6 +3,43 @@
 
 namespace Pillow::TempUISubSystem_April2025
 {
+   IControl::~IControl()
+   {
+      auto it = std::find(controls.begin(), controls.end(), this);
+      if (it != controls.end())
+      {
+         controls.erase(it);
+      }
+   }
+
+   Panel* Panel::Create()
+   {
+      Panel* temp = new Panel("None", {0,0,0}, {0,0});
+      IControl::controls.emplace_back(temp);
+      return temp;
+   }
+
+   TextArea* TextArea::Create()
+   {
+      TextArea* temp = new TextArea("None", { 0,0,0 }, { 0,0 });
+      IControl::controls.emplace_back(temp);
+      return temp;
+   }
+
+   Button* Button::Create()
+   {
+      Button* temp = new Button("None", { 0,0,0 }, { 0,0 });
+      IControl::controls.emplace_back(temp);
+      return temp;
+   }
+
+   ItemList* ItemList::Create()
+   {
+      ItemList* temp = new ItemList("None", { 0,0,0 }, { 0,0 });
+      IControl::controls.emplace_back(temp);
+      return temp;
+   }
+
    void UITick()
    {
       bool bFPSMode = Input::GetCursorMode();
