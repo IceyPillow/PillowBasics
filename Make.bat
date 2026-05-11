@@ -1,17 +1,17 @@
 @echo off
 setlocal
 
-:: Delete the old CMake files.
+:: Delete stale CMake files.
 set CLEAN=false
 for %%i in (%*) do (
     if "%%i"=="-c" set CLEAN=true
 )
 echo.
 if "%CLEAN%"=="true" (
-    echo Deleting the old CMake files...
+    echo Deleting stale CMake files...
     rd /s/q Cmake
 ) else (
-    echo Tip: You can use "-c" to forcely clean the old CMake files.
+    echo Tip: Add "-c" to clean stale CMake files forcely.
 )
 echo.
 

@@ -19,10 +19,10 @@ namespace Pillow::Graphics
       uint32_t* idxBuffer = *mesh;
       const StandardVertex v1[4] =
       {
-         { XMFLOAT4A{-hx,0,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx,0, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,0, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,0,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
+         { XMFLOAT4A{-hx,0,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx,0, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,0, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,0,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
       };
       constexpr uint32_t i1[6] = { 0, 1, 2, 0, 2, 3, };
       std::copy(v1, v1 + 6, vtxBuffer);
@@ -34,35 +34,35 @@ namespace Pillow::Graphics
       const StandardVertex v2[24] =
       {
          // Front
-         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
          // Back
-         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
          // Left
-         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
          // Right
-         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
          // Top
-         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
          // Bottom
-         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
+         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
       };
       const uint32_t i2[36] =
       {
