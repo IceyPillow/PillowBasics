@@ -14,7 +14,7 @@
 ![Platform0](https://img.shields.io/badge/Win64(Win10%202004%2B)-In%20Progress-yellow)
 ![Platform1](https://img.shields.io/badge/Android-On%20Hold-silver)
 
-A lightweight C++20 game engine focusing on a text-based editor (TBE) and low-level design (LLD). TBE and LLD make PillowBasics distinct from other lightweight engines, through those advantages:<br>
+A lightweight C++20 game engine focusing on a text-based editor (TBE) and low-level design (LLD). TBE and LLD make PillowBasics distinct from other lightweight engines through these advantages:<br>
 - AI ready (for teams). Scene data in text is super friendly to an LLM, making AI integration much more productive.
 - High efficiency (for designers). Through a real-time TBE, designers can create game scenes in any text editor, leveraging the power of regular expressions.
 - Easy to modify (for engineers). Integrating a new module is super fast because there's no implicit coupling or overabstraction in the engine.

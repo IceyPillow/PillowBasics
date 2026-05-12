@@ -76,6 +76,7 @@ namespace Pillow::Graphics
       static inline const string DefaultQuadID = "DefaultQuad";
       static inline const string DefaultCubeID = "DefaultCube";
       static inline const string DefaultSphereID = "DefaultSphere";
+      static inline const string DefaultSphereID = "DefaultLowSphere";
       static inline const string DefaultCylinderID = "DefaultCylinder";
       static inline const string DefaultConeID = "DefaultCone";
       static inline const string DefaultCapsuleID = "DefaultCapsule";

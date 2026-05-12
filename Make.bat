@@ -21,4 +21,4 @@ cmake -G "Visual Studio 18 2026" -DCMAKE_TOOLCHAIN_FILE=./ToolchainWin64.cmake -
 :: Open the solution.
 echo.
 set /p input=Open the solution? (y/n)
-if /i "%input%"=="y" start ./Cmake/Win64/PillowBasics.sln
+if /i "%input%"=="y" start ./Cmake/Win64/PillowBasics.slnx
