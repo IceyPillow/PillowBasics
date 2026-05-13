@@ -5,76 +5,87 @@
 #undef CGLTF_IMPLEMENTATION
 #include "Mesh.h"
 
+using namespace Pillow::Graphics;
+
+namespace
+{
+   constexpr float x = 1.0f;
+
+   constexpr float hx = 0.5f;
+
+   constexpr float r = 0.5f;
+
+   constexpr StandardVertex QuadV[4] =
+   {
+      { XMFLOAT4A{-hx,0,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{-hx,0, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx,0, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx,0,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
+   };
+
+   constexpr uint32_t QuadI[6] = { 0, 1, 2, 0, 2, 3};
+
+   constexpr StandardVertex CubeV[24] =
+   {
+      // Front
+      { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
+      // Back
+      { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
+      // Left
+      { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+      { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+      { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+      { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
+      // Right
+      { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+      { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+      { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+      { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
+      // Top
+      { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      // Bottom
+      { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
+      { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
+   };
+
+   constexpr uint32_t CubeI[36] =
+   {
+        0, 1, 2, 0, 2, 3,
+        4, 5, 7, 5, 6, 7,
+        8, 9,10, 8,10,11,
+       12,13,15,13,14,15,
+       16,17,18,16,18,19,
+       20,21,23,21,22,23,
+   };
+}
 
 namespace Pillow::Graphics
 {
    void StandardMesh::InitializeDefaultMeshes()
    {
-      const float x = 1.0f;
-      const float hx = 0.5f;
-      const float r = 0.5f;
       // 1. Quad
       StandardMesh* mesh = CreateEmptyStaticMesh(DefaultQuadID, 4, 6);
       StandardVertex* vtxBuffer = *mesh;
       uint32_t* idxBuffer = *mesh;
-      const StandardVertex v1[4] =
-      {
-         { XMFLOAT4A{-hx,0,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx,0, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,0, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,0,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
-      };
-      constexpr uint32_t i1[6] = { 0, 1, 2, 0, 2, 3, };
-      std::copy(v1, v1 + 6, vtxBuffer);
-      std::copy(i1, i1 + 6, idxBuffer);
+      std::copy(QuadV, QuadV + 6, vtxBuffer);
+      std::copy(QuadI, QuadI + 6, idxBuffer);
       // 2. Cube
       mesh = CreateEmptyStaticMesh(DefaultCubeID, 24, 36);
       vtxBuffer = *mesh;
       idxBuffer = *mesh;
-      const StandardVertex v2[24] =
-      {
-         // Front
-         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,-1.f,0.f},{1.f,0.f,0.f,0.f} },
-         // Back
-         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,0.f,1.f,0.f},{-1.f,0.f,0.f,0.f} },
-         // Left
-         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {-1.f,0.f,0.f,0.f},{0.f,0.f,-1.f,0.f} },
-         // Right
-         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {1.f,0.f,0.f,0.f},{0.f,0.f,1.f,0.f} },
-         // Top
-         { XMFLOAT4A{-hx, hx,-hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx, hx, hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx, hx, hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx, hx,-hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         // Bottom
-         { XMFLOAT4A{-hx,-hx, hx,0}, {}, {}, {0.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{-hx,-hx,-hx,0}, {}, {}, {0.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,-hx,-hx,0}, {}, {}, {1.f,1.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} },
-         { XMFLOAT4A{ hx,-hx, hx,0}, {}, {}, {1.f,0.f,0.f,0.f}, {}, {0.f,-1.f,0.f,0.f},{1.f,0.f,0.f,0.f} }
-      };
-      const uint32_t i2[36] =
-      {
-           0, 1, 2, 0, 2, 3,
-           4, 5, 7, 5, 6, 7,
-           8, 9,10, 8,10,11,
-          12,13,15,13,14,15,
-          16,17,18,16,18,19,
-          20,21,23,21,22,23,
-      };
-      std::copy(v2, v2 + 24, vtxBuffer);
-      std::copy(i2, i2 + 36, idxBuffer);
+      std::copy(CubeV, CubeV + 24, vtxBuffer);
+      std::copy(CubeI, CubeI + 36, idxBuffer);
       // 3. Sphere
       // 4. Cylinder
       // 5. Cone
