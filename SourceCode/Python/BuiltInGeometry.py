@@ -2,9 +2,11 @@ from glm import *
 from math import *
 
 # Constants
-hx = sqrt(2) / 2;
+hx = sqrt(2) / 2
 
-SubDivNum_Sphere = 4;
+hy = sqrt(3) / 2
+
+SUBDIV_NUM = 4
 
 # Types and functions
 class Vertex:   
@@ -40,6 +42,19 @@ def SubDivide(v : list[Vertex], i : list[int]):
    i.clear()
    i.extend(newI)
 
+def SubDivide2(v : list[Vertex], i : list[int]):
+   newI : list[int]  = []
+   newV : list[Vertex] = []
+   vCount = len(v)
+   for j in range(0, vCount - 1):
+      newV.append(v[j])
+      newV.append(MidPoint(v[j], v[j+1]))
+   newV.append(v[-1])
+   v.clear()
+   v.extend(newV)
+   # TODO: Build index buffer
+   i.clear()
+
 # Generation logic
 
 # Sphere
@@ -57,9 +72,9 @@ v = [
 ]
 i = [0,1,2,0,2,3,0,3,4,0,4,1,5,6,7,5,7,8,5,8,9,5,9,6]
 
-for j in range(SubDivNum_Sphere):
+for j in range(SUBDIV_NUM):
     SubDivide(v, i)
-    print(f" stage={j+1} vCount={len(v)}, TriCount={(len(i) / 3):.0f}")
+    print(f" sphere stage={j+1} vCount={len(v)}, TriCount={(len(i) / 3):.0f}")
 
 with open("Geometry.txt", "w", encoding="utf-8") as f:
    f.write(f"constexpr StandardVertex SphereV[{len(v)}] =\n")
@@ -79,6 +94,17 @@ with open("Geometry.txt", "w", encoding="utf-8") as f:
    f.write("}")
 
 # Cylinder
+v_Circle = [
+   Vertex(pos=vec3(-hy,0,-0.5), t=vec3(hy,0,-0.5), uv=vec2(3,1)),
+   Vertex(pos=vec3(0,0,1), t=vec3(-1,0,0), uv=vec2(2,1)),
+   Vertex(pos=vec3(hy,0,-0.5), t=vec3(hy,0,0.5), uv=vec2(1,1)),
+   Vertex(pos=vec3(-hy,0,-0.5), t=vec3(hy,0,-0.5), uv=vec2(0,1)),
+]
+i = [0,1,2]
+
+for j in range(SUBDIV_NUM):
+    SubDivide2(v, i)
+    print(f" circle stage={j+1} vCount={len(v)}, TriCount={(len(i) / 3):.0f}")
 
 # Cone
 
