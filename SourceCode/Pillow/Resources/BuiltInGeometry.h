@@ -8,6 +8,11 @@ namespace
 
    constexpr float r = 0.5f;
 
+   inline constexpr XMHALF4 XMVF2H(float x, float y, float z, float w)
+   {
+      return XMHALF4{ XMF2H(x), XMF2H(y) , XMF2H(z) , XMF2H(w) };
+   }
+
    constexpr StandardVertex QuadV[4] =
    {
       { XMFLOAT4A{-hx,0,-hx,0}, {}, {}, XMVF2H(0.f,0.f,0.f,0.f), {}, XMVF2H(0.f,1.f,0.f,0.f), XMVF2H(1.f,0.f,0.f,0.f) },
