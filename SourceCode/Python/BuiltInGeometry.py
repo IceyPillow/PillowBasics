@@ -43,6 +43,7 @@ def SubDivide(v : list[Vertex], i : list[int]):
    i.extend(newI)
 
 def SubDivide2(v : list[Vertex], i : list[int]):
+def SubDivide2(v : list[Vertex]):
    newI : list[int]  = []
    newV : list[Vertex] = []
    vCount = len(v)
@@ -52,8 +53,10 @@ def SubDivide2(v : list[Vertex], i : list[int]):
    newV.append(v[-1])
    v.clear()
    v.extend(newV)
-   # TODO: Build index buffer
-   i.clear()
+   vCount = len(v)
+   for j in range(0, vCount - 2):
+      newI.extend([0, j, j+2])
+   return newI
 
 # Generation logic
 
@@ -100,11 +103,11 @@ v_Circle = [
    Vertex(pos=vec3(hy,0,-0.5), t=vec3(hy,0,0.5), uv=vec2(1,1)),
    Vertex(pos=vec3(-hy,0,-0.5), t=vec3(hy,0,-0.5), uv=vec2(0,1)),
 ]
-i = [0,1,2]
+i : list[int]
 
 for j in range(SUBDIV_NUM):
-    SubDivide2(v, i)
-    print(f" circle stage={j+1} vCount={len(v)}, TriCount={(len(i) / 3):.0f}")
+    i = SubDivide2(v_Circle, i)
+    print(f" circle stage={j+1} CircleVCount={len(v)}, TriCount={(len(i) / 3):.0f}")
 
 # Cone
 
