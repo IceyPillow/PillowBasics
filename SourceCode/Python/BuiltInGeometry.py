@@ -42,7 +42,6 @@ def SubDivide(v : list[Vertex], i : list[int]):
    i.clear()
    i.extend(newI)
 
-def SubDivide2(v : list[Vertex], i : list[int]):
 def SubDivide2(v : list[Vertex]):
    newI : list[int]  = []
    newV : list[Vertex] = []
@@ -108,6 +107,17 @@ i : list[int]
 for j in range(SUBDIV_NUM):
     i = SubDivide2(v_Circle, i)
     print(f" circle stage={j+1} CircleVCount={len(v)}, TriCount={(len(i) / 3):.0f}")
+discVCount = len(v_Circle)
+v : list[Vertex] = []
+v.extend(v_Circle, v_Circle, v_Circle, v_Circle)
+for j in range(discVCount):
+   # Top disc
+   v[j].pos.y = 0.5
+   # Bottom disc
+   v[discVCount + j].pos.y = -0.5
+   # Side face
+   v[2*discVCount + j].pos.y = 0.5
+   v[3*discVCount + j].pos.y = -0.5
 
 # Cone
 
