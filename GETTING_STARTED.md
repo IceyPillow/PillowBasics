@@ -8,12 +8,10 @@ Development Environment: You need to install them first.
 Then, run Make.bat at the root folder.<br>
 Under RootFloder/Cmake/Win64, PillowBasics.sln can be found to start the solution.<br>
 ### 2 Create a Template Game Project from PillowBasics
-//dumb<br>
+// TBD<br>
 ### 3 Basic Game Controls
-//dumb<br>
+// TBD<br>
 ### 4 Advanced Engine Extensions
 If you intend to debug, modify, or expand the inner workload of PillowBasics, please jump into the code directly.<br>
 The source code in PillowBasics contains substantial comments on types and functions.<br><br>
 **Welcome experienced engineers to explore and contribute to the project! Thank you~**<br><br>
-Technical documents will never be supplied.<br>
-API documents will be provided in the near future.<br>
