@@ -26,7 +26,7 @@ namespace Pillow::Graphics
          XMFLOAT4A Position;
          struct
          {
-            XMFLOAT3 padding;
+            XMFLOAT3 Padding;
             uint32_t Unknown;
          };
       };
@@ -42,7 +42,7 @@ namespace Pillow::Graphics
          XMFLOAT4A Position;
          struct
          {
-            XMFLOAT3 padding1;
+            XMFLOAT3 Padding1;
             uint16_t Bone1;
             uint16_t Bone2;
          };
