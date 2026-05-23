@@ -113,11 +113,19 @@ v.extend(v_Circle, v_Circle, v_Circle, v_Circle)
 for j in range(discVCount):
    # Top disc
    v[j].pos.y = 0.5
+   v[j].t = vec3(1,0,0)
+   v[j].uv = v[j].pos.xz + vec2(0.5,0.5)
    # Bottom disc
    v[discVCount + j].pos.y = -0.5
+   v[discVCount + j].t = vec3(1,0,0)
+   uv : vec2 = v[discVCount + j].pos.xz
+   uv.y = -uv.y
+   uv += vec2(0.5,0.5)
+   v[discVCount + j].uv = uv
    # Side face
    v[2*discVCount + j].pos.y = 0.5
    v[3*discVCount + j].pos.y = -0.5
+# TODO: Build the index buffer
 
 # Cone
 
