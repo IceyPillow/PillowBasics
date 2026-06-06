@@ -93,9 +93,16 @@ with open("Geometry.txt", "w", encoding="utf-8") as f:
       f.write(f"{i[j]},")
       if j%24 == 23:
          f.write("\n")
-   f.write("}")
+   f.write("}\n")
 
 # Cylinder
+# DISC STRUCTURE
+#      1
+#    /   \
+# 0(3)-----2
+#
+# Comment: v[3] and v[0] have different UVs.
+
 v_Circle = [
    Vertex(pos=vec3(-hy,0,-0.5), t=vec3(hy,0,-0.5), uv=vec2(3,1)),
    Vertex(pos=vec3(0,0,1), t=vec3(-1,0,0), uv=vec2(2,1)),
@@ -103,6 +110,9 @@ v_Circle = [
    Vertex(pos=vec3(-hy,0,-0.5), t=vec3(hy,0,-0.5), uv=vec2(0,1)),
 ]
 i : list[int]
+i_top : list[int]
+i_bottom : list[int]
+i_side : list[int]
 
 for j in range(SUBDIV_NUM):
     i = SubDivide2(v_Circle, i)
@@ -126,6 +136,22 @@ for j in range(discVCount):
    v[2*discVCount + j].pos.y = 0.5
    v[3*discVCount + j].pos.y = -0.5
 # TODO: Build the index buffer
+
+   # Index buffers
+   # Top & bottom discs
+   if j != 0 and j < discVCount - 2:
+      i_top.extend([0, j, j+1])
+      i_bottom.append([discVCount, discVCount+j, discVCount+j+1])
+   #side
+   if j < discVCount - 1:
+      i_side.extend([2 * discVCount + j, 3 * discVCount + j, 3 * discVCount + j + 1])
+      i_side.extend([2 * discVCount + j, 3 * discVCount + j + 1, 2 * discVCount + j + 1])
+i.extend(i_top, i_side, i_bottom)
+
+with open("Geometry.txt", "a", encoding="utf-8") as f:
+   f.write(f"constexpr StandardVertex CylinderV[{len(v)}] =\n")
+   f.write("{\n")
+   f.write("}\n")
 
 # Cone
 
