@@ -1,7 +1,10 @@
+# PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 from glm import *
 from math import *
+from enum import Enum, auto
 
 # Constants
+
 hx = sqrt(2) / 2
 
 hy = sqrt(3) / 2
@@ -9,10 +12,12 @@ hy = sqrt(3) / 2
 SUBDIV_NUM = 4
 
 # Types and functions
+
 class Vertex:   
-   def __init__(self, pos = vec3(), t = vec3(), uv = vec3()):
+   def __init__(self, pos = vec3(), t = vec3(), n = vec3(), uv = vec3()):
       self.pos = pos
       self.t = t
+      self.n = n
       self.uv = uv
 
 def MidPoint(v1 : Vertex, v2 : Vertex):
@@ -53,9 +58,40 @@ def SubDivide2(v : list[Vertex]):
    v.clear()
    v.extend(newV)
    vCount = len(v)
-   for j in range(0, vCount - 2):
-      newI.extend([0, j, j+2])
-   return newI
+
+class DataType(Enum):
+   First = auto()
+   Middle = auto()
+   Last = auto()
+
+def SerializeData(name : str, v : list[Vertex], i : list[int], dataType : DataType) :
+   mode = "w" if dataType == DataType.First else "a"
+   with open("BuiltinGeometryData.h", mode, encoding="utf-8") as f:
+      # Head
+      if dataType == DataType.First:
+         f.write("// PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.\n\n")
+         f.write("namespce\n{\n")
+      # Content
+      if dataType != DataType.First:
+         f.write("\n")
+      f.write(f"   constexpr StandardVertex {name}V[{len(v)}] =\n")
+      f.write("   {\n")
+      for vtx in v:
+         f.write((f"   {{ XMFLOAT4A{{{vtx.pos.x:.5f}f,{vtx.pos.y:.5f}f,{vtx.pos.z:.5f}f,0.f}}, {{}}, {{}}, XMVF2H({vtx.uv.x:.5f}f,{vtx.uv.y:.5f}f,0.f,0.f),"
+                  f" {{}}, XMVF2H({vtx.n.x:.5f}f,{vtx.n.y:.5f}f,{vtx.n.z:.5f}f,0.f), XMVF2H({vtx.t.x:.5f}f,{vtx.t.y:.5f}f,{vtx.t.z:.5f}f,0.f) }},\n"));
+      f.write("   };\n\n")
+      f.write(f"   constexpr uint32_t {name}I[{len(i)}] =\n")
+      f.write("   {\n")
+      for j in range(len(i)):
+         if j%24 == 0:
+            f.write("      ")
+         f.write(f"{i[j]},")
+         if j%24 == 23:
+            f.write("\n")
+      f.write("   };\n")
+      # End
+      if dataType == DataType.Last:
+         f.write("}")
 
 # Generation logic
 
