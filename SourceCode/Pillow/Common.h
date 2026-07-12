@@ -9,6 +9,7 @@
 #include <thread>
 #include <barrier>
 #include <atomic>
+#include <mutex>
 #include <exception>
 #include <algorithm>
 #include <functional>
@@ -202,20 +203,20 @@ namespace Pillow::Common
    class GenericHandlePool
    {
    public:
-      static const ANY_UINT NullHandle = 0;
+      static constexpr ANY_UINT NullHandle = 0;
       const string Name;
-      const ANY_UINT MaxIndex;
 
-      GenericHandlePool(const string& name, ANY_UINT maxIndex) :
+      GenericHandlePool(const string& name, ANY_UINT capacity) :
          Name(name),
-         MaxIndex(maxIndex)
+         Capacity(capacity)
       {
-         const uint32_t initialPoolSize = 256;
+         constexpr uint32_t initialPoolSize = 256;
          freePool.reserve(initialPoolSize);
       }
 
       ANY_UINT Acquire()
       {
+         std::lock_guard<std::mutex> lock(mutex);
          if (freePool.empty() == false)
          {
             ANY_UINT handle = freePool.back();
@@ -224,14 +225,17 @@ namespace Pillow::Common
          }
          else
          {
-            if (head > MaxIndex || head == 0)
+            if (head > Capacity || head == 0)
+            {
                throw std::exception(std::format("Handle pool overflowed. PoolName={}", Name).c_str());
+            }
             return head++;
          }
       }
 
-      ANY_UINT Release(ANY_UINT handle)
+      void Release(ANY_UINT handle)
       {
+         std::lock_guard<std::mutex> lock(mutex);
          if (handle == NullHandle || handle >= head)
          {
             string error = std::format("Invalid handle. PoolName={}, Handle={}", Name, handle);
@@ -246,11 +250,12 @@ namespace Pillow::Common
          }
 #endif
          freePool.push_back(handle);
-         return NullHandle;
       }
 
    private:
-      ANY_UINT head = 1; // Handle index 0 is always null.
+      std::mutex mutex;
+      ANY_UINT Capacity;
+      ANY_UINT head = 1; // NullHandle = 0
       std::vector<ANY_UINT> freePool;
    };
 
