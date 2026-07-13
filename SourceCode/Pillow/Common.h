@@ -214,6 +214,14 @@ namespace Pillow::Common
          freePool.reserve(initialPoolSize);
       }
 
+      // No multi-threading safety gurantee.
+      ANY_UINT CountUnsafe()
+      {
+         ANY_UINT a = head - 1;
+         ANY_UINT b = static_cast<ANY_UINT>(freePool.size());
+         return a >= b ? a - b : 0;
+      }
+
       ANY_UINT Acquire()
       {
          std::lock_guard<std::mutex> lock(mutex);
