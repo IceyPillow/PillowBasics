@@ -6,11 +6,11 @@ https://github.com/Microsoft/DirectXMath
 
 Copyright (c) Microsoft Corporation.
 
-**April 2025**
+## June 2026
 
 This package contains the DirectXMath library, an all inline SIMD C++ linear algebra library for use in games and graphics apps.
 
-This code is designed to build with Visual Studio 2019 (16.11), Visual Studio 2022, or clang/LLVM for Windows. It is recommended that you make use of the latest updates.
+This code is designed to build with Visual Studio 2019 (16.11), Visual Studio 2022, Visual Studio 2026, or clang/LLVM for Windows. It is recommended that you make use of the latest updates.
 
 These components are designed to work without requiring any content from the legacy DirectX SDK. For details, see [Where is the DirectX SDK?](https://aka.ms/dxsdk).
 
@@ -18,7 +18,7 @@ These components are designed to work without requiring any content from the leg
 
 * ``Inc\``
 
-  + DirectXMath Files (in the DirectX C++ namespace)
+  * DirectXMath Files (in the DirectX C++ namespace)
 
     * DirectXMath.h - Core library
     * DirectXPackedVector.h - Load/Store functions and types for working with various compressed GPU formats
@@ -27,7 +27,7 @@ These components are designed to work without requiring any content from the leg
 
 * ``Extentions\``
 
-  + Advanced instruction set variants for guarded codepaths
+  * Advanced instruction set variants for guarded codepaths
 
     * DirectXMathSSE3.h - SSE3
     * DirectXMathBE.h - Supplemental SSE3 (SSSE3)
@@ -40,22 +40,38 @@ These components are designed to work without requiring any content from the leg
 
 * ``SHMath\``
 
-  + Spherical Harmonics math functions
+  * Spherical Harmonics math functions
 
     * DirectXSH.h - Header for SHMath functions
     * DirectXSH.cpp, DirectXSHD3D11.cpp, DirectXSHD3D12.cpp - Implementation
 
 * ``XDSP\``
 
-  + XDSP.h - Digital Signal Processing helper functions
+  * XDSP.h - Digital Signal Processing helper functions
 
 * ``build\``
 
-  + Contains YAML files for the build pipelines along with some miscellaneous build files and scripts.
+  * Contains miscellaneous build files and scripts.
+
+* ``skills\``
+
+  * Contains published CoPilot skills for use by developers.
 
 ## Documentation
 
 Documentation is available on the [Microsoft Docs](https://docs.microsoft.com/en-us/windows/desktop/dxmath/directxmath-portal). Additional information can be found on the [project wiki](https://github.com/microsoft/DirectXMath/wiki).
+
+## CoPilot Usage
+
+For CoPilot CLI assistance with using DirectXMath, try:
+
+```bash
+winget install GitHub.Copilot
+winget install GitHub.cli
+gh skill install microsoft/directxmath
+copilot
+/skills list
+```
 
 ## Compiler support
 
@@ -67,7 +83,7 @@ To build for non-Windows platforms, you need to provide a ``sal.h`` header in yo
 
 With GCC, the SAL annotation preprocessor symbols can conflict with the GNU implementation of the Standard C++ Library. The workaround is to include the system headers before including DirectXMath:
 
-```
+```cpp
 #include <algorithm>
 #include <iterator>
 #include <utility>
@@ -89,7 +105,11 @@ FOR SECURITY ADVISORIES, see [GitHub](https://github.com/microsoft/DirectXMath/s
 
 For a full change history, see [CHANGELOG.md](https://github.com/microsoft/DirectXMath/blob/main/CHANGELOG.md).
 
+* The CMake projects require 3.21 or later. VS 2019 users will need to install a standalone version of CMake 3.21 or later and add it to their PATH.
+
 * The clang/LLVM toolset currently does not respect the ``float_control`` pragma for SSE instrinsics. Therefore, the use of ``/fp:fast`` is not recommended on clang/LLVM until this issue is fixed. See [55713](https://github.com/llvm/llvm-project/issues/55713).
+
+* AArch32/ARM32 (ARMv7) support is deprecated in Windows 11. Compiler support for ARM32 is deprecated in Visual Studio 2026, and the system libraries are no longer present in the Windows SDK (26100) or later. Therefore, support for ARM32 is deprecated in DirectXMath and will be removed in a future release. Since most codepaths are shared for AArch32 and AArch64, the codepaths will be refactored to assume AArch64 (ARMv8).
 
 ## Support
 

@@ -4,7 +4,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 //
-// http://go.microsoft.com/fwlink/p/?LinkId=262885
+// https://go.microsoft.com/fwlink/p/?LinkId=262885
 //-------------------------------------------------------------------------------------
 
 #ifdef _MSC_VER
@@ -28,7 +28,7 @@
 
 #include "DirectXSH.h"
 
-#include "DirectXPackedVector.h"
+#include <DirectXPackedVector.h>
 
 #include <cassert>
 #include <memory>
@@ -54,7 +54,7 @@ namespace
     using ScopedAlignedArrayXMVECTOR = std::unique_ptr<DirectX::XMVECTOR, aligned_deleter>;
 
     //-------------------------------------------------------------------------------------
-    // This code is lifted from DirectXTex http://go.microsoft.com/fwlink/?LinkId=248926
+    // This code is lifted from DirectXTex https://go.microsoft.com/fwlink/?LinkId=248926
     // If you need additional DXGI format support, see DirectXTexConvert.cpp
     //-------------------------------------------------------------------------------------
 #define LOAD_SCANLINE( type, func )\
@@ -124,11 +124,11 @@ namespace
         switch (format)
         {
         case DXGI_FORMAT_R32G32B32A32_FLOAT:
-        {
-            size_t msize = (size > (sizeof(XMVECTOR)*count)) ? (sizeof(XMVECTOR)*count) : size;
-            memcpy_s(dPtr, sizeof(XMVECTOR)*count, pSource, msize);
-        }
-        return true;
+            {
+                size_t msize = (size > (sizeof(XMVECTOR)*count)) ? (sizeof(XMVECTOR)*count) : size;
+                memcpy_s(dPtr, sizeof(XMVECTOR)*count, pSource, msize);
+            }
+            return true;
 
         case DXGI_FORMAT_R32G32B32_FLOAT:
             LOAD_SCANLINE3(XMFLOAT3, XMLoadFloat3, g_XMIdentityR3)
@@ -184,7 +184,7 @@ namespace
 //-------------------------------------------------------------------------------------
 // Projects a function represented in a cube map into spherical harmonics.
 //
-// http://msdn.microsoft.com/en-us/library/windows/desktop/ff476300.aspx
+// https://msdn.microsoft.com/en-us/library/windows/desktop/ff476300.aspx
 //-------------------------------------------------------------------------------------
 _Use_decl_annotations_
 HRESULT DirectX::SHProjectCubeMap(

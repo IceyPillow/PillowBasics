@@ -24,12 +24,12 @@ endfunction()
 
 # DirectXMath
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025/*.h"
-   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025/*.cc"
-   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025/*.inl"
+   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-jun2026/*.h"
+   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-jun2026/*.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-jun2026/*.inl"
 )
 add_library(DirectXMath STATIC ${SOURCES})
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-apr2025" FILES ${SOURCES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/DirectXMath-jun2026" FILES ${SOURCES})
 
 # UTF8-CPP
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
