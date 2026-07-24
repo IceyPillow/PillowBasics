@@ -10,6 +10,9 @@ using namespace DirectX::PackedVector;
 using namespace Pillow::Common;
 using namespace Pillow::Graphics;
 
+// TBN Space:
+// To locate the texcoord origin at the bottom-left corner, we assume that the Z axis points inwards.
+
 namespace Pillow::Graphics
 {
    enum class VertexType : uint8_t
@@ -77,7 +80,6 @@ namespace Pillow::Graphics
       static inline const string DefaultCubeID = "DefaultCube";
       static inline const string DefaultSphereID = "DefaultSphere";
       static inline const string DefaultCylinderID = "DefaultCylinder";
-      static inline const string DefaultConeID = "DefaultCone";
       static inline const string DefaultCapsuleID = "DefaultCapsule";
 
       static void InitializeDefaultMeshes();
@@ -104,6 +106,7 @@ namespace Pillow::Graphics
       uint32_t GetPrimitiveIdxOffset(uint32_t primIdx) const;
       uint32_t GetPrimitiveIdxCount(uint32_t primIdx) const;
 
+      // C++ sugar.
       operator UIVertex* ();
       operator StandardVertex* ();
       operator uint32_t* ();

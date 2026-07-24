@@ -4,28 +4,86 @@
 #include "cgltf-1.15/cgltf.h"
 #undef CGLTF_IMPLEMENTATION
 #include "Mesh.h"
-#include "BuiltInGeometry.h"
+
+namespace
+{
+   // A constexpr copy of DirectX::PackedVector::XMConvertFloatToHalf
+   inline constexpr HALF XMF2H(float Value) noexcept
+   {
+      uint32_t Result;
+      uint32_t IValue = std::bit_cast<uint32_t>(Value);
+      uint32_t Sign = (IValue & 0x80000000U) >> 16U;
+      IValue = IValue & 0x7FFFFFFFU;      // Hack off the sign
+      if (IValue >= 0x47800000 /*e+16*/)
+      {
+         // The number is too large to be represented as a half. Return infinity or NaN
+         Result = 0x7C00U | ((IValue > 0x7F800000) ? (0x200 | ((IValue >> 13U) & 0x3FFU)) : 0U);
+      }
+      else if (IValue <= 0x33000000U /*e-25*/)
+      {
+         Result = 0;
+      }
+      else if (IValue < 0x38800000U /*e-14*/)
+      {
+         // The number is too small to be represented as a normalized half.
+         // Convert it to a denormalized value.
+         uint32_t Shift = 125U - (IValue >> 23U);
+         IValue = 0x800000U | (IValue & 0x7FFFFFU);
+         Result = IValue >> (Shift + 1);
+         uint32_t s = (IValue & ((1U << Shift) - 1)) != 0;
+         Result += (Result | s) & ((IValue >> Shift) & 1U);
+      }
+      else
+      {
+         // Rebias the exponent to represent the value as a normalized half.
+         IValue += 0xC8000000U;
+         Result = ((IValue + 0x0FFFU + ((IValue >> 13U) & 1U)) >> 13U) & 0x7FFFU;
+      }
+      return static_cast<HALF>(Result | Sign);
+   }
+
+   inline constexpr XMHALF4 XMVF2H(float x, float y, float z, float w)
+   {
+      return XMHALF4{ XMF2H(x), XMF2H(y) , XMF2H(z) , XMF2H(w) };
+   }
+}
+
+#include "../Python/InlineGeometry.h"
 
 namespace Pillow::Graphics
 {
    void StandardMesh::InitializeDefaultMeshes()
    {
       // 1. Quad
-      StandardMesh* mesh = CreateEmptyStaticMesh(DefaultQuadID, 4, 6);
+      StandardMesh* mesh = CreateEmptyStaticMesh(DefaultQuadID, QuadV.size(), QuadI.size());
       StandardVertex* vtxBuffer = *mesh;
       uint32_t* idxBuffer = *mesh;
-      std::copy(QuadV, QuadV + 6, vtxBuffer);
-      std::copy(QuadI, QuadI + 6, idxBuffer);
+      std::copy(QuadV.data(), QuadV.data() + QuadV.size(), vtxBuffer);
+      std::copy(QuadI.data(), QuadI.data() + QuadI.size(), idxBuffer);
       // 2. Cube
-      mesh = CreateEmptyStaticMesh(DefaultCubeID, 24, 36);
+      mesh = CreateEmptyStaticMesh(DefaultCubeID, CubeV.size(), CubeI.size());
       vtxBuffer = *mesh;
       idxBuffer = *mesh;
-      std::copy(CubeV, CubeV + 24, vtxBuffer);
-      std::copy(CubeI, CubeI + 36, idxBuffer);
+      std::copy(CubeV.data(), CubeV.data() + CubeV.size(), vtxBuffer);
+      std::copy(CubeI.data(), CubeI.data() + CubeI.size(), idxBuffer);
       // 3. Sphere
+      mesh = CreateEmptyStaticMesh(DefaultSphereID, SphereV.size(), SphereI.size());
+      vtxBuffer = *mesh;
+      idxBuffer = *mesh;
+      std::copy(SphereV.data(), SphereV.data() + SphereV.size(), vtxBuffer);
+      std::copy(SphereI.data(), SphereI.data() + SphereI.size(), idxBuffer);
       // 4. Cylinder
-      // 5. Cone
-      // 6. Capsule
+      mesh = CreateEmptyStaticMesh(DefaultCylinderID, CylinderV.size(), CylinderI.size());
+      vtxBuffer = *mesh;
+      idxBuffer = *mesh;
+      std::copy(CylinderV.data(), CylinderV.data() + CylinderV.size(), vtxBuffer);
+      std::copy(CylinderI.data(), CylinderI.data() + CylinderI.size(), idxBuffer);
+      // 5. Capsule
+      mesh = CreateEmptyStaticMesh(DefaultCapsuleID, CapsuleV.size(), CapsuleI.size());
+      vtxBuffer = *mesh;
+      idxBuffer = *mesh;
+      std::copy(CapsuleV.data(), CapsuleV.data() + CapsuleV.size(), vtxBuffer);
+      std::copy(CapsuleI.data(), CapsuleI.data() + CapsuleI.size(), idxBuffer);
    }
 
    StandardMesh* StandardMesh::TryGetMesh(const string& id)
