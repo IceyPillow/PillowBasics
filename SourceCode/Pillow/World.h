@@ -1,7 +1,7 @@
 // PillowBasics Copyright (c) 2025, Icey Pillow. BSD 3-Clause License. Do not remove, obscure, or alter this notice.
 #pragma once
 #include <vector>
-#include "DirectXMath-apr2025/DirectXMath.h"
+#include "DirectXMath-jun2026/DirectXMath.h"
 #include "Renderers/Renderer.h"
 
 using namespace DirectX;

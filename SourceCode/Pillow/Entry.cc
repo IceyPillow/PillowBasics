@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 #include <string_view>
-#include "DirectXMath-apr2025/DirectXMath.h"
+#include "DirectXMath-jun2026/DirectXMath.h"
 #include "utfcpp-4.0.6/utf8.h"
 #include "Renderers/Renderer.h"
 #include "Input.h"

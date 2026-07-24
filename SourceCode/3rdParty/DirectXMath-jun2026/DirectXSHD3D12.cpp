@@ -20,15 +20,12 @@
 #include <unknwn.h>
 #endif
 
-#ifdef USING_DIRECTX_HEADERS
-#include <directx/d3d12.h>
-#else
-#include <d3d12.h>
-#endif
+// Pillow: Update the file path.
+#include "../DX12Agility-1.618/d3d12.h"
 
 #include "DirectXSH.h"
 
-#include <DirectXPackedVector.h>
+#include "DirectXPackedVector.h"
 
 #include <cassert>
 #include <memory>

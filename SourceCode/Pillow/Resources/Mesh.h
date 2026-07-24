@@ -2,7 +2,7 @@
 #pragma once
 #include <vector>
 #include "Common.h"
-#include "DirectXMath-apr2025/DirectXPackedVector.h"
+#include "DirectXMath-jun2026/DirectXPackedVector.h"
 #include "Renderers/Renderer.h"
 
 using namespace DirectX;

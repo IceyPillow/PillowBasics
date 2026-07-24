@@ -20,7 +20,7 @@
 #include <malloc.h>
 #endif
 
-#include <DirectXMath.h>
+#include "DirectXMath.h"
 
 
 namespace DirectX

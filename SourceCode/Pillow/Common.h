@@ -16,7 +16,7 @@
 #include <filesystem>
 #include <shared_mutex>
 #include "utfcpp-4.0.6/utf8.h"
-#include "DirectXMath-apr2025/DirectXMath.h"
+#include "DirectXMath-jun2026/DirectXMath.h"
 
 // Macro template
 #if defined(_WIN64)

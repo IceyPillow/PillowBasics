@@ -5,7 +5,7 @@
 
 #pragma once
 #include <string>
-#include "DirectXMath-apr2025/DirectXMath.h"
+#include "DirectXMath-jun2026/DirectXMath.h"
 
 using namespace DirectX;
 
