@@ -27,7 +27,7 @@ if "%CLEAN%"=="true" (
 echo.
 
 :: Generate.
-cmake -G %Generator% -DCMAKE_TOOLCHAIN_FILE=./ToolchainWin64.cmake -S ./SourceCode -B ./Cmake/Win64
+cmake -G %Generator% -T ClangCL -DCMAKE_TOOLCHAIN_FILE=./ToolchainWin64.cmake -S ./SourceCode -B ./Cmake/Win64
 
 :: Open the solution.
 echo.
