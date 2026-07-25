@@ -38,9 +38,9 @@ add_custom_command(TARGET Pillow
    COMMAND ${CMAKE_COMMAND} -E copy_if_different
          ${RUNTIMES}
          "$<TARGET_FILE_DIR:Pillow>" # Generator Expressions in CMake
+   COMMAND ${CMAKE_COMMAND} -E echo "Copying 3rd-party runtimes to the output dir..."
    COMMAND_EXPAND_LISTS # Filter the list
    VERBATIM # Adjust the command arguments, so they can be passed precisely
-   COMMENT "Copying the 3rd-party runtimes to the output dir..."
    )
 if(WIN32)
    message(STATUS "D3D12_RUNTIMES (Only On Win64) =")
@@ -53,9 +53,9 @@ if(WIN32)
    POST_BUILD
    COMMAND ${CMAKE_COMMAND} -E make_directory "${D3D12_DEPLOY_DIR}"
    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${D3D12_RUNTIMES} "${D3D12_DEPLOY_DIR}"
+   COMMAND ${CMAKE_COMMAND} -E echo "Copying DirectX 12 Agility runtimes to the output dir..."
    COMMAND_EXPAND_LISTS # Filter the list
    VERBATIM # Adjust the command arguments, so they can be passed precisely
-   COMMENT "Copying the DirectX 12 Agility runtimes to the output dir..."
    )
 message(STATUS "")
 endif()
