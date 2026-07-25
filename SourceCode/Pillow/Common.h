@@ -199,6 +199,41 @@ namespace Pillow::Common
    // Check the global clock.
    double GetLapseTimeSinceLaunch();
 
+   // Real spin (never yield the CPU time piece).
+   inline void SpinLoopHint()
+   {
+#if defined(_MSC_VER) && !defined(__clang__) && defined(_M_X64)
+      _mm_pause();
+#elif defined(__clang__) && defined(__x86_64__)
+      __builtin_ia32_pause();
+#elif defined(__clang__) && defined(__aarch64__)
+      __builtin_arm_yield();
+#else
+      static_assert(false, "No SpinLoopHint implementation!");
+#endif
+   }
+
+   // Mixed-mode wait.
+   class SpinWait
+   {
+   public:
+      void Reset()
+      {
+         count = 0;
+      }
+
+      // Spin for a while, then yield the CPU time piece.
+      void Wait()
+      {
+         count++;
+         count <= spinCount ? SpinLoopHint() : std::this_thread::yield();
+      }
+
+   private:
+      constexpr static uint32_t spinCount = 100;
+      uint32_t count = 0;
+   };
+
    template<std::unsigned_integral ANY_UINT>
    class GenericHandlePool
    {
