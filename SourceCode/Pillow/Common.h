@@ -294,10 +294,11 @@ namespace Pillow::Common
          WorkerT worker,
          ActionT pionner = nullptr,
          ActionT assembler = nullptr) :
+         // Clang can check the initialization order (-Wreorder-ctor)
+         ThreadNum(threadNum),
          completeFunctor(this),
          frameBarrier(threadNum, completeFunctor),
-         config { object, worker, pionner, assembler },
-         ThreadNum(threadNum)
+         config { object, worker, pionner, assembler }
       {
          workers.reserve(threadNum);
          signalCompute.store(false);

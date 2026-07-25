@@ -6,13 +6,32 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
+project(PillowBasics LANGUAGES CXX C)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+   set(CLANG TRUE)
+endif()
+
+if (CLANG)
+    add_compile_options(
+      /clang:-Wno-missing-braces
+      /clang:-Wno-unused-variable
+      /clang:-Wno-unused-function
+      /clang:-Wno-switch
+      /clang:-Wno-return-type-c-linkage
+      )
+#else()
+#   message(FATAL_ERROR "PillowBasics only tends to suppourt Clang.")
+endif()
+
 # Solution-wide & platform-wide settings.
 # Toolchain files are applied before cmake run.
-#if(WIN32)
-#elseif(ANDROID)
-#else()
-#   message(FATAL_ERROR "Invalid target platform.")
-#endif()
+if(WIN32)
+   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+elseif(ANDROID)
+else()
+   message(FATAL_ERROR "Invalid target platform.")
+endif()
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;RelWithDebInfo;Release" CACHE STRING "Available configuration types" FORCE)
 add_compile_definitions($<$<CONFIG:Debug>:PILLOW_DEBUG>) # A customized macro.
@@ -22,8 +41,7 @@ if(WIN32)
    set(D3D12_RUNTIMES)
 endif()
 
-# Projects.
-project(PillowBasics LANGUAGES CXX C)
+# Add directories
 add_subdirectory(3rdParty)
 add_subdirectory(Pillow)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Pillow)
