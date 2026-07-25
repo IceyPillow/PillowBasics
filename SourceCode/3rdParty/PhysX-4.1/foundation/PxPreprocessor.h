@@ -219,7 +219,7 @@ define anything not defined through the command line to 0
 */
 #ifdef PILLOW_DEBUG
 /*
-* Pillow: When PillowBasics is in debug config, PhysX is in checked config.
+* Pillow: If PillowBasics is in debug config, PhysX is in checked config.
 *
 * PX_SUPPORT_PVD is a deprecated macro. It is defined in CMake with any none-release config, but is never used in C++ code.
 * PX_DEBUG_CRT is only used in foundation\src\PsAssert.cpp. It doesn't affect any header files.
@@ -346,7 +346,8 @@ Pack macros - disabled on SPU because they are not supported
 Inline macro
 */
 #define PX_INLINE inline
-#if PX_MICROSOFT_FAMILY
+// Pillow: Restrict to MSVC only.
+#if PX_MICROSOFT_FAMILY && defined(_MSC_VER) && !defined(__clang__)
 #pragma inline_depth(255)
 #endif
 
