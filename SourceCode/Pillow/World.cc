@@ -8,9 +8,9 @@ namespace Pillow::World
       XMINT2 screenSize = IRenderer::GetInstance()->GetBackBufferSize();
       float aspectRatio = (float)screenSize.x / (float)screenSize.y;
       // Matrix View
-      XMVECTOR pos = XMLoadFloat4A(&Position);
-      XMVECTOR dir = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4A(&Quaternion));
-      XMVECTOR up = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), XMLoadFloat4A(&Quaternion));
+      XMVECTOR pos = XMLoadFloat4A(&Trans.Position);
+      XMVECTOR dir = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4A(&Trans.Quaternion));
+      XMVECTOR up = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), XMLoadFloat4A(&Trans.Quaternion));
       XMMATRIX matrixView = XMMatrixLookToLH(pos, dir, up);
       XMStoreFloat3x4A(&ConstBuffer.MatrixView, matrixView);
       // Matrix Projection
@@ -30,7 +30,7 @@ namespace Pillow::World
       // Matrix Inverse View-Projection
       XMMATRIX matrixViewProjInv = XMMatrixInverse(nullptr, matrixViewProj);
       // Other information
-      ConstBuffer.CameraPositionWorld = { Position.x, Position.y, Position.z };
+      ConstBuffer.CameraPositionWorld = { Trans.Position.x, Trans.Position.y, Trans.Position.z };
       ConstBuffer.DistanceNear = Config.NearZ;
       ConstBuffer.DistanceFar = Config.FarZ;
       ConstBuffer.ViewportSizeAndRecip[0] = (float)screenSize.x;

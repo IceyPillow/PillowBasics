@@ -10,7 +10,23 @@ using namespace Pillow::Graphics;
 namespace Pillow::World
 {
    //using ComponentEvent = void(*)(float deltaTime);
-   class IGameObject;
+
+   struct alignas(CacheLine) Transform
+   {
+      XMFLOAT4A Position;
+      XMFLOAT4A Quaternion;
+      XMFLOAT4A Scale;
+   };
+
+   class IGameObject
+   {
+   public:
+      Transform Trans;
+
+      //std::vector<ComponentEvent> ticks{};
+
+      virtual void Tick(double deltaTime, double timeLapse) = 0;
+   };
 
    // Multi-threaded manager for game objects.
    class GameObjectMTManager
@@ -18,20 +34,10 @@ namespace Pillow::World
 
    };
 
-   class IGameObject
-   {
-   public:
-      XMFLOAT4A Position;
-      XMFLOAT4A Quaternion;
-      //std::vector<ComponentEvent> ticks{};
-
-      virtual void Tick(double deltaTime, double timeLapse) = 0;
-   };
-
    class Camera : public IGameObject
    {
    public:
-      struct Configuration
+      struct CameraConfig
       {
          float VerticalFOV = XM_PIDIV4;
          float Width = 16.0f;
@@ -39,7 +45,6 @@ namespace Pillow::World
          float NearZ = 0.1f;
          float FarZ = 100.0f;
       } Config;
-
 
       const CameraConstantBuffer& GetConstBuffer() const { return ConstBuffer; }
 
