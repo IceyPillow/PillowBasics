@@ -1907,9 +1907,6 @@ namespace
       else
       {
          fenceSync->FlushQueue();
-         Check_HRESULT(swapChain->ResizeBuffers(SwapChainSize, currentBackBufferSize.x, currentBackBufferSize.y,
-            DXGI_FORMAT_R8G8B8A8_UNORM,
-            bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
          for (auto& resource : pipeBuffers)
          {
             resource.Reset();
@@ -1918,6 +1915,9 @@ namespace
          {
             descriptorMgr->ReleaseDescriptor(handle);
          }
+         Check_HRESULT(swapChain->ResizeBuffers(SwapChainSize, currentBackBufferSize.x, currentBackBufferSize.y,
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+            bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
       }
       // 2. Create resources and descriptors.
       // 2.1 Back buffers.
