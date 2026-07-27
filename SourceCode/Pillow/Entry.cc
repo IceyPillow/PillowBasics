@@ -136,10 +136,10 @@ namespace
             // 2 Update the engine ticks.
             EngineTick();
          }
+         EngineTerminate();
       }
       catch (std::exception& e)
       {
-         EngineTerminate();
          MessageBoxA(hwnd, e.what(), 0, MB_OK);
          exit(EXIT_FAILURE);
       }

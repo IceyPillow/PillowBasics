@@ -341,6 +341,7 @@ namespace Pillow::Common
 
       ~ThreadPool()
       {
+         Terminate();
          workers.clear();
       }
 
