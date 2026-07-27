@@ -51,7 +51,7 @@ namespace Pillow::Input
    };
 
    // C++26 provides reflections, not C++20.
-   inline const char* const GenricKeyName[] =
+   constexpr const char* const GenricKeyName[] =
    {
       "Touch0", "Touch1", "Touch2", "Touch3", "Touch4", "Touch5",
       "MiceLeft", "MiceMiddle", "MiceRight", "MiceSide0", "MiceSide1",

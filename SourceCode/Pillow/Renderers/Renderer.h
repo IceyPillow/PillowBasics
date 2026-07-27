@@ -12,14 +12,14 @@ using namespace Pillow::Common;
 
 namespace Pillow::Graphics
 {
-   const int32_t ReservedCommandCount = 20000; // 68B*20000 = nearly 1.3MB
+   constexpr int32_t ReservedCommandCount = 20000; // 68B*20000 = nearly 1.3MB
 
    // Resource handle, index starts at 1.
    // 4-bit type + 28-bit index
    using ResHandle = uint32_t;
-   const ResHandle ResHandleNull = 0;
-   const ResHandle ResIndexBits = 28;
-   const ResHandle ResourceTypeMask = 0xF0000000;
+   constexpr ResHandle ResHandleNull = 0;
+   constexpr ResHandle ResIndexBits = 28;
+   constexpr ResHandle ResourceTypeMask = 0xF0000000;
 
    // Forward declarations
    class PipelineInfo;

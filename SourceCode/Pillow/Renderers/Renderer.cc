@@ -16,9 +16,9 @@ namespace
    // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
    std::string MakePipelineStateID(const path& originalName, const std::vector<KeyValuePair>& macros, const PipelineInfo::Configuration& config)
    {
-      const char separator = ',';
-      const char prefixMacro = '@';
-      const char prefixValue = '=';
+      constexpr char separator = ',';
+      constexpr char prefixMacro = '@';
+      constexpr char prefixValue = '=';
       string name = GetU8StringfromPath(originalName);
       name += "@Stages=";
       using ShaderType = PipelineInfo::ShaderType;

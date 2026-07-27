@@ -67,7 +67,7 @@ namespace Pillow::Graphics
       sizeof(StandardVertex),
    };
 
-   const uint32_t VtxMemberNum[uint32_t(VertexType::Count)]
+   constexpr uint32_t VtxMemberNum[uint32_t(VertexType::Count)]
    {
       4,
       9

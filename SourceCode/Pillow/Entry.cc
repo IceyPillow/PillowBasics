@@ -54,7 +54,7 @@ namespace
    uint64_t timerHandle;
    bool isFullscreen = false;
    XMINT2 screenOrigin;
-   const XMINT2 minClientSize{ 400, 300 };
+   constexpr XMINT2 minClientSize{ 400, 300 };
    XMINT2 clientSize = minClientSize;
    XMINT2 minWindowSize; // The border makes the window size bigger than the client size.
 

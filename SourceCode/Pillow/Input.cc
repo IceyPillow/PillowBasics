@@ -27,14 +27,14 @@ namespace Pillow::Hidden
 // Static variables & types
 namespace
 {
-   const int32_t StringBufferMaxSize = 128;
+   constexpr int32_t StringBufferMaxSize = 128;
 
 #if defined(_WIN64)
-   const int32_t RawInputBufferMinNum = 128;
+   constexpr int32_t RawInputBufferMinNum = 128;
 
-   const int32_t MiceKeyNum = 5;
+   constexpr int32_t MiceKeyNum = 5;
 
-   const uint16_t MiceKeys[MiceKeyNum] =
+   constexpr uint16_t MiceKeys[MiceKeyNum] =
    {
       VK_LBUTTON,
       VK_MBUTTON,
@@ -43,7 +43,7 @@ namespace
       VK_XBUTTON2
    };
 
-   const GenericKey MiceGKeys[MiceKeyNum] =
+   constexpr GenericKey MiceGKeys[MiceKeyNum] =
    {
       GenericKey::MiceLeft,
       GenericKey::MiceMiddle,
@@ -52,9 +52,9 @@ namespace
       GenericKey::MiceSide1
    };
 
-   const int32_t GamepadKeyNum = 14;
+   constexpr int32_t GamepadKeyNum = 14;
 
-   const uint16_t GamepadKeys[GamepadKeyNum] =
+   constexpr uint16_t GamepadKeys[GamepadKeyNum] =
    {
       XINPUT_GAMEPAD_A,
       XINPUT_GAMEPAD_B,
@@ -72,7 +72,7 @@ namespace
       XINPUT_GAMEPAD_RIGHT_THUMB
    };
 
-   const GenericKey GamepadGKeys[GamepadKeyNum] =
+   constexpr GenericKey GamepadGKeys[GamepadKeyNum] =
    {
       GenericKey::PadA,
       GenericKey::PadB,

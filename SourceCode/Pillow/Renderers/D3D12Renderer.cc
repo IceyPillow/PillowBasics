@@ -58,25 +58,25 @@ namespace
    // 11_0 feature level in DX12 can support GPU down to GeForce 400 series!
    // 2026.3.12 Update to 12_0.
    // Given that a bindless design, the resource binding tier 2 supports a large SRV descriptor table (>128).
-   const D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_12_0;
+   constexpr D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_12_0;
    // XeSS 2 requires shader model 6.4.
-   const D3D_SHADER_MODEL MinShaderModelLevel = D3D_SHADER_MODEL_6_4;
-   const int32_t AlphaToCoverageSampleNum = 4;
-   const int32_t AlignmentTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
-   const int32_t AlignmentTextureSubres = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
-   const int32_t AlignmentConstBuffer = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-   const int32_t BCBlockLength = 16; // 4 * 4
-   const int32_t BC1BlockSize = 8; // C0(2B) C1(2B) Indices(16*2bits = 4B) RGB, 1:6 zip rate
-   const int32_t BC4BlockSize = 8; // C0(1B) C1(1B) Indices(16*3bits = 6B) A, 1:2 zip rate
-   const int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize; // RGBA, 1:4 zip rate
-   const int32_t BC5BlockSize = BC4BlockSize * 2; // AA, 1:2 zip rate
+   constexpr D3D_SHADER_MODEL MinShaderModelLevel = D3D_SHADER_MODEL_6_4;
+   constexpr int32_t AlphaToCoverageSampleNum = 4;
+   constexpr int32_t AlignmentTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
+   constexpr int32_t AlignmentTextureSubres = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+   constexpr int32_t AlignmentConstBuffer = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+   constexpr int32_t BCBlockLength = 16; // 4 * 4
+   constexpr int32_t BC1BlockSize = 8; // C0(2B) C1(2B) Indices(16*2bits = 4B) RGB, 1:6 zip rate
+   constexpr int32_t BC4BlockSize = 8; // C0(1B) C1(1B) Indices(16*3bits = 6B) A, 1:2 zip rate
+   constexpr int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize; // RGBA, 1:4 zip rate
+   constexpr int32_t BC5BlockSize = BC4BlockSize * 2; // AA, 1:2 zip rate
 
    constexpr int32_t NoneSwapChainPipeBufferCount = int32_t(PipelineBuffer::Count) - 1; // Exclude the swap chain.
-   const int32_t NoneSwapChainPipeBufferResCount = 3; // Depth + MotionVector + GeneralBufferTexArray
-   const DescriptorHandle DepthSRVHandle = 0x20000001;
+   constexpr int32_t NoneSwapChainPipeBufferResCount = 3; // Depth + MotionVector + GeneralBufferTexArray
+   constexpr DescriptorHandle DepthSRVHandle = 0x20000001;
 
    // TODO: BC7, mode 6 and mode 7
-   const DXGI_FORMAT NativeTexFmt[int32_t(TextureFormat::Count)]
+   constexpr DXGI_FORMAT NativeTexFmt[int32_t(TextureFormat::Count)]
    {
       DXGI_FORMAT_R8_UNORM,
       DXGI_FORMAT_R8G8_SNORM,
@@ -86,7 +86,7 @@ namespace
       DXGI_FORMAT_R16G16_FLOAT,
       DXGI_FORMAT_R16G16B16A16_FLOAT
    };
-   const DXGI_FORMAT NativeBCTexFmt[int32_t(TextureFormat::Count)]
+   constexpr DXGI_FORMAT NativeBCTexFmt[int32_t(TextureFormat::Count)]
    {
       DXGI_FORMAT_BC4_UNORM,
       DXGI_FORMAT_BC5_UNORM,
@@ -104,26 +104,26 @@ namespace
       BC3BlockSize
    };
 
-const DXGI_FORMAT VtxFloat = DXGI_FORMAT_R32_FLOAT;
-const DXGI_FORMAT VtxFloat2 = DXGI_FORMAT_R32G32_FLOAT;
-const DXGI_FORMAT VtxFloat3 = DXGI_FORMAT_R32G32B32_FLOAT;
-const DXGI_FORMAT VtxFloat4 = DXGI_FORMAT_R32G32B32A32_FLOAT;
-const DXGI_FORMAT VtxHalf = DXGI_FORMAT_R16_FLOAT;
-const DXGI_FORMAT VtxHalf2 = DXGI_FORMAT_R16G16_FLOAT;
-const DXGI_FORMAT VtxHalf4 = DXGI_FORMAT_R16G16B16A16_FLOAT;
-const DXGI_FORMAT VtxUInt = DXGI_FORMAT_R32_UINT;
-const DXGI_FORMAT VtxUInt2 = DXGI_FORMAT_R32G32_UINT;
-const DXGI_FORMAT VtxUInt3 = DXGI_FORMAT_R32G32B32_UINT;
-const DXGI_FORMAT VtxUInt4 = DXGI_FORMAT_R32G32B32A32_UINT;
-const DXGI_FORMAT VtxUShort = DXGI_FORMAT_R16_UINT;
-const DXGI_FORMAT VtxUShort2 = DXGI_FORMAT_R16G16_UINT;
-const DXGI_FORMAT VtxUShort4 = DXGI_FORMAT_R16G16B16A16_UINT;
-const DXGI_FORMAT VtxUInt4C = DXGI_FORMAT_R10G10B10A2_UINT;
+   constexpr DXGI_FORMAT VtxFloat = DXGI_FORMAT_R32_FLOAT;
+   constexpr DXGI_FORMAT VtxFloat2 = DXGI_FORMAT_R32G32_FLOAT;
+   constexpr DXGI_FORMAT VtxFloat3 = DXGI_FORMAT_R32G32B32_FLOAT;
+   constexpr DXGI_FORMAT VtxFloat4 = DXGI_FORMAT_R32G32B32A32_FLOAT;
+   constexpr DXGI_FORMAT VtxHalf = DXGI_FORMAT_R16_FLOAT;
+   constexpr DXGI_FORMAT VtxHalf2 = DXGI_FORMAT_R16G16_FLOAT;
+   constexpr DXGI_FORMAT VtxHalf4 = DXGI_FORMAT_R16G16B16A16_FLOAT;
+   constexpr DXGI_FORMAT VtxUInt = DXGI_FORMAT_R32_UINT;
+   constexpr DXGI_FORMAT VtxUInt2 = DXGI_FORMAT_R32G32_UINT;
+   constexpr DXGI_FORMAT VtxUInt3 = DXGI_FORMAT_R32G32B32_UINT;
+   constexpr DXGI_FORMAT VtxUInt4 = DXGI_FORMAT_R32G32B32A32_UINT;
+   constexpr DXGI_FORMAT VtxUShort = DXGI_FORMAT_R16_UINT;
+   constexpr DXGI_FORMAT VtxUShort2 = DXGI_FORMAT_R16G16_UINT;
+   constexpr DXGI_FORMAT VtxUShort4 = DXGI_FORMAT_R16G16B16A16_UINT;
+   constexpr DXGI_FORMAT VtxUInt4C = DXGI_FORMAT_R10G10B10A2_UINT;
 
 #define DEFAULT_INPUT_LAYOUT \
 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 
-   const D3D12_INPUT_ELEMENT_DESC UIVtx[]
+   constexpr D3D12_INPUT_ELEMENT_DESC UIVtx[]
    {
       // 16B
       { "POSITION", 0, VtxFloat3, DEFAULT_INPUT_LAYOUT },
@@ -132,7 +132,7 @@ const DXGI_FORMAT VtxUInt4C = DXGI_FORMAT_R10G10B10A2_UINT;
       { "VECTOR", 0, VtxUShort4, DEFAULT_INPUT_LAYOUT },
       { "VECTOR", 1, VtxHalf4, DEFAULT_INPUT_LAYOUT }
    };
-   const D3D12_INPUT_ELEMENT_DESC StdVtx[]
+   constexpr D3D12_INPUT_ELEMENT_DESC StdVtx[]
    {
       // 16B
       { "POSITION", 0, VtxFloat3, DEFAULT_INPUT_LAYOUT },
@@ -149,8 +149,8 @@ const DXGI_FORMAT VtxUInt4C = DXGI_FORMAT_R10G10B10A2_UINT;
       { "VECTOR", 5, VtxHalf4, DEFAULT_INPUT_LAYOUT },
    };
 
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutUI{ UIVtx , VtxMemberNum[0] };
-   const D3D12_INPUT_LAYOUT_DESC InputLayoutStd{ StdVtx, VtxMemberNum[1] };
+   constexpr D3D12_INPUT_LAYOUT_DESC InputLayoutUI{ UIVtx , VtxMemberNum[0] };
+   constexpr D3D12_INPUT_LAYOUT_DESC InputLayoutStd{ StdVtx, VtxMemberNum[1] };
 
 #define TEX_CLAMP D3D12_TEXTURE_ADDRESS_MODE_CLAMP
 #define TEX_WRAP D3D12_TEXTURE_ADDRESS_MODE_WRAP
@@ -162,7 +162,7 @@ const DXGI_FORMAT VtxUInt4C = DXGI_FORMAT_R10G10B10A2_UINT;
 #define SMAPLER_DESC(filter, addressMode, cmpFunc, maxLOD, registerNum) \
 {filter, addressMode, addressMode, addressMode, 0, AnisotropyLevel, cmpFunc, \
 D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY_ALL}
-   const D3D12_STATIC_SAMPLER_DESC StaticSamplers[7]
+   constexpr D3D12_STATIC_SAMPLER_DESC StaticSamplers[7]
    {
       // Point-Clamp (Post-process)
       SMAPLER_DESC(D3D12_FILTER_MIN_MAG_MIP_POINT, TEX_CLAMP, CMP_NV, 0, 0),

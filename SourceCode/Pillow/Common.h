@@ -52,20 +52,20 @@ type& operator=(type&&) = delete;
 namespace Pillow::Constants
 {
    // Best anisotropy level value considering both performance and quality.
-   const int32_t AnisotropyLevel = 4;
-   const int32_t SwapChainSize = 3;
+   constexpr int32_t AnisotropyLevel = 4;
+   constexpr int32_t SwapChainSize = 3;
 
-   const DirectX::XMFLOAT4A DefaultBackColor{ 0.2f, 0.21f, 0.2f, 0.0f };
+   constexpr DirectX::XMFLOAT4A DefaultBackColor{ 0.2f, 0.21f, 0.2f, 0.0f };
    // Perceptual weightings for the importance of each channel.
-   const DirectX::XMFLOAT4A RGBLuminance{ 0.2125f / 0.7154f, 1, 0.0721f / 0.7154f, 1.f };
-   const DirectX::XMFLOAT4A RGBLuminanceInv{ 0.7154f / 0.2125f, 1, 0.7154f / 0.0721f, 1.f };
+   constexpr DirectX::XMFLOAT4A RGBLuminance{ 0.2125f / 0.7154f, 1, 0.0721f / 0.7154f, 1.f };
+   constexpr DirectX::XMFLOAT4A RGBLuminanceInv{ 0.7154f / 0.2125f, 1, 0.7154f / 0.0721f, 1.f };
 
    // 1 Unit = 1 km
 
-   const uint32_t MaxStaticRenderItems = 1 << 10;
-   const uint32_t MaxUIRenderItems = 1 << 8;
+   constexpr uint32_t MaxStaticRenderItems = 1 << 10;
+   constexpr uint32_t MaxUIRenderItems = 1 << 8;
 
-   const int32_t MaxThreadNumRenderer = 4, MaxThreadNumOther = 8;
+   constexpr int32_t MaxThreadNumRenderer = 4, MaxThreadNumOther = 8;
    extern int32_t ThreadNumRenderer, ThreadNumPhysics, ThreadNumTick;
    constexpr float FloatInfinity = std::bit_cast<float>(std::uint32_t(0X7F800000U));
    constexpr float FloatNegativeInfinity = -FloatInfinity;
