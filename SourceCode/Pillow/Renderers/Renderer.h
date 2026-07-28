@@ -372,9 +372,6 @@ namespace Pillow::Graphics
       // ***CORE WORKLOAD***
       // Commit a frame, or wait for the last CPU renderer frame.
       void Commit() { threadPool.Commit(); }
-      // Get the idle generic command list.
-      // Client code should never invoke it; instead, uses CmdXXX() (see: CmdNone()) to record commands.
-      std::vector<GenericRendererCommand>* GetIdleCmdList();
 
    protected:
       IRenderer(uint32_t threadCount, string name, XMINT2 renderBufferSize, int32_t refreshRate);
@@ -441,6 +438,10 @@ namespace Pillow::Graphics
    {
       return ClearResourceType(handle) != 0;
    }
+
+   // Idle command list.
+   // Do not access it directly. Instead, use CmdXXX() (see: CmdNone()) to record commands.
+   extern std::vector<GenericRendererCommand> cmdListIdle;
 
    // Create an empty command.
    ForceInline void CmdNone()

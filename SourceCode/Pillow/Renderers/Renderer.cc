@@ -10,7 +10,6 @@ using namespace DirectX;
 namespace
 {
    std::unique_ptr<IRenderer> rendererInstance;
-   std::vector<GenericRendererCommand> cmdListIdle;
    std::vector<GenericRendererCommand> cmdListBusy;
 
    // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
@@ -44,6 +43,11 @@ namespace
       }
       return name;
    }
+}
+
+namespace Pillow::Graphics
+{
+   std::vector<GenericRendererCommand> cmdListIdle;
 }
 
 PipelineInfo::PipelineInfo(path shortPath, std::vector<KeyValuePair>& macros, Configuration& config) :
@@ -98,12 +102,6 @@ IRenderer::~IRenderer()
    cmdListBusy.shrink_to_fit();
 }
 
-
-std::vector<GenericRendererCommand>* IRenderer::GetIdleCmdList()
-{
-   if (!rendererInstance) throw std::runtime_error("Renderer instance is not initialized.");
-   return &cmdListIdle;
-}
 
 const std::vector<GenericRendererCommand>* IRenderer::GetBusyCmdList()
 {
