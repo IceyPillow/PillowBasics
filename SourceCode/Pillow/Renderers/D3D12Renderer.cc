@@ -1359,14 +1359,18 @@ namespace
       throw std::runtime_error(msg);
    }
 
+   // Granularity up to subresource level.
    void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource,
       D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+      D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after,
+      uint32_t subRes = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
    {
       D3D12_RESOURCE_BARRIER barrier
       {
          D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
          D3D12_RESOURCE_BARRIER_FLAG_NONE,
          D3D12_RESOURCE_TRANSITION_BARRIER { resource.Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, before, after}
+         D3D12_RESOURCE_TRANSITION_BARRIER { resource.Get(), subRes, before, after}
       };
       cmdList->ResourceBarrier(1, &barrier);
    }
