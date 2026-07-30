@@ -358,6 +358,7 @@ namespace
          Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&csuDescHeap)));
          descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
          descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+         descHeapDesc.NumDescriptors = SmallHeapCapcity;
          Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&rtvDescHeap)));
          descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
          Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&dsvDescHeap)));
@@ -496,10 +497,11 @@ namespace
       }
 
    private:
-      const static uint32_t FlagBits = 3;
-      const static uint32_t IndexBits = sizeof(DescriptorHandle) * 8 - FlagBits;
-      const static uint32_t HandleMaxNum = (1 << IndexBits) - 1;
-      const static uint32_t MaxHeapCapcity = UINT16_MAX;
+      constexpr static uint32_t FlagBits = 3;
+      constexpr static uint32_t IndexBits = sizeof(DescriptorHandle) * 8 - FlagBits;
+      constexpr static uint32_t HandleMaxNum = (1 << IndexBits) - 1;
+      constexpr static uint32_t MaxHeapCapcity = UINT16_MAX;
+      constexpr static uint32_t SmallHeapCapcity = UINT16_MAX / 8;
       static_assert(MaxHeapCapcity <= HandleMaxNum, "MaxHeapCapcity exceeds the max allowed number of handles.");
 
       mutable std::mutex mutex;
@@ -508,8 +510,8 @@ namespace
       ComPtr<ID3D12DescriptorHeap> rtvDescHeap;
       ComPtr<ID3D12DescriptorHeap> dsvDescHeap;
       GenericHandlePool<uint16_t> csuPool{"CSU Pool", MaxHeapCapcity};
-      GenericHandlePool<uint16_t> rtvPool{"RTV Pool", MaxHeapCapcity};
-      GenericHandlePool<uint16_t> dsvPool{"DSV Pool", MaxHeapCapcity};
+      GenericHandlePool<uint16_t> rtvPool{"RTV Pool", SmallHeapCapcity};
+      GenericHandlePool<uint16_t> dsvPool{"DSV Pool", SmallHeapCapcity};
       D3D12_CPU_DESCRIPTOR_HANDLE csuCpuHandle0;
       D3D12_GPU_DESCRIPTOR_HANDLE csuGpuHandle0;
       // RTV and DSV don't have gpu handles.
