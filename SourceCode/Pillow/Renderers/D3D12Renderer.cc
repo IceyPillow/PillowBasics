@@ -57,10 +57,11 @@ namespace
 {
    // 11_0 feature level in DX12 can support GPU down to GeForce 400 series!
    // 2026.3.12 Update to 12_0.
-   // Given that a bindless design, the resource binding tier 2 supports a large SRV descriptor table (>128).
+   // 12_0 support tiled resources and resource binding tier 3.
    constexpr D3D_FEATURE_LEVEL Direct3DFeatureLevel = D3D_FEATURE_LEVEL_12_0;
    // XeSS 2 requires shader model 6.4.
-   constexpr D3D_SHADER_MODEL MinShaderModelLevel = D3D_SHADER_MODEL_6_4;
+   // ResourceDescriptorHeap[] requires shader model 6.6.
+   constexpr D3D_SHADER_MODEL MinShaderModelLevel = D3D_SHADER_MODEL_6_6;
    constexpr int32_t AlphaToCoverageSampleNum = 4;
    constexpr int32_t AlignmentTextureRow = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
    constexpr int32_t AlignmentTextureSubres = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
@@ -1069,14 +1070,14 @@ namespace
       // Feature level 12.0 supports at least shader model 5.1.
       const wchar_t* const Targets[uint32_t(PipelineInfo::ShaderType::Count)] =
       {
-         L"cs_5_1",
+         L"cs_6_6",
          L"as_x_x", // Unsupported now.
          L"ms_x_x", // Unsupported now.
-         L"vs_5_1",
-         L"hs_5_1",
-         L"ds_5_1",
-         L"gs_5_1",
-         L"ps_5_1"
+         L"vs_6_6",
+         L"hs_6_6",
+         L"ds_6_6",
+         L"gs_6_6",
+         L"ps_6_6"
       };
 
       ComPtr<IDxcCompiler3> compiler;
