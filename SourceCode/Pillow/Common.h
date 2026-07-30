@@ -23,10 +23,12 @@
 #elif defined(__ANDROID__)
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #define ForceInline __forceinline
-#elif defined(__GNUC__) | defined(__clang__)
-#define ForceInline __attribute__((always_inline))
+#elif defined(__clang__) || defined(__GNUC__)
+#define ForceInline inline __attribute__((always_inline))
+#else
+static_assert(false, "Unsupported compiler.");
 #endif
 
 // A known issue: VS applies wrong formats for consecutive "PropertyReadonly" macros.
@@ -108,9 +110,14 @@ namespace Pillow::Common
    using std::filesystem::path;
    using namespace DirectX;
 
+   struct alignas(32) HalfCacheLine
+   {
+      uint8_t Padding[32]{}; // 32 bytes cache line padding
+   };
+
    struct alignas(64) CacheLine
    {
-      uint8_t padding[64]{}; // 64 bytes cache line padding
+      uint8_t Padding[64]{}; // 64 bytes cache line padding
    };
 
    // The alignment must be a power of two.

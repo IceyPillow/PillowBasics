@@ -115,7 +115,7 @@ namespace Pillow::Common
       static path rootRelativePath;
       {
          static std::mutex mutex;
-         std::unique_lock lock(mutex);
+         std::lock_guard<std::mutex> lock(mutex);
          if (rootRelativePath.empty())
          {
             path candidatePath = GetCurrentWorkingDirectory();
