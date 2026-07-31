@@ -2056,22 +2056,32 @@ namespace
    }
 
    // Like a view in C++20, std::span doesn't own the data, so it's cheap to pass around.
-   void TranslateCommands_RHI_IR_Mixed(int32_t workerIndex, std::span<const GenericRendererCommand> subSpan)
+   // RHI = Renderer Hardware Interface
+   void TranslateCommands_RHI(int32_t workerIndex, std::span<const GenericRendererCommand> subSpan)
    {
       int32_t frameArrayIdx = fenceSync->GetFrameArrayIdx();
       ComPtr<ICommandList>& cmdList = cmdLists[workerIndex];
       for (const GenericRendererCommand& cmd : subSpan)
       {
-         if (cmd.CmdType == GenericRendererCommand::Type::ClearPiplelineBuffers)
+         if (cmd.CmdType == GenericRendererCommand::Type::ClearPiplelineBuffer)
          {
-            if (cmd.Count == 1 && cmd.Params.UIntArray8[0] == (int32_t)PipelineBuffer::BackBuffer)
+            auto bufferType = static_cast<PipelineBuffer>(cmd.Int3[0]);
+            D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle;
+            if (bufferType == PipelineBuffer::BackBuffer)
             {
-               DescriptorHandle handle = pipeBufferDSV_RTVs[frameArrayIdx];
-               cmdList->ClearRenderTargetView(descriptorMgr->GetCPUHandle(handle), (float*)(&cmd.Params.Float4_1), 0, nullptr);
+               CPUHandle = descriptorMgr->GetCPUHandle(BackBuffer0RTV + frameArrayIdx);
+               cmdList->ClearRenderTargetView(CPUHandle, (const float*)(&cmd.Float4), 0, nullptr);
+            }
+            else if (bufferType == PipelineBuffer::Depth)
+            {
+               CPUHandle = descriptorMgr->GetCPUHandle(PipelineDepthDSV);
+               cmdList->ClearDepthStencilView(CPUHandle, D3D12_CLEAR_FLAG_DEPTH, cmd.Float4[0], cmd.Byte3[0], 0, nullptr);
+            }
+            else
+            {
+               throw std::runtime_error("Not implemented.");
             }
          }
-         DescriptorHandle dsvHandle = pipeBufferDSV_RTVs[SwapChainSize + 0];
-         cmdList->ClearDepthStencilView(descriptorMgr->GetCPUHandle(dsvHandle), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
       }
    }
 }
@@ -2160,9 +2170,9 @@ void D3D12Renderer::ResourceReadback(ResHandle handle, void* outData, size_t dat
 
 void D3D12Renderer::Worker(uint32_t workerIndex)
 {
-   int32_t frameIdx = fenceSync->GetFrameArrayIdx();
+   int32_t frameArrayIdx = fenceSync->GetFrameArrayIdx();
    ComPtr<ICommandList>& cmdList = cmdLists[workerIndex];
-   ID3D12CommandAllocator* allocator = cmdAllocators[frameIdx * workerThreadCount + workerIndex].Get();
+   ID3D12CommandAllocator* allocator = cmdAllocators[frameArrayIdx * workerThreadCount + workerIndex].Get();
    Check_HRESULT(allocator->Reset());
    Check_HRESULT(cmdList->Reset(allocator, nullptr));
 
@@ -2172,7 +2182,7 @@ void D3D12Renderer::Worker(uint32_t workerIndex)
    // Do actual work.
    if (workerIndex == 0)
    {
-      ApplyBarrier(cmdList, pipeBuffers[frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+      ApplyBarrier(cmdList, pipelineBuffers[NoneSwapChainResNum + frameArrayIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
    }
    const auto mixedCmdList = GetBusyCmdList();
    uint32_t cmdCount = mixedCmdList->size();
@@ -2192,11 +2202,11 @@ void D3D12Renderer::Worker(uint32_t workerIndex)
    {
       subSpan = bigSpan.subspan(workerIndex * cmdSlice, std::min((workerIndex + 1) * cmdSlice, cmdCount));
    }
-   TranslateCommands_RHI_IR_Mixed(workerIndex, subSpan);
+   TranslateCommands_RHI(workerIndex, subSpan);
    // ...
    if (workerIndex == workerThreadCount - 1)
    {
-      ApplyBarrier(cmdList, pipeBuffers[frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+      ApplyBarrier(cmdList, pipelineBuffers[NoneSwapChainResNum + frameArrayIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
    }
    Check_HRESULT(cmdList->Close());
 }
