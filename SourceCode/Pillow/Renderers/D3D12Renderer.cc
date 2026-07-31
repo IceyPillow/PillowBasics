@@ -72,9 +72,13 @@ namespace
    constexpr int32_t BC3BlockSize = BC1BlockSize + BC4BlockSize; // RGBA, 1:4 zip rate
    constexpr int32_t BC5BlockSize = BC4BlockSize * 2; // AA, 1:2 zip rate
 
-   constexpr int32_t NoneSwapChainPipeBufferCount = int32_t(PipelineBuffer::Count) - 1; // Exclude the swap chain.
-   constexpr int32_t NoneSwapChainPipeBufferResCount = 3; // Depth + MotionVector + GeneralBufferTexArray
-   constexpr DescriptorHandle DepthSRVHandle = 0x20000001;
+   constexpr int32_t NoneSwapChainResNum = int32_t(PipelineBuffer::NoneSwapChainResNum);
+   // Pipeline buffer descriptors occupy fixed ranges in descriptor heaps, to simplify management.
+   constexpr DescriptorHandle PipelineDepthDSV = 0x80000001;
+   constexpr DescriptorHandle PipelineMotionRTV = 0x60000001;
+   constexpr DescriptorHandle BackBuffer0RTV = PipelineMotionRTV + (NoneSwapChainResNum - 1);
+   constexpr DescriptorHandle PipelineDepthSRV = 0x20000001;
+   constexpr DescriptorHandle BackBuffer0SRV = PipelineDepthSRV + NoneSwapChainResNum;
 
    // TODO: BC7, mode 6 and mode 7
    constexpr DXGI_FORMAT NativeTexFmt[int32_t(TextureFormat::Count)]
@@ -197,7 +201,7 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    std::vector<ComPtr<ICommandList>> cmdLists;
    std::vector<ID3D12CommandList*> cmdListsRaw; // A copy of cmdLists, used for ExecuteCommandLists()
    std::vector<ComPtr<ID3D12CommandAllocator>> cmdAllocators;
-   std::array<ComPtr<IResource>, SwapChainSize + NoneSwapChainPipeBufferResCount> pipeBuffers{};
+   std::array<ComPtr<IResource>, NoneSwapChainResNum + SwapChainSize> pipelineBuffers{};
 
    // Utility Wrapper
    std::unique_ptr<FenceSync> fenceSync;
@@ -206,7 +210,6 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
    std::unique_ptr<LateReleaseManager> lateReleaseMgr;
 
    // Parameters
-   std::array<DescriptorHandle, SwapChainSize + NoneSwapChainPipeBufferCount> pipeBufferDSV_RTVs;
    HWND hwnd;
    D3D12Renderer* rendererInstance;
    int32_t workerThreadCount;
@@ -1385,43 +1388,6 @@ namespace
       cmdList->ResourceBarrier(1, &barrier);
    }
 
-   DescriptorHandle GetPipeplineBufferDSV_RTV(PipelineBuffer name)
-   {
-      if (int32_t(name) > int32_t(PipelineBuffer::HalfBuffer4))
-         throw std::runtime_error("GetPipeplineBuffer(): Invalid arguments.");
-      if (name == PipelineBuffer::BackBuffer)
-      {
-         return pipeBufferDSV_RTVs[fenceSync->GetFrameArrayIdx()];
-
-      }
-      else
-      {
-         return pipeBufferDSV_RTVs[SwapChainSize + int32_t(name) - 1];
-      }
-   }
-
-   DescriptorHandle GetPipeplineBufferSRV(PipelineBuffer name)
-   {
-      if (int32_t(name) > int32_t(PipelineBuffer::HalfBuffer4))
-         throw std::runtime_error("GetPipeplineBuffer(): Invalid arguments.");
-      if (name == PipelineBuffer::Depth)
-      {
-         return DepthSRVHandle;
-      }
-      else if (name == PipelineBuffer::MotionVector)
-      {
-         return DepthSRVHandle + 1;
-      }
-      else if (name == PipelineBuffer::BackBuffer)
-      {
-         return DepthSRVHandle + 3 + fenceSync->GetFrameArrayIdx();
-      }
-      else
-      {
-         return DepthSRVHandle + 2;
-      }
-   }
-
    // Must align the subresource size with D3D12_TEXTURE_DATA_PITCH_ALIGNMENT.
    uint32_t GetAlignMipmapSize(const TextureInfo& texInfo, uint32_t mipLevel)
    {
@@ -1898,63 +1864,48 @@ namespace
 
    }
 
-   void CreateRenderBuffers()
+   void CreatePipelineBuffers()
    {
       using enum PipelineBuffer;
       using ViewType = DescriptorHeapManeger::Type;
-      // 1. Initialize or release.
-      const bool bInitial = (swapChain.Get() == nullptr);
-      if (bInitial)
+      // Create a swap chain.
+      DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+      const bool bStart = (swapChain.Get() == nullptr);
+      if (bStart)
       {
          DXGI_SWAP_CHAIN_DESC1 swapChainDesc
          {
-            0,0, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
-            DXGI_USAGE_RENDER_TARGET_OUTPUT, SwapChainSize, DXGI_SCALING_NONE,
+            0,0, format, false, DXGI_SAMPLE_DESC{1, 0}/*no obselete MSAA*/,
+            DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT, SwapChainSize, DXGI_SCALING_NONE,
             DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/*need to access previous frame buffers*/, DXGI_ALPHA_MODE_IGNORE,
             uint32_t(bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0)
          };
          Check_HRESULT(factory->CreateSwapChainForHwnd(
             cmdQueue.Get(), hwnd,&swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf()));
          DXGI_RGBA color{ 0.f, 0.f, 0.f, 1.f };
-         swapChain->SetBackgroundColor(&color);
+         Check_HRESULT(swapChain->SetBackgroundColor(&color));
       }
+      // Release all pipeline resources and resize the swap chain.
       else
       {
          fenceSync->FlushQueue();
-         for (auto& resource : pipeBuffers)
+         for (auto& resource : pipelineBuffers)
          {
             resource.Reset();
          }
-         for (auto& handle : pipeBufferDSV_RTVs)
-         {
-            descriptorMgr->ReleaseDescriptor(handle);
-         }
-         Check_HRESULT(swapChain->ResizeBuffers(SwapChainSize, currentBackBufferSize.x, currentBackBufferSize.y,
-            DXGI_FORMAT_R8G8B8A8_UNORM,
+         Check_HRESULT(swapChain->ResizeBuffers(SwapChainSize,
+            currentBackBufferSize.x, currentBackBufferSize.y, format,
             bDeviceSupportTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING/*allow to disable V-Sync*/ : 0));
       }
-      // 2. Create resources and descriptors.
-      // 2.1 Back buffers.
-      D3D12_RENDER_TARGET_VIEW_DESC rtvDesc { DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RTV_DIMENSION_TEXTURE2D };
-      rtvDesc.Texture2D = { 0,0 };
-      for (int i = 0; i < SwapChainSize; i++)
-      {
-         // After resizing the swapchain, the frame array index may not be euqal to the active backbuffer index.
-         // So, we should associate the first buffer of the resized swapchain to the current frame array index.
-         // e.g. frameIdx = 8, frameArrayIdx = 2, in this case, backbuffers[2] should refer to swapChain->GetBuffer(0).
-         int32_t newIdx = (fenceSync->GetFrameIndex() + i) % SwapChainSize;
-         Check_HRESULT(swapChain->GetBuffer(i, IID_PPV_ARGS(&pipeBuffers[newIdx])));
-         pipeBufferDSV_RTVs[newIdx] =
-            descriptorMgr->CreateDescirptor(device, pipeBuffers[newIdx], &rtvDesc, ViewType::RTV);
-      }
-      // 2.2 Depth buffer.
-      uint32_t resOffset = SwapChainSize;
-      uint32_t dsv_rtvOffset = SwapChainSize;
+      // Create pipeline buffers.
+      // Depth buffer.
+      uint32_t resIdx = 0;
+      format = DXGI_FORMAT_R32_TYPELESS;
       D3D12_RESOURCE_DESC resDesc
       {
          D3D12_RESOURCE_DIMENSION_TEXTURE2D, 0,
          (uint32_t)currentBackBufferSize.x, (uint32_t)currentBackBufferSize.y, 1, 1,
-         DXGI_FORMAT_D32_FLOAT, DXGI_SAMPLE_DESC{1, 0}, D3D12_TEXTURE_LAYOUT_UNKNOWN,
+         format, DXGI_SAMPLE_DESC{1, 0}, D3D12_TEXTURE_LAYOUT_UNKNOWN,
          D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
       };
       D3D12_HEAP_PROPERTIES heapProperties =
@@ -1962,95 +1913,110 @@ namespace
          D3D12_HEAP_TYPE_DEFAULT,
          D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
          D3D12_MEMORY_POOL_UNKNOWN,
-         0, 0
       };
       auto heapFlag = D3D12_HEAP_FLAG_NONE;
       auto state = D3D12_RESOURCE_STATE_DEPTH_WRITE;
-      D3D12_CLEAR_VALUE clearColor = { resDesc.Format };
+      format = DXGI_FORMAT_D32_FLOAT;
+      D3D12_CLEAR_VALUE clearColor = { format };
       clearColor.DepthStencil = { 1.f, 0 };
       Check_HRESULT(device->CreateCommittedResource(
-         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipeBuffers[resOffset])));
-      pipeBuffers[resOffset]->SetName(L"PipelineBuffer::Depth");
-      D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{ resDesc.Format, D3D12_DSV_DIMENSION_TEXTURE2D };
-      dsvDesc.Texture2D = { 0 };
-      pipeBufferDSV_RTVs[dsv_rtvOffset] = descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &dsvDesc, ViewType::DSV);
-      D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc
-      {
-         DXGI_FORMAT_R32_FLOAT, D3D12_SRV_DIMENSION_TEXTURE2DARRAY,
-         D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING
-      };
-      srvDesc.Texture2DArray = { 0, 1, 0, 1, 0, 0 };
-      if (bInitial)
-      {
-         descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &srvDesc, ViewType::SRV);
-      }
-      else
-      {
-         descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &srvDesc, ViewType::SRV, DepthSRVHandle);
-      }
-      // 2.3 Motion vector.
-      resOffset++;
-      dsv_rtvOffset++;
-      resDesc.Format = DXGI_FORMAT_R16G16_FLOAT;
+         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipelineBuffers[resIdx])));
+      pipelineBuffers[resIdx]->SetName(L"PipelineBuffer::Depth");
+      // Motion vector.
+      resIdx = 1;
+      format = DXGI_FORMAT_R16G16_FLOAT;
+      resDesc.Format = format;
       resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
       state = D3D12_RESOURCE_STATE_RENDER_TARGET;
-      clearColor.Format = resDesc.Format;
+      clearColor.Format = format;
       *reinterpret_cast<XMFLOAT4*>(clearColor.Color) = {};
       Check_HRESULT(device->CreateCommittedResource(
-         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipeBuffers[resOffset])));
-      pipeBuffers[resOffset]->SetName(L"PipelineBuffer::MotionVector");
-      rtvDesc.Format = resDesc.Format;
-      srvDesc.Format = resDesc.Format;
-      pipeBufferDSV_RTVs[dsv_rtvOffset] = descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &rtvDesc, ViewType::RTV);
-      if (bInitial)
-      {
-         descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &srvDesc, ViewType::SRV);
-      }
-      else
-      {
-         descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &srvDesc, ViewType::SRV, DepthSRVHandle + 1);
-      }
-      // 2.4 General buffers.
-      resOffset++;
-      resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipelineBuffers[resIdx])));
+      pipelineBuffers[resIdx]->SetName(L"PipelineBuffer::MotionVector");
+      // General buffers.
+      resIdx = 2;
+      format = DXGI_FORMAT_R8G8B8A8_UNORM;
+      resDesc.Format = format;
       resDesc.DepthOrArraySize = 4;
-      resDesc.MipLevels = 2;
-      clearColor.Format = resDesc.Format;
+      clearColor.Format = format;
       Check_HRESULT(device->CreateCommittedResource(
-         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipeBuffers[resOffset])));
-      pipeBuffers[resOffset]->SetName(L"PipelineBuffer::(Half)Buffer(1~4)");
-      rtvDesc.Format = resDesc.Format;
-      rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-      srvDesc.Format = resDesc.Format;
-      srvDesc.Texture2DArray = { 0, 2, 0, 4, 0, 0 };
-      for (uint32_t i = 0; i < 8; i++)
-      {
-         dsv_rtvOffset++;
-         // Please see the order in PipelineBuffer.
-         rtvDesc.Texture2DArray = { i / 4, i % 4, 1, 0 };
-         pipeBufferDSV_RTVs[dsv_rtvOffset] = descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &rtvDesc, ViewType::RTV);
-      }
-      if (bInitial)
-      {
-         descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &srvDesc, ViewType::SRV);
-      }
-      else
-      {
-         descriptorMgr->CreateDescirptor(device, pipeBuffers[resOffset], &srvDesc, ViewType::SRV, DepthSRVHandle + 2);
-      }
-      // 2.1.Extra: Build SRVs for backbuffers.
-      srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-      srvDesc.Texture2DArray = { 0, 1, 0, 1, 0, 0 };
+         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipelineBuffers[resIdx])));
+      pipelineBuffers[resIdx]->SetName(L"PipelineBuffer::Buffer[1-4]");
+      // Half general buffers.
+      resIdx = 3;
+      resDesc.Width = currentBackBufferSize.x / 2;
+      resDesc.Height = currentBackBufferSize.y / 2;
+      Check_HRESULT(device->CreateCommittedResource(
+         &heapProperties, heapFlag, &resDesc, state, &clearColor, IID_PPV_ARGS(&pipelineBuffers[resIdx])));
+      pipelineBuffers[resIdx]->SetName(L"PipelineBuffer::HalfBuffer[1-4]");
+      // Back buffers.
+      resIdx = 4;
       for (int i = 0; i < SwapChainSize; i++)
       {
-         if (bInitial)
-         {
-            descriptorMgr->CreateDescirptor(device, pipeBuffers[i], &srvDesc, ViewType::SRV);
-         }
-         else
-         {
-            descriptorMgr->CreateDescirptor(device, pipeBuffers[i], &srvDesc, ViewType::SRV, DepthSRVHandle + 3 + i);
-         }
+         // After resizing the swapchain, the current frame array index should be linked to back buffer 0.
+         // e.g. frameIdx == 8, frameArrayIdx == 8 % 3 == 2, then backbuffers[2] == swapChain->GetBuffer(0).
+         int32_t newIdx = resIdx + (fenceSync->GetFrameIndex() + i) % SwapChainSize;
+         Check_HRESULT(swapChain->GetBuffer(i, IID_PPV_ARGS(&pipelineBuffers[newIdx])));
+         pipelineBuffers[newIdx]->SetName(L"PipelineBuffer::BackBuffer");
+      }
+      // Create descriptors.
+      // CSU Descriptor heap Layout [Depth Motion GBuffer HGBuffer SwapChain Others...]
+      // RTV Descriptor heap Layout [Motion GBuffer HGBuffer SwapChain Others...]
+      // DSV Descriptor heap Layout [Depth Others...]
+      // Depth buffer.
+      resIdx = 0;
+      format = DXGI_FORMAT_D32_FLOAT;
+      D3D12_DEPTH_STENCIL_VIEW_DESC dSVDesc
+      {
+         format, D3D12_DSV_DIMENSION_TEXTURE2D,
+         D3D12_DSV_FLAG_NONE
+      };
+      dSVDesc.Texture2D = { 0 };
+      format = DXGI_FORMAT_R32_FLOAT;
+      D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc
+      {
+         format, D3D12_SRV_DIMENSION_TEXTURE2D,
+         D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING
+      };
+      srvDesc.Texture2D = { 0, 1, 0, 0 };
+      descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx], &dSVDesc, ViewType::DSV, bStart ? 0 : PipelineDepthDSV);
+      descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx], &srvDesc, ViewType::SRV, bStart ? 0 : PipelineDepthSRV);
+      // Motion vector.
+      resIdx = 1;
+      format = DXGI_FORMAT_R16G16_FLOAT;
+      D3D12_RENDER_TARGET_VIEW_DESC rTVDesc
+      {
+         format, D3D12_RTV_DIMENSION_TEXTURE2D
+      };
+      rTVDesc.Texture2D = { 0,0 };
+      srvDesc.Format = format;
+      descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx], &rTVDesc, ViewType::RTV, bStart ? 0 : PipelineMotionRTV);
+      descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx], &srvDesc, ViewType::SRV, bStart ? 0 : PipelineDepthSRV + 1);
+      // General buffers.
+      resIdx = 2;
+      format = DXGI_FORMAT_R8G8B8A8_UNORM;
+      rTVDesc.Format = format;
+      rTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+      rTVDesc.Texture2DArray = { 0, 0, 4, 0 };
+      srvDesc.Format = format;
+      srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+      srvDesc.Texture2DArray = { 0, 1, 0, 4, 0, 0 };
+      descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx], &rTVDesc, ViewType::RTV, bStart ? 0 : PipelineMotionRTV + 1);
+      descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx], &srvDesc, ViewType::SRV, bStart ? 0 : PipelineDepthSRV + 2);
+      // Half general buffers.
+      resIdx = 3;
+      descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx], &rTVDesc, ViewType::RTV, bStart ? 0 : PipelineMotionRTV + 2);
+      descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx], &srvDesc, ViewType::SRV, bStart ? 0 : PipelineDepthSRV + 3);
+      // Back buffers.
+      resIdx = 4;
+      rTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+      rTVDesc.Texture2D = { 0, 0 };
+      srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+      srvDesc.Texture2D = { 0, 1, 0, 0 };
+      for (int i = 0; i < SwapChainSize; i++)
+      {
+         descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx + i], &rTVDesc, ViewType::RTV, bStart ? 0 : PipelineMotionRTV + 3 + i);
+         descriptorMgr->CreateDescirptor(device, pipelineBuffers[resIdx + i], &srvDesc, ViewType::SRV, bStart ? 0 : PipelineDepthSRV + 4 + i);
       }
    }
 
@@ -2121,7 +2087,7 @@ D3D12Renderer::D3D12Renderer(void* windowHandle, int32_t threadCount, XMINT2 bac
    CreateBase();
    CheckDeviceDriver();
    CreateManagers();
-   CreateRenderBuffers();
+   CreatePipelineBuffers();
    TEMP_RendererTestZone();
 }
 
@@ -2241,7 +2207,7 @@ void D3D12Renderer::Pioneer()
    if (currentBackBufferSize != GetBackBufferSize())
    {
       currentBackBufferSize = GetBackBufferSize();
-      CreateRenderBuffers();
+      CreatePipelineBuffers();
    }
 }
 
