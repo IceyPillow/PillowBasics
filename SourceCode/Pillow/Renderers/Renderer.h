@@ -92,16 +92,18 @@ namespace Pillow::Graphics
       BackBuffer,
       Depth,
       MotionVector,
-      // (TextureArray) General-usage render buffers.
+      // (TexArray) general buffers.
       Buffer1,
       Buffer2,
       Buffer3,
       Buffer4,
+      // (TexArray) Half-resoulution general buffers.
       HalfBuffer1,
       HalfBuffer2,
       HalfBuffer3,
       HalfBuffer4,
       Count,
+      NoneSwapChainResNum = 4 // Depth + Motion + BufferArray + HalfBufferArray
    };
 
    // DIRECT3D12 VIEW TYPES
@@ -144,47 +146,40 @@ namespace Pillow::Graphics
    };
 
    // Designed for a modifiable deferred pipeline.
-   struct GenericRendererCommand
+   struct alignas(HalfCacheLine) GenericRendererCommand
    {
       enum class Type : uint8_t
       {
          None,
          // Clear commands
-         ClearPiplelineBuffers,
-         ClearRenderTargets,
-         ClearDepthStencils,
+         ClearPiplelineBuffer,
+         ClearRenderTarget,
+         ClearDepthStencil,
          // Set commands
-         SetPiplelineBuffers,
-         SetRenderTargets,
+         SetPiplelineBuffer,
+         SetRenderTarget,
          SetActiveCamera,
          SetViewport,
          SetLight,
          // Bind commands
          // Resource barriers are implicitly applied when executing bind commands.
-         // We don't want GenericRenderer to expose explicit resource barriers. (CS term: encapsulation)
+         // We don't want GenericRenderer to expose explicit resource barriers. (CS term: Encapsulation)
          BindPipelineState,
-         BindShaderResourceViews,
-         BindConstantBufferViews,
-         BindUnorderedAccessViews,
+         BindShaderResourceView,
+         BindConstantBufferView,
+         BindUnorderedAccessView,
          // Dispatch commands
          DispatchMesh,
          DispatchPostProcess,
-         DispatchCompute
+         DispatchCompute,
+         Count
       };
-
+      // 16B
+      XMFLOAT4 Float4;
+      // 16B
+      XMINT3 Int3;
+      uint8_t Byte3[3];
       Type CmdType;
-      uint8_t Flags8;
-      int16_t Count;
-
-      union UnionParams
-      {
-         XMFLOAT4X4 Matrix;
-         struct
-         {
-            XMFLOAT4 Float4_1, Float4_2;
-            uint32_t UIntArray8[8];
-         };
-      } Params;
    };
    static_assert(std::is_trivially_copyable_v<GenericRendererCommand>); //POD test
 
