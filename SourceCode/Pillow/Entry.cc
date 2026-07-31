@@ -5,9 +5,9 @@
 #include "DirectXMath-jun2026/DirectXMath.h"
 #include "utfcpp-4.0.6/utf8.h"
 #include "Renderers/Renderer.h"
+#include "Common.h"
 #include "Input.h"
 #include "UI.h"
-#include "Common.h"
 #if defined(_WIN64)
 #define NOMINMAX
 #include <Windows.h>
@@ -312,6 +312,7 @@ namespace
    {
       SetThreadNumbers();
       InputInitialize(hwnd);
+      StandardMesh::InitializeDefaultMeshes();
 #if defined(_WIN64)
       IRenderer::Initialize(Constants::ThreadNumRenderer, clientSize, refreshRate, (void*)hwnd);
 #elif defined(__ANDROID__)

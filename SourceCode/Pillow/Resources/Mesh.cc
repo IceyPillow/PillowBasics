@@ -266,7 +266,7 @@ namespace Pillow::Graphics
       vtx = std::make_unique<uint8_t[]>(vtxBufferSize);
       idx = std::make_unique<uint8_t[]>(idxBufferSize);
       // Create GPU resources.
-      GraphicsResourceInfo resInfo;
+      GraphicsResourceDesc resInfo;
       resInfo.Type = GraphicsResourceType::VertexBuffer;
       resInfo.VtxIdxBuffer.VtxType = vtxType;
       resInfo.VtxIdxBuffer.Count = vtxNum;

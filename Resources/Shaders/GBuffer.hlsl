@@ -4,7 +4,6 @@
 //#define SKELETON
 
 Standard_Vertex2Pixel VertexShader(StandardVertex vertex)
-
 {
    Standard_Vertex2Pixel output;
    // Transform coordinates.

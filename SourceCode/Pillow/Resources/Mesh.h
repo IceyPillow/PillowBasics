@@ -116,8 +116,8 @@ namespace Pillow::Graphics
 
       std::unique_ptr<uint8_t[]> vtx;
       std::unique_ptr<uint8_t[]> idx;
-      ResHandle resVtx = ResHandleNull;
-      ResHandle resIdx = ResHandleNull;
+      ResHandle resVtx = NullHandle;
+      ResHandle resIdx = NullHandle;
       std::vector<uint32_t> primitiveEndIdxOffsets;
 
       StandardMesh() = delete;

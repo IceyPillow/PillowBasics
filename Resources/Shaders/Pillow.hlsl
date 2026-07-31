@@ -27,12 +27,13 @@ static const uint FrameIdxMax = 1000000;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
 // Bound resources
 
-struct ObjectStruct
+struct ObjectData
 {
    float3x4 MatrixModel;
    float3x3 MatrixModelInvTrans;
-   float4 ColorObject;
-   uint4 TexIdx;
+   float4 Color;
+   uint4 TexIdxA;
+   uint4 TexIdxB;
    // 16B
    uint SamplerIdx;
    uint InstanceNum;
@@ -40,22 +41,7 @@ struct ObjectStruct
    float Smoothness;
 };
 
-struct LightStruct
-{
-   // 16B
-   float3 PositionWorld;
-   uint TypeLight;
-   // 16B
-   float3 DirectionWorld;
-   float Intensity;
-   // 16B
-   float3 ColorLight;
-   float RangeMax;
-   // 16B
-   float4 ShapeLight;
-};
-
-struct CameraStruct
+struct CameraData
 {
    float3x4 MatrixView;
    float4x4 MatrixProjection;
@@ -64,12 +50,35 @@ struct CameraStruct
    float4 ViewportSizeAndRecip;
    // 16B
    float3 CameraPositionWorld;
-   uint FrameArrayIdx;
+   float Padding1;
    // 16B
    float DistanceNear;
    float DistanceFar;
+   float2 Padding2;
+};
+
+struct FrameData
+{
+   // 16B
+   uint SwapChainNum;
+   uint FrameArrayIdx;
    float TimeDelta;
    float TimeLapse;
+};
+
+struct LightData
+{
+   // 16B
+   float3 PositionWorld;
+   uint Type;
+   // 16B
+   float3 DirectionWorld;
+   float Intensity;
+   // 16B
+   float3 Color;
+   float RangeMax;
+   // 16B
+   float4 Shape;
 };
 
 struct BoneData
@@ -88,12 +97,13 @@ SamplerState AniWrap : register(s5);
 SamplerComparisonState Cmp : register(s6);
 
 // Bound resources.
-ConstantBuffer<ObjectStruct> ObjectCB : register(b0, space0);
-ConstantBuffer<LightStruct> LightCB : register(b1, space0);
-ConstantBuffer<CameraStruct> CameraCB : register(b2, space0);
-StructuredBuffer<BoneData> MatrixBones : register(t0, space0);
-TextureCubeArray CubeGallery : register(t1, space0);
-Texture2DArray Gallery[] : register(t0, space1);
+// Group A: Costant buffers
+ConstantBuffer<ObjectData> ObjectCB : register(b0, space0);
+ConstantBuffer<CameraData> CameraCB : register(b1, space0);
+ConstantBuffer<FrameData> FrameCB : register(b2, space0);
+// Group B: Structured buffers
+StructuredBuffer<LightData> Lights : register(t0, space0);
+StructuredBuffer<BoneData> MatrixBones : register(t1, space0);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////128SLASHES
 // Unified root signature

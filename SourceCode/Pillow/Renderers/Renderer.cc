@@ -10,7 +10,6 @@ using namespace DirectX;
 namespace
 {
    std::unique_ptr<IRenderer> rendererInstance;
-   std::vector<GenericRendererCommand> cmdListBusy;
 
    // Example: NameID = "HelloWorld@Stages=VS,PS@Depth=0@Blend=0@ASSERT_ON@Quality=2"
    std::string MakePipelineStateID(const path& originalName, const std::vector<KeyValuePair>& macros, const PipelineInfo::Configuration& config)
@@ -102,11 +101,20 @@ IRenderer::~IRenderer()
    cmdListBusy.shrink_to_fit();
 }
 
-
-const std::vector<GenericRendererCommand>* IRenderer::GetBusyCmdList()
+ResHandle IRenderer::ResourceCreate(const GraphicsResourceDesc& info)
 {
-   if (!rendererInstance) throw std::runtime_error("Renderer instance is not initialized.");
-   return &cmdListBusy;
+   if (info.Type == GraphicsResourceType::Count)
+      throw std::runtime_error("Invalid resource type.");
+   ResHandle handle = resHandlePool.Acquire();
+   handle = SetRecourceType(handle, info.Type);
+   return handle;
+}
+
+void IRenderer::ResourceRelease(ResHandle handle)
+{
+   if (CheckHandle(handle) == false)
+      throw std::runtime_error("Invalid resource handle.");
+   resHandlePool.Release(uint16_t(ClearResourceType(handle)));
 }
 
 void IRenderer::BasePioneer()

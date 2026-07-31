@@ -10,6 +10,7 @@ using namespace DirectX;
 using namespace Pillow::Constants;
 using namespace Pillow::Common;
 
+// Types
 namespace Pillow::Graphics
 {
    constexpr int32_t ReservedCommandCount = 20000; // 68B*20000 = nearly 1.3MB
@@ -17,12 +18,11 @@ namespace Pillow::Graphics
    // Resource handle, index starts at 1.
    // 4-bit type + 28-bit index
    using ResHandle = uint32_t;
-   constexpr ResHandle ResHandleNull = 0;
+   constexpr ResHandle NullHandle = 0;
    constexpr ResHandle ResIndexBits = 28;
    constexpr ResHandle ResourceTypeMask = 0xF0000000;
 
    // Forward declarations
-   class PipelineInfo;
    class TextureInfo;
    enum class VertexType : uint8_t;
    enum class TextureFormat : uint8_t;
@@ -36,8 +36,9 @@ namespace Pillow::Graphics
    {
       XMFLOAT3X4A MatrixModel;
       XMFLOAT3X4A MatrixModelInvTrans;
-      XMFLOAT4A ColorObject;
-      XMUINT4 TexIdx;
+      XMFLOAT4A Color;
+      XMUINT4 TexIdxA;
+      XMUINT4 TexIdxB;
       // 16B
       uint32_t SamplerIdx;
       uint32_t InstanceNum;
@@ -49,15 +50,15 @@ namespace Pillow::Graphics
    {
       // 16B
       XMFLOAT3 PositionWorld;
-      uint32_t TypeLight;
+      uint32_t Type;
       // 16B
       XMFLOAT3 DirectionWorld;
       float Intensity;
       // 16B
-      XMFLOAT3 ColorLight;
+      XMFLOAT3 Color;
       float RangeMax;
       // 16B
-      XMFLOAT4A ShapeLight;
+      XMFLOAT4A Shape;
    };
 
    struct alignas(XMVECTOR) CameraConstantBuffer
@@ -105,83 +106,6 @@ namespace Pillow::Graphics
       Count,
       NoneSwapChainResNum = 4 // Depth + Motion + BufferArray + HalfBufferArray
    };
-
-   // DIRECT3D12 VIEW TYPES
-   // IN  DESCRIPTOR HEAP： RTV DSV CSV SRV UAV Sampler
-   // OUT DESCRIPTOR HEAP： VBV IBV SOV
-   //
-   // DIRECT3D12 RESOURCE HEAP TYPES
-   // Upload Default Readback Custom
-
-   enum class GraphicsResourceType : uint8_t
-   {
-      PiplelineState,
-      Texture,
-      VertexBuffer,
-      IndexBuffer,
-      StructArray,
-      ConstBuffer,
-      Count
-   };
-
-   class GraphicsResourceInfo
-   {
-   public:
-      GraphicsResourceType Type;
-      union
-      {
-         PipelineInfo* PipeState;
-         TextureInfo* TexInfo;
-         struct VtxIdxBuffer
-         {
-            VertexType VtxType;
-            uint32_t Count;
-         } VtxIdxBuffer;
-         struct StructAndCB
-         {
-            uint32_t ElementSize;
-            uint32_t ElementCount;
-         } StructAndCB;
-      };
-   };
-
-   // Designed for a modifiable deferred pipeline.
-   struct alignas(HalfCacheLine) GenericRendererCommand
-   {
-      enum class Type : uint8_t
-      {
-         None,
-         // Clear commands
-         ClearPiplelineBuffer,
-         ClearRenderTarget,
-         ClearDepthStencil,
-         // Set commands
-         SetPiplelineBuffer,
-         SetRenderTarget,
-         SetActiveCamera,
-         SetViewport,
-         SetLight,
-         // Bind commands
-         // Resource barriers are implicitly applied when executing bind commands.
-         // We don't want GenericRenderer to expose explicit resource barriers. (CS term: Encapsulation)
-         BindPipelineState,
-         BindShaderResourceView,
-         BindConstantBufferView,
-         BindUnorderedAccessView,
-         // Dispatch commands
-         DispatchMesh,
-         DispatchPostProcess,
-         DispatchCompute,
-         Count
-      };
-      // 16B
-      XMFLOAT4 Float4;
-      // 16B
-      XMINT3 Int3;
-      uint8_t Byte3[3];
-      Type CmdType;
-   };
-   static_assert(std::is_trivially_copyable_v<GenericRendererCommand>); //POD test
 
    // Programmers call it pipeline state, and artists call it material. They are essentially the same thing.
    // * Utilize a unified root signature to achieve a modern bindless architecture.
@@ -300,6 +224,86 @@ namespace Pillow::Graphics
       }
    };
 
+   // DIRECT3D12 VIEW TYPES
+   // IN  DESCRIPTOR HEAP： RTV DSV CSV SRV UAV Sampler
+   // OUT DESCRIPTOR HEAP： VBV IBV SOV
+   //
+   // DIRECT3D12 RESOURCE HEAP TYPES
+   // Upload Default Readback Custom
+
+   enum class GraphicsResourceType : uint8_t
+   {
+      PiplelineState,
+      Texture,
+      VertexBuffer,
+      IndexBuffer,
+      StructArray,
+      ConstBuffer,
+      Count
+   };
+
+   struct GraphicsResourceDesc
+   {
+      GraphicsResourceType Type;
+      union
+      {
+         PipelineInfo* PipeState;
+         TextureInfo* TexInfo;
+         struct VtxIdxBuffer
+         {
+            VertexType VtxType;
+            uint32_t Count;
+         } VtxIdxBuffer;
+         struct StructAndCB
+         {
+            uint32_t ElementSize;
+            uint32_t ElementCount;
+         } StructAndCB;
+      };
+   };
+
+   // Designed for a modifiable deferred pipeline.
+   struct alignas(HalfCacheLine) GenericRendererCommand
+   {
+      enum class Type : uint8_t
+      {
+         None,
+         // Clear commands
+         ClearPiplelineBuffer,
+         ClearRenderTarget,
+         ClearDepthStencil,
+         // Set commands
+         SetPiplelineBuffers,
+         SetRenderTargets,
+         SetActiveCamera,
+         SetViewport,
+         SetLight,
+         // Bind commands
+         // Resource barriers are implicitly applied when executing bind commands.
+         // We don't want GenericRenderer to expose explicit resource barriers. (CS term: Encapsulation)
+         BindPipelineState,
+         BindShaderResourceView,
+         BindConstantBufferView,
+         BindUnorderedAccessView,
+         // Dispatch commands
+         DispatchMesh,
+         DispatchPostProcess,
+         DispatchCompute,
+         Count
+      };
+      // 16B
+      union
+      {
+         XMFLOAT4 Float4;
+         XMUINT4 Int4;
+      };
+      // 16B
+      XMINT3 Int3;
+      uint8_t Byte3[3];
+      Type CmdType;
+   };
+   static_assert(std::is_trivially_copyable_v<GenericRendererCommand>); //POD test
+
    // Generic renderer, abstract class (resembles an interface in C#).
    class IRenderer
    {
@@ -312,53 +316,24 @@ namespace Pillow::Graphics
 
    public:
       const static uint32_t MaxRescourceNum = UINT16_MAX;
+      // Do not access it directly. Instead, use CmdXXX() to record commands (see: CmdNone()).
+      static inline std::vector<GenericRendererCommand> cmdListIdle{};
 
       static void Initialize(uint32_t threadCount, XMINT2 backBufferSize, int32_t refreshRate, void* parameter);
       static IRenderer* GetInstance();
 
-   public:
       virtual ~IRenderer() = 0;
 
       virtual uint64_t GetFrameIndex() = 0;
-
-      uint32_t GetFrameArrayIdx()
-      {
-         return GetFrameIndex() % Constants::SwapChainSize;
-      }
-
-      float GetEstimatedMaxFrameRate()
-      {
-         if (f_VSyncBlanks != 0)
-         {
-            return std::ceilf(float(f_RefreshRate) / float(f_VSyncBlanks));
-         }
-         else
-         {
-            return 1e6f; // Represents an uncapped frame rate.
-         }
-      }
+      uint32_t GetFrameArrayIdx() { return GetFrameIndex() % Constants::SwapChainSize; }
+      float GetEstimatedMaxFrameRate() { return f_VSyncBlanks != 0 ? std::ceilf(float(f_RefreshRate) / f_VSyncBlanks) : 1e6f/*limitless frame rate*/; }
 
       void SetRenderBufferSize(XMINT2 size) { f_BackBufferSize = size; }
       void SetRefreshRate(int32_t rate) { f_RefreshRate = rate; }
       void SetVSyncBlanks(int32_t blanks) { f_VSyncBlanks = blanks; }
 
-      virtual ResHandle ResourceCreate(const GraphicsResourceInfo& info)
-      {
-         if(info.Type == GraphicsResourceType::Count)
-            throw std::runtime_error("Invalid resource type.");
-         ResHandle handle = resHandlePool.Acquire();
-         handle = SetRecourceType(handle, info.Type);
-         return handle;
-      }
-
-      virtual void ResourceRelease(ResHandle& handle)
-      {
-         if(CheckHandle(handle) == false)
-            throw std::runtime_error("Invalid resource handle.");
-         resHandlePool.Release(uint16_t(ClearResourceType(handle)));
-         handle = ResHandleNull;
-      }
-
+      virtual ResHandle ResourceCreate(const GraphicsResourceDesc& info);
+      virtual void ResourceRelease(ResHandle handle);
       virtual void ResourceUpdate(ResHandle handle, const void* data, size_t dataSize) = 0;
       virtual void ResourceReadback(ResHandle handle, void* outData, size_t dataSize) = 0;
 
@@ -369,13 +344,14 @@ namespace Pillow::Graphics
       void Commit() { threadPool.Commit(); }
 
    protected:
+      static inline std::vector<GenericRendererCommand> cmdListBusy{};
+
       IRenderer(uint32_t threadCount, string name, XMINT2 renderBufferSize, int32_t refreshRate);
-      virtual void Worker(uint32_t workerIndex) = 0;
+
       void BasePioneer();
+      virtual void Worker(uint32_t workerIndex) = 0;
       virtual void Pioneer() = 0;
       virtual void Assembler() = 0;
-      // Get the busy generic command list, provided for a renderer backend.
-      const std::vector<GenericRendererCommand>* GetBusyCmdList();
 
    private:
       using ActionT = void(IRenderer::*)();
@@ -385,7 +361,7 @@ namespace Pillow::Graphics
    };
 
 #if defined(_WIN64)
-   class D3D12Renderer final: public IRenderer
+   class D3D12Renderer final : public IRenderer
    {
       DeleteDefautedMethods(D3D12Renderer)
 
@@ -394,8 +370,8 @@ namespace Pillow::Graphics
       ~D3D12Renderer();
       uint64_t GetFrameIndex() override final;
 
-      ResHandle ResourceCreate(const GraphicsResourceInfo& info) override final;
-      void ResourceRelease(ResHandle& handle) override final;
+      ResHandle ResourceCreate(const GraphicsResourceDesc& info) override final;
+      void ResourceRelease(ResHandle handle) override final;
       void ResourceUpdate(ResHandle handle, const void* data, size_t dataSize) override final;
       void ResourceReadback(ResHandle handle, void* outData, size_t dataSize) override final;
 
@@ -404,16 +380,23 @@ namespace Pillow::Graphics
       void Pioneer() override final;
       void Assembler() override final;
    };
-#elif defined(__ANDROID__)
-   //class Vulkan12Renderer : public GenericRenderer
-   //{
-   //   DeleteDefautedMethods(Vulkan12Renderer)
-   //public:
-   //   Vulkan12Renderer(HWND windowHandle);
-   //   ~Vulkan12Renderer();
-   //};
 #endif
 
+#if defined(_WIN64) || defined(__ANDROID__)
+   class Vulkan12Renderer : public IRenderer
+   {
+      DeleteDefautedMethods(Vulkan12Renderer)
+
+   public:
+      virtual ~Vulkan12Renderer() {};
+      Vulkan12Renderer(uint32_t) : IRenderer(2, "Vulkan12Renderer", {}, 60) {}
+   };
+#endif
+}
+
+// Functions
+namespace Pillow::Graphics
+{
    inline GraphicsResourceType GetResourceType(ResHandle handle)
    {
       return static_cast<GraphicsResourceType>((handle & ResourceTypeMask) >> ResIndexBits);
@@ -434,108 +417,97 @@ namespace Pillow::Graphics
       return ClearResourceType(handle) != 0;
    }
 
-   // Idle command list.
-   // Do not access it directly. Instead, use CmdXXX() (see: CmdNone()) to record commands.
-   extern std::vector<GenericRendererCommand> cmdListIdle;
-
    // Create an empty command.
    ForceInline void CmdNone()
    {
       GenericRendererCommand cmd;
       cmd.CmdType = GenericRendererCommand::Type::None;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
-   // Clear 1~8 built-in pipeline buffers. 
+   // Clear pipeline buffer. 
    // depth, stencil: When clearing depth or stencil, they must be specified, otherwise they will be ignored.
-   ForceInline void CmdClearPiplelineBuffers(PipelineBuffer builtinBuffers[], int32_t count,
-      const XMFLOAT4& color = Constants::DefaultBackColor, float depth = Constants::FloatInfinity,
+   ForceInline void CmdClearPiplelineBuffer(PipelineBuffer buffer,
+      const XMFLOAT4& color = Constants::DefaultBackColor,
+      float depth = Constants::FloatInfinity,
       uint8_t stencil = UINT8_MAX)
    {
-      if (count > 8) throw std::runtime_error("Too many pipeline buffers to clear. Max is 8.");
       GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::ClearPiplelineBuffers;
-      cmd.Count = count;
-      for (int32_t i : std::views::iota(0, count))
+      cmd.CmdType = GenericRendererCommand::Type::ClearPiplelineBuffer;
+      cmd.Int3[0] = static_cast<uint8_t>(buffer);
+      if(buffer == PipelineBuffer::Depth)
       {
-         cmd.Params.UIntArray8[i] = static_cast<uint32_t>(builtinBuffers[i]);
+         cmd.Float4[0] = depth;
+         cmd.Int3[1] = stencil;
       }
-      cmd.Params.Float4_1 = color;
-      cmd.Params.Float4_2.x = depth;
-      cmd.Flags8 = stencil;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      else
+      {
+         cmd.Float4 = color;
+      }
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
-   // Clear 1~8 render targets. (1 cubemap = 6 buffers)
-   ForceInline void CmdClearRenderTargets(ResHandle handles[], int32_t count,
-      const XMFLOAT4& color = Constants::DefaultBackColor)
+   // Clear render target.
+   ForceInline void CmdClearRenderTarget(ResHandle handle, const XMFLOAT4& color = Constants::DefaultBackColor)
    {
-      if (count > 8) throw std::runtime_error("Too many render targets to clear. Max is 8.");
       GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::ClearRenderTargets;
-      cmd.Count = count;
-      for (int32_t i : std::views::iota(0, count))
-      {
-         cmd.Params.UIntArray8[i] = handles[i];
-      }
-      cmd.Params.Float4_1 = color;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      cmd.CmdType = GenericRendererCommand::Type::ClearRenderTarget;
+      cmd.Int3[0] = handle;
+      cmd.Float4 = color;
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
-   // Clear 1~8 depth-stencil buffers. 
-   // depth, stencil: When clearing depth or stencil, they must be specified, otherwise they will be ignored.
-   ForceInline void CmdClearDepthStencils(ResHandle handles[], int32_t count,
+   // Clear depth-stencil buffer. 
+   ForceInline void CmdClearDepthStencil(ResHandle handle,
       float depth = Constants::FloatInfinity, uint8_t stencil = UINT8_MAX)
    {
-      if (count > 8) throw std::runtime_error("Too many depth-stencil buffers to clear. Max is 8.");
       GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::ClearDepthStencils;
-      cmd.Count = count;
-      for (int32_t i : std::views::iota(0, count))
-      {
-         cmd.Params.UIntArray8[i] = handles[i];
-      }
-      cmd.Params.Float4_1.x = depth;
-      cmd.Flags8 = stencil;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      cmd.CmdType = GenericRendererCommand::Type::ClearDepthStencil;
+      cmd.Int3[0] = handle;
+      cmd.Float4[0] = depth;
+      cmd.Int3[1] = stencil;
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
-   // Set 1~8 built-in pipeline buffers.
-   ForceInline void CmdSetPipelineBuffers(PipelineBuffer builtinBuffers[], int32_t count)
+   // Set pipeline buffers.
+   ForceInline void CmdSetPipelineBuffers(std::vector<PipelineBuffer>& buffers, bool bSetDepth = false)
    {
-      if (count > 8) throw std::runtime_error("Too many pipeline buffers to set. Max is 8.");
+      if (buffers.size() > 4) throw std::runtime_error("Maximum Render Target Num: 4");
       GenericRendererCommand cmd;
       cmd.CmdType = GenericRendererCommand::Type::SetPiplelineBuffers;
-      cmd.Count = count;
-      for (int32_t i : std::views::iota(0, count))
+      uint32_t compactData = 0;
+      for (uint32_t i = 0; i < buffers.size(); i++)
       {
-         cmd.Params.UIntArray8[i] = (uint32_t)builtinBuffers[i];
+         compactData |= static_cast<uint8_t>(buffers[i]) << (i * 8);
       }
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      cmd.Int3[0] = compactData;
+      cmd.Int3[1] = buffers.size();
+      cmd.Int3[2] = bSetDepth ? 1 : 0;
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
-   //  Set 1~7 render targets and 1 depth buffer.
-   ForceInline void CmdSetRenderTargets(ResHandle handles[], int32_t count, ResHandle depthHandle = ResHandleNull)
+   //  Set render target and depth buffer.
+   ForceInline void CmdSetRenderTargets(std::vector<ResHandle>& buffers, ResHandle depthBuffer = NullHandle)
    {
-      if (count > 7) throw std::runtime_error("Too many render targets to set. Max is 7.");
+      if (buffers.size() > 4) throw std::runtime_error("Maximum Render Target Num: 4");
       GenericRendererCommand cmd;
       cmd.CmdType = GenericRendererCommand::Type::SetRenderTargets;
-      cmd.Count = count;
-      for (int32_t i : std::views::iota(0, count))
+      for (uint32_t i = 0; i < buffers.size(); i++)
       {
-         cmd.Params.UIntArray8[i] = handles[i];
+         cmd.Int4[i] = buffers[i];
       }
-      cmd.Params.UIntArray8[7] = depthHandle;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      cmd.Int3[0] = buffers.size();
+      cmd.Int3[1] = depthBuffer;
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
-   // Set the active camera VP matrix.
-   ForceInline void CmdSetActiveCamera(const XMFLOAT4X4& vpMatrix)
+   // Set the active camera.
+   ForceInline void CmdSetActiveCamera(ResHandle cameraBuffer)
    {
       GenericRendererCommand cmd;
       cmd.CmdType = GenericRendererCommand::Type::SetActiveCamera;
-      cmd.Params.Matrix = vpMatrix;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      cmd.Int3[0] = cameraBuffer;
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
    // Set the active viewport.
@@ -543,105 +515,105 @@ namespace Pillow::Graphics
    {
       GenericRendererCommand cmd;
       cmd.CmdType = GenericRendererCommand::Type::SetViewport;
-      cmd.Params.Float4_1 = viewport;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      cmd.Float4 = viewport;
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
-   // Set a light source.
-   ForceInline void CmdSetLight(LightType type, const XMFLOAT4& quaternion,
-      const XMFLOAT4& color,bool hasShadow, float intensity, float range, float size1, float size2, float size3)
-   {
-      GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::SetLight;
-      cmd.Flags8 = uint8_t(type) | (hasShadow ? 0X80 : 0);
-      XMFLOAT4* vec1 = reinterpret_cast<XMFLOAT4*>(cmd.Params.Matrix.m);
-      vec1[0] = quaternion;
-      vec1[1] = color;
-      vec1[2] = XMFLOAT4(intensity, range, 0, 0);
-      vec1[3] = XMFLOAT4(size1, size2, size3, 0);
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
-   }
+   //// Set a light source.
+   //ForceInline void CmdSetLight(LightType type, const XMFLOAT4& quaternion,
+   //   const XMFLOAT4& color,bool hasShadow, float intensity, float range, float size1, float size2, float size3)
+   //{
+   //   GenericRendererCommand cmd;
+   //   cmd.CmdType = GenericRendererCommand::Type::SetLight;
+   //   cmd.Flags8 = uint8_t(type) | (hasShadow ? 0X80 : 0);
+   //   XMFLOAT4* vec1 = reinterpret_cast<XMFLOAT4*>(cmd.Vector.Matrix.m);
+   //   vec1[0] = quaternion;
+   //   vec1[1] = color;
+   //   vec1[2] = XMFLOAT4(intensity, range, 0, 0);
+   //   vec1[3] = XMFLOAT4(size1, size2, size3, 0);
+   //   IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+   //}
 
    // Set the active pipeline state object.
-   ForceInline void CmdBindPipelineStates(ResHandle psoHandle)
+   ForceInline void CmdBindPipelineState(ResHandle psoHandle)
    {
       GenericRendererCommand cmd;
       cmd.CmdType = GenericRendererCommand::Type::BindPipelineState;
-      cmd.Params.UIntArray8[0] = psoHandle;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+      cmd.Int3[0] = psoHandle;
+      IRenderer::cmdListIdle.push_back(cmd);
    }
 
-   // Set 1~4 shader resources.
-   ForceInline void CmdBindShaderResourceViews(int32_t rootParamIndex[], ResHandle handles[], int32_t count)
-   {
-      if (count > 4) throw std::runtime_error("Too many shader resource views to bind. Max is 4.");
-      GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::BindShaderResourceViews;
-      cmd.Count = count;
-      for (int32_t i : std::views::iota(0, count))
-      {
-         cmd.Params.UIntArray8[i] = rootParamIndex[i];
-         cmd.Params.UIntArray8[i + 4] = handles[i];
-      }
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
-   }
+   //// Set 1~4 shader resources.
+   //ForceInline void CmdBindShaderResourceViews(int32_t rootParamIndex[], ResHandle handles[], int32_t count)
+   //{
+   //   if (count > 4) throw std::runtime_error("Too many shader resource views to bind. Max is 4.");
+   //   GenericRendererCommand cmd;
+   //   cmd.CmdType = GenericRendererCommand::Type::BindShaderResourceViews;
+   //   cmd.Count = count;
+   //   for (int32_t i : std::views::iota(0, count))
+   //   {
+   //      cmd.Vector.UIntArray8[i] = rootParamIndex[i];
+   //      cmd.Vector.UIntArray8[i + 4] = handles[i];
+   //   }
+   //   IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+   //}
 
-   // Set 1~4 constant buffers.
-   ForceInline void CmdBindConstantBufferViews(int32_t rootParamIndex[], ResHandle handles[], int32_t count)
-   {
-      if (count > 4) throw std::runtime_error("Too many constant buffer views to bind. Max is 4.");
-      GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::BindConstantBufferViews;
-      cmd.Count = count;
-      for (int32_t i : std::views::iota(0, count))
-      {
-         cmd.Params.UIntArray8[i] = rootParamIndex[i];
-         cmd.Params.UIntArray8[i + 4] = handles[i];
-      }
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
-   }
+   //// Set 1~4 constant buffers.
+   //ForceInline void CmdBindConstantBufferViews(int32_t rootParamIndex[], ResHandle handles[], int32_t count)
+   //{
+   //   if (count > 4) throw std::runtime_error("Too many constant buffer views to bind. Max is 4.");
+   //   GenericRendererCommand cmd;
+   //   cmd.CmdType = GenericRendererCommand::Type::BindConstantBufferViews;
+   //   cmd.Count = count;
+   //   for (int32_t i : std::views::iota(0, count))
+   //   {
+   //      cmd.Vector.UIntArray8[i] = rootParamIndex[i];
+   //      cmd.Vector.UIntArray8[i + 4] = handles[i];
+   //   }
+   //   IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+   //}
 
-   // Set 1~4 unordered access buffers.
-   ForceInline void CmdBindUnorderedAccessViews(int32_t rootParamIndex[], ResHandle handles[], int32_t count)
-   {
-      if (count > 4) throw std::runtime_error("Too many unordered access views to bind. Max is 4.");
-      GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::BindConstantBufferViews;
-      cmd.Count = count;
-      for (int32_t i : std::views::iota(0, count))
-      {
-         cmd.Params.UIntArray8[i] = rootParamIndex[i];
-         cmd.Params.UIntArray8[i + 4] = handles[i];
-      }
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
-   }
+   //// Set 1~4 unordered access buffers.
+   //ForceInline void CmdBindUnorderedAccessViews(int32_t rootParamIndex[], ResHandle handles[], int32_t count)
+   //{
+   //   if (count > 4) throw std::runtime_error("Too many unordered access views to bind. Max is 4.");
+   //   GenericRendererCommand cmd;
+   //   cmd.CmdType = GenericRendererCommand::Type::BindConstantBufferViews;
+   //   cmd.Count = count;
+   //   for (int32_t i : std::views::iota(0, count))
+   //   {
+   //      cmd.Vector.UIntArray8[i] = rootParamIndex[i];
+   //      cmd.Vector.UIntArray8[i + 4] = handles[i];
+   //   }
+   //   IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+   //}
 
-   // Dispatch an instanced (GPU Instancing) draw call.
-   ForceInline void CmdDispatchMesh(ResHandle meshHandle, int32_t instanceCount)
-   {
-      GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::DispatchMesh;
-      cmd.Params.UIntArray8[0] = meshHandle;
-      cmd.Params.UIntArray8[1] = instanceCount;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
-   }
+   //// Dispatch an instanced (GPU Instancing) draw call.
+   //ForceInline void CmdDispatchMesh(ResHandle meshHandle, int32_t instanceCount)
+   //{
+   //   GenericRendererCommand cmd;
+   //   cmd.CmdType = GenericRendererCommand::Type::DispatchMesh;
+   //   cmd.Vector.UIntArray8[0] = meshHandle;
+   //   cmd.Vector.UIntArray8[1] = instanceCount;
+   //   IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+   //}
 
-   // Dispatch a post-processing pass.
-   ForceInline void CmdDispatchPostProcess(PipelineBuffer from, PipelineBuffer to)
-   {
-      GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::DispatchPostProcess;
-      cmd.Params.UIntArray8[0] = static_cast<uint32_t>(from);
-      cmd.Params.UIntArray8[1] = static_cast<uint32_t>(to);
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
-   }
+   //// Dispatch a post-processing pass.
+   //ForceInline void CmdDispatchPostProcess(PipelineBuffer from, PipelineBuffer to)
+   //{
+   //   GenericRendererCommand cmd;
+   //   cmd.CmdType = GenericRendererCommand::Type::DispatchPostProcess;
+   //   cmd.Vector.UIntArray8[0] = static_cast<uint32_t>(from);
+   //   cmd.Vector.UIntArray8[1] = static_cast<uint32_t>(to);
+   //   IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+   //}
 
-   // Dispatch a compute shader.
-   ForceInline void CmdDispatchCompute()
-   {
-      /*dumb*/
-      GenericRendererCommand cmd;
-      cmd.CmdType = GenericRendererCommand::Type::DispatchCompute;
-      IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
-   }
+   //// Dispatch a compute shader.
+   //ForceInline void CmdDispatchCompute()
+   //{
+   //   //dumb
+   //   GenericRendererCommand cmd;
+   //   cmd.CmdType = GenericRendererCommand::Type::DispatchCompute;
+   //   IRenderer::GetInstance()->GetIdleCmdList()->push_back(cmd);
+   //}
 }

@@ -2125,7 +2125,7 @@ uint64_t D3D12Renderer::GetFrameIndex()
    return fenceSync->GetFrameIndex();
 }
 
-ResHandle D3D12Renderer::ResourceCreate(const GraphicsResourceInfo& info)
+ResHandle D3D12Renderer::ResourceCreate(const GraphicsResourceDesc& info)
 {
    ResHandle handle = IRenderer::ResourceCreate(info);
    if (info.Type == GraphicsResourceType::PiplelineState)
@@ -2159,17 +2159,16 @@ ResHandle D3D12Renderer::ResourceCreate(const GraphicsResourceInfo& info)
    return handle;
 }
 
-void D3D12Renderer::ResourceRelease(ResHandle& handle)
+void D3D12Renderer::ResourceRelease(ResHandle handle)
 {
-   ResHandle handleCopy = handle;
    IRenderer::ResourceRelease(handle);
-   if (GetResourceType(handleCopy) == GraphicsResourceType::PiplelineState)
+   if (GetResourceType(handle) == GraphicsResourceType::PiplelineState)
    {
-      psoMgr->Release(handleCopy);
+      psoMgr->Release(handle);
    }
    else
    {
-      UnionBuffer::Release(handleCopy);
+      UnionBuffer::Release(handle);
    }
 }
 
@@ -2185,25 +2184,27 @@ void D3D12Renderer::ResourceReadback(ResHandle handle, void* outData, size_t dat
 
 void D3D12Renderer::Worker(uint32_t workerIndex)
 {
+   const bool bFirstWorker = (workerIndex == 0);
+   const bool bLastWorker = (workerIndex == workerThreadCount - 1);
    int32_t frameArrayIdx = fenceSync->GetFrameArrayIdx();
    ComPtr<ICommandList>& cmdList = cmdLists[workerIndex];
-   ID3D12CommandAllocator* allocator = cmdAllocators[frameArrayIdx * workerThreadCount + workerIndex].Get();
+   ComPtr<ID3D12CommandAllocator>& allocator = cmdAllocators[frameArrayIdx * workerThreadCount + workerIndex];
+   ComPtr<IResource>& backBuffer = pipelineBuffers[NoneSwapChainResNum + frameArrayIdx];
    Check_HRESULT(allocator->Reset());
-   Check_HRESULT(cmdList->Reset(allocator, nullptr));
-
-   // Copy all dirty buffers to default heaps.
-   if (workerIndex == 0) UnionBuffer::GPUCopyAll(cmdList);
+   Check_HRESULT(cmdList->Reset(allocator.Get(), nullptr));
+   if (bFirstWorker)
+   {
+      // Copy all dirty buffers to default heaps.
+      UnionBuffer::GPUCopyAll(cmdList);
+      ApplyBarrier(cmdList, backBuffer, RS_Present, RS_RenderTarget);
+   }
 
    // Do actual work.
-   if (workerIndex == 0)
-   {
-      ApplyBarrier(cmdList, pipelineBuffers[NoneSwapChainResNum + frameArrayIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-   }
-   const auto mixedCmdList = GetBusyCmdList();
-   uint32_t cmdCount = mixedCmdList->size();
+   const auto& genericCmdList = cmdListBusy;
+   uint32_t cmdCount = genericCmdList.size();
    uint32_t cmdSlice = cmdCount / workerThreadCount;
    // Split the command list into sublists for each worker.
-   std::span<const GenericRendererCommand> bigSpan(*mixedCmdList);
+   std::span<const GenericRendererCommand> bigSpan(genericCmdList);
    std::span<const GenericRendererCommand> subSpan;
    if (cmdSlice == 0 && workerIndex == 0)
    {
@@ -2218,10 +2219,19 @@ void D3D12Renderer::Worker(uint32_t workerIndex)
       subSpan = bigSpan.subspan(workerIndex * cmdSlice, std::min((workerIndex + 1) * cmdSlice, cmdCount));
    }
    TranslateCommands_RHI(workerIndex, subSpan);
-   // ...
-   if (workerIndex == workerThreadCount - 1)
+   
+   if (bLastWorker)
    {
-      ApplyBarrier(cmdList, pipelineBuffers[NoneSwapChainResNum + frameArrayIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+      // Preserve the back buffer.
+      ApplyBarrier(cmdList, backBuffer, RS_RenderTarget, RS_CopySrc);
+      ApplyBarrier(cmdList, pipelineBuffers[2], RS_RenderTarget, RS_CopyDst, 3);
+      D3D12_TEXTURE_COPY_LOCATION src = {backBuffer.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX };
+      src.SubresourceIndex = 0;
+      D3D12_TEXTURE_COPY_LOCATION dst = { pipelineBuffers[2].Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX };
+      dst.SubresourceIndex = 3;
+      cmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+      ApplyBarrier(cmdList, pipelineBuffers[2], RS_CopyDst, RS_RenderTarget, 3);
+      ApplyBarrier(cmdList, backBuffer, RS_CopySrc, RS_Present);
    }
    Check_HRESULT(cmdList->Close());
 }
