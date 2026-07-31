@@ -358,19 +358,21 @@ namespace
             D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
          };
          Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&csuDescHeap)));
+         csuDescHeap->SetName(L"CSU DescHeap");
          descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
          descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
          descHeapDesc.NumDescriptors = SmallHeapCapcity;
          Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&rtvDescHeap)));
+         rtvDescHeap->SetName(L"RTV DescHeap");
          descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
          Check_HRESULT(device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&dsvDescHeap)));
-         csuCpuHandle0 = csuDescHeap->GetCPUDescriptorHandleForHeapStart();
-         csuGpuHandle0 = csuDescHeap->GetGPUDescriptorHandleForHeapStart();
-         rtvCpuHandle0 = rtvDescHeap->GetCPUDescriptorHandleForHeapStart();
-         dsvCpuHandle0 = dsvDescHeap->GetCPUDescriptorHandleForHeapStart();
+         dsvDescHeap->SetName(L"DSV DescHeap");
+         csuCPUHandle0 = csuDescHeap->GetCPUDescriptorHandleForHeapStart();
+         csuGPUHandle0 = csuDescHeap->GetGPUDescriptorHandleForHeapStart();
+         rtvCPUHandle0 = rtvDescHeap->GetCPUDescriptorHandleForHeapStart();
+         dsvCPUHandle0 = dsvDescHeap->GetCPUDescriptorHandleForHeapStart();
       }
 
-      // Only the CSU descriptor heap is shader-visible, so only it can be bound to command lists.
       void BindCSUDescriptorHeap(ComPtr<ICommandList>& cmd)
       {
          cmd->SetDescriptorHeaps(1, csuDescHeap.GetAddressOf());
@@ -386,13 +388,13 @@ namespace
          case Type::CBV:
          case Type::SRV:
          case Type::UAV:
-            result.ptr = csuCpuHandle0.ptr + csuSize * handle;
+            result.ptr = csuCPUHandle0.ptr + csuSize * handle;
             break;
          case Type::RTV:
-            result.ptr = rtvCpuHandle0.ptr + rtvSize * handle;
+            result.ptr = rtvCPUHandle0.ptr + rtvSize * handle;
             break;
          case Type::DSV:
-            result.ptr = dsvCpuHandle0.ptr + dsvSize * handle;
+            result.ptr = dsvCPUHandle0.ptr + dsvSize * handle;
             break;
          }
          return result;
@@ -408,7 +410,7 @@ namespace
          case Type::CBV:
          case Type::SRV:
          case Type::UAV:
-            result.ptr = csuGpuHandle0.ptr + csuSize * handle;
+            result.ptr = csuGPUHandle0.ptr + csuSize * handle;
             break;
          default:
             throw std::exception("GPU handle is not supported for RTV and DSV.");
@@ -416,42 +418,50 @@ namespace
          return result;
       }
 
-      DescriptorHandle CreateDescirptor(ComPtr<IDevice>& device, ComPtr<IResource>& res, void* viewDesc, Type type, DescriptorHandle oldHandle = 0)
+      // Create a descriptor with a new or reused handle.
+      DescriptorHandle CreateDescirptor(ComPtr<IDevice>& device, ComPtr<IResource>& res, void* viewDesc, Type type, DescriptorHandle reusedHandle = 0)
       {
-         std::unique_lock lock(mutex);
-         bool bNewHandle = oldHandle == 0;
-         if(bNewHandle == false && GetType(oldHandle) != type)
-            throw std::exception("CreateDescirptor(): Type mismatch.");
-         DescriptorHandle handle = bNewHandle ?  0 : oldHandle;
-         handle = SetType(handle, type);
-         //auto GetHandle = [&](std::vector<DescriptorHandle>& freePool, const char* name)
-         //   {
-         //      if (freePool.empty())
-         //         throw std::exception(std::format("Descriptor heap[{}] is full, try to alter MaxHeapCapcity.", name).c_str());
-         //      handle = SetType(freePool.back(), type);
-         //      freePool.pop_back();
-         //   };
+         std::lock_guard lock(mutex);
+         DescriptorHandle handle = reusedHandle;
+         // New handle
+         if (handle == 0)
+         {
+            handle = SetType(handle, type);
+            if (type == Type::RTV)
+            {
+               handle |= rtvPool.Acquire();
+            }
+            else if (type == Type::DSV)
+            {
+               handle |= dsvPool.Acquire();
+            }
+            else
+            {
+               handle |= csuPool.Acquire();
+            }
+         }
+         // Reused handle
+         else if(GetType(handle) != type)
+         {
+            throw std::exception("CreateDescirptor(): Type mismatches.");
+         }
          switch (type)
          {
          case Type::CBV:
-            if(bNewHandle) handle |= csuPool.Acquire();
             device->CreateConstantBufferView((D3D12_CONSTANT_BUFFER_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::SRV:
-            if (bNewHandle) handle |= csuPool.Acquire();
             device->CreateShaderResourceView(res.Get(), (D3D12_SHADER_RESOURCE_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::UAV:
-            if (bNewHandle) handle |= csuPool.Acquire();
             device->CreateUnorderedAccessView(res.Get(), nullptr, (D3D12_UNORDERED_ACCESS_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::RTV:
-            if (bNewHandle) handle |= rtvPool.Acquire();
             device->CreateRenderTargetView(res.Get(), (D3D12_RENDER_TARGET_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
             break;
          case Type::DSV:
-            if (bNewHandle) handle |= dsvPool.Acquire();
             device->CreateDepthStencilView(res.Get(), (D3D12_DEPTH_STENCIL_VIEW_DESC*)viewDesc, GetCPUHandle(handle));
+            break;
          }
 #ifdef PILLOW_DEBUG
          //LogSystem(L"ViewHandle=" + std::to_wstring(handle) + L" Index=" + std::to_wstring(RemoveFlag(handle)));
@@ -459,25 +469,23 @@ namespace
          return handle;
       }
 
-      void ReleaseDescriptor(DescriptorHandle& handle)
+      void ReleaseDescriptor(DescriptorHandle handle)
       {
-         DescriptorHandle _handle = handle;
-         handle = 0;
-         std::unique_lock lock(mutex);
-         Type type = GetType(_handle);
-         _handle = ClearType(_handle);
+         std::lock_guard lock(mutex);
+         Type type = GetType(handle);
+         handle = ClearType(handle);
          switch (type)
          {
          case Type::CBV:
          case Type::SRV:
          case Type::UAV:
-            csuPool.Release(_handle);
+            csuPool.Release(handle);
             break;
          case Type::RTV:
-            rtvPool.Release(_handle);
+            rtvPool.Release(handle);
             break;
          case Type::DSV:
-            dsvPool.Release(_handle);
+            dsvPool.Release(handle);
             break;
          }
       }
@@ -514,11 +522,11 @@ namespace
       GenericHandlePool<uint16_t> csuPool{"CSU Pool", MaxHeapCapcity};
       GenericHandlePool<uint16_t> rtvPool{"RTV Pool", SmallHeapCapcity};
       GenericHandlePool<uint16_t> dsvPool{"DSV Pool", SmallHeapCapcity};
-      D3D12_CPU_DESCRIPTOR_HANDLE csuCpuHandle0;
-      D3D12_GPU_DESCRIPTOR_HANDLE csuGpuHandle0;
+      D3D12_CPU_DESCRIPTOR_HANDLE csuCPUHandle0;
+      D3D12_GPU_DESCRIPTOR_HANDLE csuGPUHandle0;
       // RTV and DSV don't have gpu handles.
-      D3D12_CPU_DESCRIPTOR_HANDLE rtvCpuHandle0;
-      D3D12_CPU_DESCRIPTOR_HANDLE dsvCpuHandle0;
+      D3D12_CPU_DESCRIPTOR_HANDLE rtvCPUHandle0;
+      D3D12_CPU_DESCRIPTOR_HANDLE dsvCPUHandle0;
    };
 
    // A comprehensive wrapper class for all resources.
