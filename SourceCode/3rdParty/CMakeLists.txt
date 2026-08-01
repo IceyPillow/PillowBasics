@@ -163,19 +163,19 @@ if(WIN32)
    )
 
    # XeSS
-   file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_3.0.0/*.h")
+   file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/XeSS-3.0.2/*.h")
    add_library(XeSS INTERFACE ${SOURCES})
-   source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_3.0.0" FILES ${SOURCES})
+   source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/XeSS-3.0.2" FILES ${SOURCES})
    SET(LIBS
-      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_3.0.0/binary/libxess.lib"
-      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_3.0.0/binary/libxell.lib"
-      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_3.0.0/binary/libxess_fg.lib"
+      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS-3.0.2/binary/libxess.lib"
+      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS-3.0.2/binary/libxell.lib"
+      general "${CMAKE_CURRENT_SOURCE_DIR}/XeSS-3.0.2/binary/libxess_fg.lib"
    )
    target_link_libraries(XeSS INTERFACE ${LIBS})
    list(APPEND RUNTIMES
-      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_3.0.0/binary/libxess.dll"
-      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_3.0.0/binary/libxell.dll"
-      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS_3.0.0/binary/libxess_fg.dll"
+      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS-3.0.2/binary/libxess.dll"
+      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS-3.0.2/binary/libxell.dll"
+      "${CMAKE_CURRENT_SOURCE_DIR}/XeSS-3.0.2/binary/libxess_fg.dll"
    )
 endif()
 
