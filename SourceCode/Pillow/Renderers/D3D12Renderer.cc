@@ -220,12 +220,26 @@ D3D12_STATIC_BORDER_COLOR(0), 0, maxLOD, registerNum, 0, D3D12_SHADER_VISIBILITY
 // Types
 namespace
 {
+   enum ResourceState : uint32_t;
    void Check_HRESULT(HRESULT hResult);
    void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource,
-      D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after,
-      uint32_t subRes = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
+      ResourceState before, ResourceState after, uint32_t subRes = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
    uint32_t GetAlignMipmapSize(const TextureInfo& texInfo, uint32_t mipLevel);
    uint32_t GetAlignTextureArraySliceSize(const TextureInfo& texInfo);
+
+   enum ResourceState : uint32_t
+   {
+      RS_Common = D3D12_RESOURCE_STATE_COMMON,
+      RS_RenderTarget = D3D12_RESOURCE_STATE_RENDER_TARGET,
+      RS_DepthWrite = D3D12_RESOURCE_STATE_DEPTH_WRITE,
+      RS_DepthRead = D3D12_RESOURCE_STATE_DEPTH_READ,
+      RS_CopySrc = D3D12_RESOURCE_STATE_COPY_SOURCE,
+      RS_CopyDst = D3D12_RESOURCE_STATE_COPY_DEST,
+      //RS_NonePSRead = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, // Included in RS_GenericRead
+      //RS_PSRead = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, // Included in RS_GenericRead
+      RS_GenericRead = D3D12_RESOURCE_STATE_GENERIC_READ,
+      RS_Present = D3D12_RESOURCE_STATE_PRESENT,
+   };
 
    // Fence synchronization wrapper
    class FenceSync
@@ -780,11 +794,11 @@ namespace
             // Fill the cmd list.
             if(buffer.Data_Type == DataType::StructuredBuffer)
             {
-               ApplyBarrier(cmdList, buffer.midBuffer->resource, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
-               ApplyBarrier(cmdList, buffer.resource, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+               ApplyBarrier(cmdList, buffer.midBuffer->resource, RS_GenericRead, RS_CopySrc);
+               ApplyBarrier(cmdList, buffer.resource, RS_GenericRead, RS_CopyDst);
                cmdList->CopyResource(buffer.resource.Get(), buffer.midBuffer->resource.Get()); // GPU Copy
-               ApplyBarrier(cmdList, buffer.midBuffer->resource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
-               ApplyBarrier(cmdList, buffer.resource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+               ApplyBarrier(cmdList, buffer.midBuffer->resource, RS_CopySrc, RS_GenericRead);
+               ApplyBarrier(cmdList, buffer.resource, RS_CopyDst, RS_GenericRead);
             }
             else if (buffer.Data_Type == DataType::Texture)
             {
@@ -796,16 +810,16 @@ namespace
                   D3D12_TEXTURE_COPY_LOCATION src{ buffer.midBuffer->resource.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0 };
                   D3D12_TEXTURE_COPY_LOCATION dst{ buffer.resource.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0 };
                   // GPU copy
-                  ApplyBarrier(cmdList, buffer.midBuffer->resource, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
-                  ApplyBarrier(cmdList, buffer.resource, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+                  ApplyBarrier(cmdList, buffer.midBuffer->resource, RS_GenericRead, RS_CopySrc);
+                  ApplyBarrier(cmdList, buffer.resource, RS_GenericRead, RS_CopyDst);
                   for (uint32_t mip = 0; mip < mipNum; mip++)
                   {
                      src.SubresourceIndex = mip;
                      dst.SubresourceIndex = mip;
                      cmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, NULL);
                   }
-                  ApplyBarrier(cmdList, buffer.midBuffer->resource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
-                  ApplyBarrier(cmdList, buffer.resource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+                  ApplyBarrier(cmdList, buffer.midBuffer->resource, RS_CopySrc, RS_GenericRead);
+                  ApplyBarrier(cmdList, buffer.resource, RS_CopyDst, RS_GenericRead);
                }
                else
                {
@@ -819,16 +833,16 @@ namespace
                      D3D12_TEXTURE_COPY_LOCATION src{ buffer.midBuffer->resource.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0 };
                      D3D12_TEXTURE_COPY_LOCATION dst{ buffer.resource.Get(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, 0 };
                      // GPU copy
-                     ApplyBarrier(cmdList, buffer.midBuffer->resource, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
-                     ApplyBarrier(cmdList, buffer.resource, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+                     ApplyBarrier(cmdList, buffer.midBuffer->resource, RS_GenericRead, RS_CopySrc);
+                     ApplyBarrier(cmdList, buffer.resource, RS_GenericRead, RS_CopyDst);
                      for (uint32_t mip = 0; mip < mipNum; mip++)
                      {
                         src.SubresourceIndex = srcArrayIdx * mipNum + mip;
                         dst.SubresourceIndex = dstArrayIdx * mipNum + mip;
                         cmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, NULL);
                      }
-                     ApplyBarrier(cmdList, buffer.midBuffer->resource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
-                     ApplyBarrier(cmdList, buffer.resource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+                     ApplyBarrier(cmdList, buffer.midBuffer->resource, RS_CopySrc, RS_GenericRead);
+                     ApplyBarrier(cmdList, buffer.resource, RS_CopyDst, RS_GenericRead);
                   }
                   if (!buffer.midTargets->empty()) throw std::runtime_error("midTargets should be empty.");
                }
@@ -1376,14 +1390,15 @@ namespace
 
    // Granularity up to subresource level.
    void ApplyBarrier(ComPtr<ICommandList>& cmdList, ComPtr<IResource>& resource,
-      D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after,
-      uint32_t subRes /*= D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES*/)
+      ResourceState before, ResourceState after, uint32_t subRes /*= D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES*/)
    {
+      auto _before = D3D12_RESOURCE_STATES(before);
+      auto _after = D3D12_RESOURCE_STATES(after);
       D3D12_RESOURCE_BARRIER barrier
       {
          D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
          D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         D3D12_RESOURCE_TRANSITION_BARRIER { resource.Get(), subRes, before, after}
+         D3D12_RESOURCE_TRANSITION_BARRIER { resource.Get(), subRes, _before, _after }
       };
       cmdList->ResourceBarrier(1, &barrier);
    }
