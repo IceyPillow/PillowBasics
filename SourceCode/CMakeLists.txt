@@ -15,8 +15,7 @@ endif()
 if (CLANG)
     add_compile_options(
       /clang:-Wno-missing-braces
-      /clang:-Wno-unused-variable
-      /clang:-Wno-unused-function
+      /clang:-Wno-unused
       /clang:-Wno-switch
       /clang:-Wno-return-type-c-linkage
       )
